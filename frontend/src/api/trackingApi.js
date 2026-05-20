@@ -8,7 +8,8 @@ export const pushLocation = (data) => api.post("/api/tracking/push", data);
 // Returns a WebSocket connected to the given vehicleId's live feed
 export function openTrackingSocket(vehicleId, onMessage) {
   const base = (process.env.REACT_APP_API_URL || "http://localhost:8088")
-    .replace(/^http/, "ws");
+    .replace(/^http/, "ws")
+    .replace(/\/$/, "");
   const ws = new WebSocket(`${base}/api/tracking/ws/${vehicleId}`);
   ws.onmessage = (e) => {
     try { onMessage(JSON.parse(e.data)); } catch (_) {}

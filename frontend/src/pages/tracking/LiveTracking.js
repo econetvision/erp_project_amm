@@ -4,7 +4,7 @@ import { getLatestLocations } from "../../api/trackingApi";
 import { openTrackingSocket } from "../../api/trackingApi";
 import AlertMessage from "../../components/AlertMessage";
 
-const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Replace with your key
+const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "";
 
 const MAP_CONTAINER = { width: "100%", height: "600px" };
 const DEFAULT_CENTER = { lat: 20.5937, lng: 78.9629 }; // India center
@@ -62,6 +62,7 @@ export default function LiveTracking() {
 
   const located = vehicles.filter(v => v.latitude != null && v.longitude != null);
 
+  if (!GOOGLE_MAPS_API_KEY) return <div className="p-4 text-center text-danger">Google Maps API key is not configured.</div>;
   if (!isLoaded) return <div className="p-4 text-center">Loading map…</div>;
 
   return (
