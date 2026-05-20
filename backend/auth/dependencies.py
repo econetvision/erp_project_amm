@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Optional
+import os
 import bcrypt
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.user import User
 
-SECRET_KEY  = "erp-secret-key-change-in-production"
+SECRET_KEY  = os.getenv("SECRET_KEY", "erp-secret-key-change-in-production")
 ALGORITHM   = "HS256"
 TOKEN_EXPIRY_HOURS = 12
 
