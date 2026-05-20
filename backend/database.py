@@ -18,7 +18,7 @@ engine = create_engine(
         # TCP keepalives prevent cloud load balancers from silently dropping
         # idle SSL connections, which causes "SSL connection closed unexpectedly"
         "keepalives": 1,
-        "keepalives_idle": 30,
+        "keepalives_idle": 10,
         "keepalives_interval": 10,
         "keepalives_count": 5,
     },
