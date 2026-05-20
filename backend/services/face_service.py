@@ -23,6 +23,23 @@ def decode_image(b64: str) -> np.ndarray:
         raise HTTPException(status_code=400, detail=f"Invalid image data: {str(e)}")
 
 
+def normalize_face_encoding(raw_encoding) -> np.ndarray:
+    """Normalize face encoding to a 128-element float array."""
+    if raw_encoding is None:
+        raise HTTPException(status_code=400, detail="No face encoding available for comparison.")
+    try:
+        encoding = np.asarray(raw_encoding, dtype=np.float64)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Invalid stored face encoding: {str(e)}")
+
+    if encoding.ndim != 1 or encoding.shape[0] != 128:
+        raise HTTPException(
+            status_code=500,
+            detail="Stored face encoding is invalid or malformed. Expected 128 float values."
+        )
+    return encoding
+
+
 def get_face_encoding(b64_image: str) -> list[float]:
     """Return a 128-d face encoding from a base64 image. Raises if no face found."""
     try:
@@ -34,7 +51,10 @@ def get_face_encoding(b64_image: str) -> list[float]:
         raise HTTPException(status_code=500, detail=f"Face processing error: {str(e)}")
     if not encodings:
         raise HTTPException(status_code=400, detail="No face detected in the image. Please try again with better lighting.")
-    return encodings[0].tolist()
+    encoding = encodings[0]
+    if len(encoding) != 128:
+        raise HTTPException(status_code=500, detail="Detected face encoding is invalid.")
+    return [float(x) for x in encoding]
 
 
 def verify_employee_face(b64_image: str, employee) -> None:
@@ -58,7 +78,7 @@ def verify_employee_face(b64_image: str, employee) -> None:
     if not unknown_encodings:
         raise HTTPException(status_code=400, detail="No face detected in the image. Please try again.")
 
-    known_enc   = np.array(employee.face_encoding)
+    known_enc   = normalize_face_encoding(employee.face_encoding)
     unknown_enc = unknown_encodings[0]
     match = face_recognition.compare_faces([known_enc], unknown_enc, tolerance=0.5)[0]
     if not match:
@@ -87,11 +107,22 @@ def identify_employee(b64_image: str, employees: list) -> object | None:
     if not candidates:
         return None
 
-    known_encodings = [np.array(e.face_encoding) for e in candidates]
+    known_encodings = []
+    valid_candidates = []
+    for e in candidates:
+        try:
+            known_encodings.append(normalize_face_encoding(e.face_encoding))
+            valid_candidates.append(e)
+        except HTTPException:
+            continue
+
+    if not known_encodings:
+        return None
+
     matches = face_recognition.compare_faces(known_encodings, unknown_enc, tolerance=0.5)
     distances = face_recognition.face_distance(known_encodings, unknown_enc)
 
     best_idx = int(np.argmin(distances))
     if matches[best_idx]:
-        return candidates[best_idx]
+        return valid_candidates[best_idx]
     return None
