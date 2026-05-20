@@ -10,6 +10,9 @@ import models.vehicle_location  # noqa: F401
 
 Base.metadata.create_all(bind=engine)
 
+from seed import seed
+seed()
+
 app = FastAPI(
     title="ERP System API",
     description="Employee, Attendance and Payslip management",
