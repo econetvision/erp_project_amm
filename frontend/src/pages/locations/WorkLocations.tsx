@@ -118,8 +118,12 @@ export default function WorkLocations() {
   }
 
   async function handleSave() {
-    if (!form.location_name || !form.latitude || !form.longitude) {
-      setAlert({ type: "warning", message: "Name, latitude and longitude are required." });
+    if (!form.location_name) {
+      setAlert({ type: "warning", message: "Location name is required." });
+      return;
+    }
+    if (!form.latitude && !form.longitude) {
+      setAlert({ type: "warning", message: "Please search an address or click on the map to set coordinates." });
       return;
     }
     setSaving(true);
@@ -193,7 +197,30 @@ export default function WorkLocations() {
 
   function handleMapClick(e: google.maps.MapMouseEvent) {
     if (showForm && e.latLng) {
-      setForm(f => ({ ...f, latitude: e.latLng!.lat(), longitude: e.latLng!.lng() }));
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
+      setForm(f => ({ ...f, latitude: lat, longitude: lng }));
+
+      // Reverse geocode to fill address fields
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+        if (status === "OK" && results && results[0]) {
+          const place = results[0];
+          let city = "", state = "", pincode = "";
+          for (const c of place.address_components || []) {
+            if (c.types.includes("locality")) city = c.long_name;
+            else if (c.types.includes("administrative_area_level_1")) state = c.long_name;
+            else if (c.types.includes("postal_code")) pincode = c.long_name;
+          }
+          setForm(f => ({
+            ...f,
+            address: place.formatted_address || f.address || "",
+            city: city || f.city || "",
+            state: state || f.state || "",
+            pincode: pincode || f.pincode || "",
+          }));
+        }
+      });
     }
   }
 
@@ -312,7 +339,7 @@ export default function WorkLocations() {
               <div className="d-flex align-items-center justify-content-center h-100">Loading map...</div>
             )}
           </div>
-          {showForm && <p className="text-muted small mt-1">💡 Click on the map to set location coordinates</p>}
+          {showForm && <p className="text-muted small mt-1">💡 Search an address or click on the map to set location coordinates automatically</p>}
         </div>
 
         {/* Right panel */}
@@ -368,18 +395,21 @@ export default function WorkLocations() {
                 </div>
                 <div className="row g-2 mb-2">
                   <div className="col-4">
-                    <label className="form-label fw-semibold small">Latitude *</label>
-                    <input className="form-control form-control-sm" type="number" step="any" name="latitude" value={form.latitude} onChange={handleChange} />
+                    <label className="form-label fw-semibold small">Latitude</label>
+                    <input className="form-control form-control-sm bg-light" type="number" step="any" name="latitude" value={form.latitude} readOnly disabled />
                   </div>
                   <div className="col-4">
-                    <label className="form-label fw-semibold small">Longitude *</label>
-                    <input className="form-control form-control-sm" type="number" step="any" name="longitude" value={form.longitude} onChange={handleChange} />
+                    <label className="form-label fw-semibold small">Longitude</label>
+                    <input className="form-control form-control-sm bg-light" type="number" step="any" name="longitude" value={form.longitude} readOnly disabled />
                   </div>
                   <div className="col-4">
                     <label className="form-label fw-semibold small">Radius (km)</label>
                     <input className="form-control form-control-sm" type="number" step="0.1" min="0.1" max="100" name="allowed_radius_km" value={form.allowed_radius_km} onChange={handleChange} />
                   </div>
                 </div>
+                {form.latitude === 0 && form.longitude === 0 && (
+                  <div className="text-warning small mb-2">⚠️ Search an address above or click on the map to set coordinates</div>
+                )}
                 <div className="d-flex gap-2 align-items-center mt-3">
                   <button className="btn btn-success btn-sm" onClick={handleSave} disabled={saving}>
                     {saving ? "Saving..." : editId ? "Update Location" : "Create Location"}
