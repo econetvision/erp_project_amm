@@ -21,12 +21,68 @@ from services.attendance_service import (
 from services.face_service import identify_employee, verify_employee_face
 from auth.dependencies import require_any, require_admin_or_supervisor
 from decimal import Decimal
+import math
 
 router = APIRouter()
 
 
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate distance between two lat/lng points in kilometres."""
+    R = 6371.0  # Earth radius in km
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def validate_geofence(emp: Employee, latitude: float | None, longitude: float | None, db: Session | None = None):
+    """Raise 403 if employee has assigned locations and the provided coordinates are outside all allowed radii."""
+    # First check multi-location assignments if db is available
+    if db:
+        from models.work_location import EmployeeLocationAssignment, WorkLocation
+        assignments = (
+            db.query(EmployeeLocationAssignment)
+            .filter(EmployeeLocationAssignment.employee_id == emp.id)
+            .all()
+        )
+        if assignments:
+            if latitude is None or longitude is None:
+                raise HTTPException(status_code=400, detail="Location is required. Please enable GPS and try again.")
+            for a in assignments:
+                loc = db.query(WorkLocation).filter(WorkLocation.id == a.location_id).first()
+                if loc and loc.is_active:
+                    distance = haversine_km(loc.latitude, loc.longitude, latitude, longitude)
+                    if distance <= loc.allowed_radius_km:
+                        return  # Within at least one assigned location
+            # Not within any assigned location
+            loc_names = []
+            for a in assignments:
+                loc = db.query(WorkLocation).filter(WorkLocation.id == a.location_id).first()
+                if loc and loc.is_active:
+                    loc_names.append(loc.location_name)
+            raise HTTPException(
+                status_code=403,
+                detail=f"You are not within any assigned work location ({', '.join(loc_names)}). Please move closer to mark attendance."
+            )
+
+    # Fallback: check the legacy work_location fields on employee
+    if emp.work_latitude is None or emp.work_longitude is None:
+        return  # No work location configured — skip validation
+    if latitude is None or longitude is None:
+        raise HTTPException(status_code=400, detail="Location is required. Please enable GPS and try again.")
+    distance = haversine_km(emp.work_latitude, emp.work_longitude, latitude, longitude)
+    radius = emp.attendance_radius_km or 10.0
+    if distance > radius:
+        raise HTTPException(
+            status_code=403,
+            detail=f"You are {distance:.1f} km away from your work location ({emp.work_location_name or 'assigned site'}). Must be within {radius:.1f} km."
+        )
+
+
 class FaceScanRequest(BaseModel):
     image: str  # base64-encoded image
+    latitude:  float | None = None
+    longitude: float | None = None
 
 
 class FaceScanResponse(BaseModel):
@@ -137,6 +193,7 @@ def clock_in(payload: AttendanceClockIn, db: Session = Depends(get_db), current:
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 
+    validate_geofence(emp, payload.latitude, payload.longitude, db)
     verify_employee_face(payload.image, emp)
 
     existing = db.query(Attendance).filter(
@@ -149,6 +206,8 @@ def clock_in(payload: AttendanceClockIn, db: Session = Depends(get_db), current:
         employee_id=payload.employee_id,
         date=payload.date,
         entry_time=payload.entry_time,
+        clock_in_latitude=payload.latitude,
+        clock_in_longitude=payload.longitude,
     )
     db.add(record)
     db.commit()
@@ -169,9 +228,12 @@ def clock_out(attendance_id: int, payload: AttendanceClockOut, db: Session = Dep
         raise HTTPException(status_code=403, detail="Workers can only clock out for themselves")
 
     emp = db.query(Employee).filter(Employee.id == record.employee_id).first()
+    validate_geofence(emp, payload.latitude, payload.longitude, db)
     verify_employee_face(payload.image, emp)
 
     record.exit_time    = payload.exit_time
+    record.clock_out_latitude  = payload.latitude
+    record.clock_out_longitude = payload.longitude
     record.hours_worked = calculate_hours_worked(record.entry_time, payload.exit_time, emp.shift if emp else None)
     db.commit()
     db.refresh(record)
@@ -260,6 +322,8 @@ def face_scan_clock(payload: FaceScanRequest, db: Session = Depends(get_db), _: 
     if not emp:
         raise HTTPException(status_code=404, detail="No matching employee found. Please register your face first.")
 
+    validate_geofence(emp, payload.latitude, payload.longitude, db)
+
     today = date.today()
     time_now_str = __import__("datetime").datetime.now().strftime("%H:%M")
     from datetime import time as dt_time
@@ -271,7 +335,8 @@ def face_scan_clock(payload: FaceScanRequest, db: Session = Depends(get_db), _: 
     ).first()
 
     if not existing:
-        record = Attendance(employee_id=emp.id, date=today, entry_time=time_now)
+        record = Attendance(employee_id=emp.id, date=today, entry_time=time_now,
+                            clock_in_latitude=payload.latitude, clock_in_longitude=payload.longitude)
         db.add(record)
         db.commit()
         db.refresh(record)
@@ -279,6 +344,8 @@ def face_scan_clock(payload: FaceScanRequest, db: Session = Depends(get_db), _: 
                                 action="clock_in", attendance=record)
     elif not existing.exit_time:
         existing.exit_time    = time_now
+        existing.clock_out_latitude  = payload.latitude
+        existing.clock_out_longitude = payload.longitude
         existing.hours_worked = calculate_hours_worked(existing.entry_time, time_now, emp.shift)
         db.commit()
         db.refresh(existing)

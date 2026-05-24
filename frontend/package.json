@@ -3,21 +3,38 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@popperjs/core": "^2.11.8",
+    "@react-google-maps/api": "^2.20.3",
+    "ajv": "^8.17.1",
+    "axios": "^1.8.4",
+    "bootstrap": "^5.3.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.0",
-    "axios": "^1.8.4",
-    "bootstrap": "^5.3.5",
     "react-scripts": "5.0.1",
-    "recharts": "^2.13.3",
-    "@react-google-maps/api": "^2.20.3"
+    "recharts": "^2.13.3"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build"
   },
   "browserslist": {
-    "production": [">0.2%", "not dead", "not op_mini all"],
-    "development": ["last 1 chrome version", "last 1 firefox version", "last 1 safari version"]
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@types/react-router-dom": "^5.3.3",
+    "typescript": "^4.9.5"
   }
 }

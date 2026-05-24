@@ -1,11 +1,13 @@
 # Stage 1 — build
 FROM node:20-alpine AS builder
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json* ./
 RUN npm install
 COPY . .
 ARG REACT_APP_API_URL
+ARG REACT_APP_GOOGLE_MAPS_API_KEY
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
+ENV REACT_APP_GOOGLE_MAPS_API_KEY=$REACT_APP_GOOGLE_MAPS_API_KEY
 RUN npm run build
 
 # Stage 2 — serve with nginx

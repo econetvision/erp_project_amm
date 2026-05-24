@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Outer Circle with Gradient-like stroke (simplified as a stroke) -->
+    <path
+        android:pathData="M50,10A40,40 0,1 1,50,90A40,40 0,1 1,50,10"
+        android:strokeWidth="4"
+        android:strokeColor="#0d6efd" />
+
+    <!-- "E" letter -->
+    <path
+        android:fillColor="#28a745"
+        android:pathData="M35,35h15v5h-10v5h8v5h-8v5h10v5h-15z" />
+
+    <!-- "V" letter -->
+    <path
+        android:fillColor="#28a745"
+        android:pathData="M52,35l5,25l5,-25h5l-7.5,30h-5l-7.5,-30z" />
+
+    <!-- Decorative elements from the image -->
+    <path
+        android:fillColor="#0d6efd"
+        android:pathData="M75,25a3,3 0,1 1,-6,0a3,3 0,1 1,6,0" />
+    <path
+        android:strokeWidth="1.5"
+        android:strokeColor="#0d6efd"
+        android:pathData="M78,18c3,3 5,7 5,12M83,12c5,5 8,12 8,20" />
+
+</vector>

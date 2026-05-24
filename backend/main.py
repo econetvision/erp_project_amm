@@ -1,14 +1,31 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from database import engine, Base
-from routers import employees, attendance, payslips, auth, holidays, vehicles, assignments, tracking
+from routers import employees, attendance, payslips, auth, holidays, vehicles, assignments, tracking, jobs, notifications, payroll, locations
 import models.holiday           # noqa: F401
 import models.vehicle           # noqa: F401
 import models.vehicle_assignment  # noqa: F401
 import models.vehicle_location  # noqa: F401
+import models.job_routine       # noqa: F401
+import models.notification      # noqa: F401
+import models.salary_structure  # noqa: F401
+import models.advance           # noqa: F401
+import models.payroll_run       # noqa: F401
+import models.work_location     # noqa: F401
 
-Base.metadata.create_all(bind=engine)
+# ── Run DB migrations on startup ──────────────────────────────────────────────
+from alembic.config import Config as AlembicConfig
+from alembic import command as alembic_command
+
+def _run_migrations():
+    ini_path = os.path.join(os.path.dirname(__file__), "alembic.ini")
+    cfg = AlembicConfig(ini_path)
+    cfg.set_main_option("sqlalchemy.url", str(engine.url))
+    alembic_command.upgrade(cfg, "head")
+
+_run_migrations()
 
 from seed import seed
 seed()
@@ -39,8 +56,57 @@ app.include_router(holidays.router,    prefix="/api/holidays",    tags=["Holiday
 app.include_router(vehicles.router,    prefix="/api/vehicles",    tags=["Vehicles"])
 app.include_router(assignments.router, prefix="/api/assignments",  tags=["Assignments"])
 app.include_router(tracking.router,    prefix="/api/tracking",    tags=["Tracking"])
+app.include_router(jobs.router,        prefix="/api/jobs",        tags=["Jobs"])
+app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
+app.include_router(payroll.router, prefix="/api/payroll", tags=["Payroll"])
+app.include_router(locations.router, prefix="/api/locations", tags=["Work Locations"])
+
+
+# ── Scheduled Job Runner ──────────────────────────────────────────────────────
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from datetime import datetime
+
+def run_scheduled_jobs():
+    """Check all active jobs and execute those matching the current schedule."""
+    from database import SessionLocal
+    from models.job_routine import JobRoutine
+    from services.job_service import execute_job
+    db = SessionLocal()
+    try:
+        now = datetime.now()
+        current_time = now.strftime("%H:%M")
+        active_jobs = db.query(JobRoutine).filter(JobRoutine.is_active == True).all()
+        for job in active_jobs:
+            if job.schedule_time != current_time:
+                continue
+            if job.frequency == "weekly" and job.schedule_day_of_week is not None:
+                if now.weekday() != job.schedule_day_of_week:
+                    continue
+            if job.frequency == "monthly" and job.schedule_day_of_month is not None:
+                if now.day != job.schedule_day_of_month:
+                    continue
+            execute_job(db, job)
+    finally:
+        db.close()
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(run_scheduled_jobs, CronTrigger(minute="*"), id="job_checker", replace_existing=True)
+
+@app.on_event("startup")
+def start_scheduler():
+    scheduler.start()
+
+@app.on_event("shutdown")
+def stop_scheduler():
+    scheduler.shutdown()
 
 
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+# Serve uploaded photos
+_uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(_uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=_uploads_dir), name="uploads")

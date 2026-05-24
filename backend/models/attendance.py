@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Date, Time, Numeric, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, Date, Time, Numeric, DateTime, Float, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -13,6 +13,10 @@ class Attendance(Base):
     entry_time   = Column(Time, nullable=False)
     exit_time    = Column(Time, nullable=True)
     hours_worked = Column(Numeric(5, 2), nullable=True)
+    clock_in_latitude   = Column(Float, nullable=True)
+    clock_in_longitude  = Column(Float, nullable=True)
+    clock_out_latitude  = Column(Float, nullable=True)
+    clock_out_longitude = Column(Float, nullable=True)
     created_at   = Column(DateTime(timezone=True), server_default=func.now())
     updated_at   = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

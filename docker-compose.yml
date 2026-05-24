@@ -26,6 +26,9 @@ services:
     container_name: erp_backend
     environment:
       DATABASE_URL: postgresql://erp_user:erp_pass@postgres:5432/erp_db
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_VERIFY_SERVICE_SID: ${TWILIO_VERIFY_SERVICE_SID:-}
     ports:
       - "8088:8088"
     depends_on:
@@ -38,15 +41,14 @@ services:
     build:
       context:    ./frontend
       dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: ""
+        REACT_APP_GOOGLE_MAPS_API_KEY: ${REACT_APP_GOOGLE_MAPS_API_KEY:-AIzaSyAv_4Lfp5LARSvwP_BUepnIXxA1DS1z7Dc}
     container_name: erp_frontend
-    environment:
-      REACT_APP_API_URL: http://localhost:8088
     ports:
       - "3000:80"
     depends_on:
       - backend
-    volumes:
-      - ./frontend/src:/app/src
 
 volumes:
   postgres_data:
