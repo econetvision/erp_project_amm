@@ -1,9 +1,15 @@
 import os
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from database import engine, Base
 from routers import employees, attendance, payslips, auth, holidays, vehicles, assignments, tracking, jobs, notifications, payroll, locations
+from logging_config import setup_logging, get_logger
+
+# Setup logging before anything else
+setup_logging(log_level=os.getenv("LOG_LEVEL", "INFO"))
+logger = get_logger(__name__)
 import models.holiday           # noqa: F401
 import models.vehicle           # noqa: F401
 import models.vehicle_assignment  # noqa: F401
@@ -20,15 +26,23 @@ from alembic.config import Config as AlembicConfig
 from alembic import command as alembic_command
 
 def _run_migrations():
-    ini_path = os.path.join(os.path.dirname(__file__), "alembic.ini")
-    cfg = AlembicConfig(ini_path)
-    cfg.set_main_option("sqlalchemy.url", str(engine.url))
-    alembic_command.upgrade(cfg, "head")
+    logger.info("Starting database migrations...")
+    try:
+        ini_path = os.path.join(os.path.dirname(__file__), "alembic.ini")
+        cfg = AlembicConfig(ini_path)
+        cfg.set_main_option("sqlalchemy.url", str(engine.url))
+        alembic_command.upgrade(cfg, "head")
+        logger.info("Database migrations completed successfully")
+    except Exception as e:
+        logger.error(f"Database migration failed: {str(e)}", exc_info=True)
+        raise
 
 _run_migrations()
 
 from seed import seed
+logger.info("Running database seed...")
 seed()
+logger.info("Database seed completed")
 
 app = FastAPI(
     title="ERP System API",
@@ -38,7 +52,7 @@ app = FastAPI(
 )
 
 _allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")]
-print(f"[CORS] Allowed origins: {_allowed_origins}", flush=True)
+logger.info(f"CORS allowed origins: {_allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -77,6 +91,7 @@ def run_scheduled_jobs():
         now = datetime.now()
         current_time = now.strftime("%H:%M")
         active_jobs = db.query(JobRoutine).filter(JobRoutine.is_active == True).all()
+        logger.debug(f"Checking {len(active_jobs)} active jobs at {current_time}")
         for job in active_jobs:
             if job.schedule_time != current_time:
                 continue
@@ -86,7 +101,10 @@ def run_scheduled_jobs():
             if job.frequency == "monthly" and job.schedule_day_of_month is not None:
                 if now.day != job.schedule_day_of_month:
                     continue
+            logger.info(f"Executing scheduled job: {job.name} (ID: {job.id})")
             execute_job(db, job)
+    except Exception as e:
+        logger.error(f"Error in scheduled job execution: {str(e)}", exc_info=True)
     finally:
         db.close()
 
@@ -95,11 +113,17 @@ scheduler.add_job(run_scheduled_jobs, CronTrigger(minute="*"), id="job_checker",
 
 @app.on_event("startup")
 def start_scheduler():
+    logger.info("Starting background scheduler...")
     scheduler.start()
+    logger.info("Background scheduler started successfully")
+    logger.info(f"Application started - Version: {app.version}")
 
 @app.on_event("shutdown")
 def stop_scheduler():
+    logger.info("Shutting down background scheduler...")
     scheduler.shutdown()
+    logger.info("Background scheduler stopped")
+    logger.info("Application shutdown complete")
 
 
 @app.get("/health")
