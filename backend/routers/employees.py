@@ -1,12 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException
+import os
+import base64
+import uuid
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from database import get_db
 from models.employee import Employee
 from models.user import User
 from schemas.employee import EmployeeCreate, EmployeeUpdate, EmployeeResponse
 from services.face_service import get_face_encoding
 from auth.dependencies import require_admin_or_supervisor
+
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "photos", "employees")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 router = APIRouter()
 
@@ -15,9 +22,42 @@ class FaceRegisterRequest(BaseModel):
     image: str  # base64-encoded image
 
 
-@router.get("", response_model=list[EmployeeResponse])
-def list_employees(db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
-    return db.query(Employee).order_by(Employee.id).all()
+@router.get("")
+def list_employees(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    search: str = Query("", alias="q"),
+    all: bool = Query(False),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin_or_supervisor),
+):
+    q = db.query(Employee)
+    if search:
+        q = q.filter(
+            or_(
+                Employee.name.ilike(f"%{search}%"),
+                Employee.aadhar_number.ilike(f"%{search}%"),
+                Employee.bank_account_number.ilike(f"%{search}%"),
+            )
+        )
+    if all:
+        items = q.order_by(Employee.id).all()
+        return {
+            "items": [EmployeeResponse.model_validate(e) for e in items],
+            "total": len(items),
+            "page": 1,
+            "per_page": len(items),
+            "pages": 1,
+        }
+    total = q.count()
+    items = q.order_by(Employee.id).offset((page - 1) * per_page).limit(per_page).all()
+    return {
+        "items": [EmployeeResponse.model_validate(e) for e in items],
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "pages": max(1, -(-total // per_page)),
+    }
 
 
 @router.post("", response_model=EmployeeResponse, status_code=201)
@@ -79,7 +119,152 @@ def register_face(employee_id: int, payload: FaceRegisterRequest, db: Session = 
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     emp.face_encoding = get_face_encoding(payload.image)
-    emp.photo         = payload.image
+    # Save photo as file instead of base64
+    try:
+        img_data = payload.image
+        if "," in img_data:
+            img_data = img_data.split(",", 1)[1]
+        img_bytes = base64.b64decode(img_data)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image data")
+    if len(img_bytes) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image must be under 5 MB")
+    filename = f"{employee_id}_{uuid.uuid4().hex[:8]}.jpg"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+    with open(filepath, "wb") as f:
+        f.write(img_bytes)
+    emp.photo = f"/uploads/photos/employees/{filename}"
+    db.commit()
+    db.refresh(emp)
+    return emp
+
+
+@router.get("/{employee_id}/ifsc-lookup")
+async def ifsc_lookup(employee_id: int, ifsc: str, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+    from services.kyc_service import lookup_ifsc
+    return await lookup_ifsc(ifsc)
+
+
+@router.post("/{employee_id}/verify-bank", response_model=EmployeeResponse)
+async def verify_bank_account_endpoint(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin_or_supervisor),
+):
+    from services.kyc_service import verify_bank_account
+    import os
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    if not emp.ifsc_code:
+        raise HTTPException(status_code=400, detail="IFSC code is required for bank verification")
+    
+    result = await verify_bank_account(
+        bank_account=emp.bank_account_number,
+        ifsc_code=emp.ifsc_code,
+        account_holder_name=emp.name,
+        provider=os.environ.get("KYC_PROVIDER", "manual"),
+        api_key=os.environ.get("KYC_API_KEY"),
+        api_secret=os.environ.get("KYC_API_SECRET"),
+    )
+    emp.kyc_status = result["status"]
+    emp.kyc_verified_name = result.get("registered_name")
+    db.commit()
+    db.refresh(emp)
+    return emp
+
+
+# ── Twilio Phone/Email Verification ──────────────────────────────────────────
+
+class OTPRequest(BaseModel):
+    code: str
+
+
+@router.post("/{employee_id}/send-phone-otp")
+def send_phone_verification(employee_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+    """Send OTP to employee's phone number via Twilio."""
+    from services.twilio_service import send_phone_otp
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    if not emp.phone:
+        raise HTTPException(status_code=400, detail="Employee phone number is not set")
+    result = send_phone_otp(emp.phone)
+    if result.get("status") == "error":
+        raise HTTPException(status_code=502, detail=result.get("message", "Failed to send OTP"))
+    return {"detail": "OTP sent to phone", "status": result["status"]}
+
+
+@router.post("/{employee_id}/verify-phone", response_model=EmployeeResponse)
+def verify_phone(employee_id: int, payload: OTPRequest, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+    """Verify phone OTP and mark phone as verified."""
+    from services.twilio_service import verify_phone_otp
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    if not emp.phone:
+        raise HTTPException(status_code=400, detail="Employee phone number is not set")
+    result = verify_phone_otp(emp.phone, payload.code)
+    if not result.get("valid"):
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+    emp.phone_verified = "Y"
+    db.commit()
+    db.refresh(emp)
+    return emp
+
+
+@router.post("/{employee_id}/send-email-otp")
+def send_email_verification(employee_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+    """Send OTP to employee's email via Twilio."""
+    from services.twilio_service import send_email_otp
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    if not emp.email:
+        raise HTTPException(status_code=400, detail="Employee email is not set")
+    result = send_email_otp(emp.email)
+    if result.get("status") == "error":
+        raise HTTPException(status_code=502, detail=result.get("message", "Failed to send OTP"))
+    return {"detail": "OTP sent to email", "status": result["status"]}
+
+
+@router.post("/{employee_id}/verify-email", response_model=EmployeeResponse)
+def verify_email(employee_id: int, payload: OTPRequest, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+    """Verify email OTP and mark email as verified."""
+    from services.twilio_service import verify_email_otp
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    if not emp.email:
+        raise HTTPException(status_code=400, detail="Employee email is not set")
+    result = verify_email_otp(emp.email, payload.code)
+    if not result.get("valid"):
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+    emp.email_verified = "Y"
+    db.commit()
+    db.refresh(emp)
+    return emp
+
+
+# ── Work Location Assignment ─────────────────────────────────────────────────
+
+class WorkLocationAssignment(BaseModel):
+    work_location_name: str
+    work_latitude: float
+    work_longitude: float
+    attendance_radius_km: float = 10.0
+
+
+@router.put("/{employee_id}/work-location", response_model=EmployeeResponse)
+def assign_work_location(employee_id: int, payload: WorkLocationAssignment, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+    """Assign or update work location for an employee."""
+    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    emp.work_location_name = payload.work_location_name
+    emp.work_latitude = payload.work_latitude
+    emp.work_longitude = payload.work_longitude
+    emp.attendance_radius_km = payload.attendance_radius_km
     db.commit()
     db.refresh(emp)
     return emp

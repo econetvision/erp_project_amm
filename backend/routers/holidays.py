@@ -32,7 +32,12 @@ def create_holiday(
     existing = db.query(PublicHoliday).filter(PublicHoliday.date == payload.date).first()
     if existing:
         raise HTTPException(status_code=400, detail="Holiday already exists for this date")
-    holiday = PublicHoliday(date=payload.date, name=payload.name)
+    holiday = PublicHoliday(
+        date=payload.date,
+        name=payload.name,
+        holiday_type=payload.holiday_type,
+        is_optional=payload.is_optional,
+    )
     db.add(holiday)
     db.commit()
     db.refresh(holiday)

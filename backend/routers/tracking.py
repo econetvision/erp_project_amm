@@ -2,7 +2,8 @@ import json
 import asyncio
 from typing import Dict
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
-from sqlalchemy.orm import Session
+from sqlalchemy import func, and_
+from sqlalchemy.orm import Session, joinedload
 from database import get_db, SessionLocal
 from models.vehicle import Vehicle
 from models.vehicle_assignment import VehicleAssignment
@@ -52,20 +53,43 @@ def push_location(payload: LocationPush, db: Session = Depends(get_db)):
 # ── REST: latest location for all assigned vehicles ──────────────────────────
 @router.get("/latest", response_model=list[LatestLocationResponse])
 def get_latest_locations(db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+    # Subquery: max recorded_at per vehicle
+    latest_ts_subq = (
+        db.query(
+            VehicleLocation.vehicle_id,
+            func.max(VehicleLocation.recorded_at).label("max_ts"),
+        )
+        .group_by(VehicleLocation.vehicle_id)
+        .subquery()
+    )
+    # Fetch full location rows for each vehicle's latest timestamp
+    latest_locs = (
+        db.query(VehicleLocation)
+        .join(
+            latest_ts_subq,
+            and_(
+                VehicleLocation.vehicle_id == latest_ts_subq.c.vehicle_id,
+                VehicleLocation.recorded_at == latest_ts_subq.c.max_ts,
+            ),
+        )
+        .all()
+    )
+    loc_map = {loc.vehicle_id: loc for loc in latest_locs}
+
+    # Fetch all active assignments with employee name in one query
+    active_assignments = (
+        db.query(VehicleAssignment)
+        .filter(VehicleAssignment.released_at == None)  # noqa: E711
+        .options(joinedload(VehicleAssignment.employee))
+        .all()
+    )
+    assign_map = {a.vehicle_id: a for a in active_assignments}
+
     vehicles = db.query(Vehicle).all()
     result = []
     for v in vehicles:
-        active = (
-            db.query(VehicleAssignment)
-            .filter(VehicleAssignment.vehicle_id == v.id, VehicleAssignment.released_at == None)  # noqa: E711
-            .first()
-        )
-        last = (
-            db.query(VehicleLocation)
-            .filter(VehicleLocation.vehicle_id == v.id)
-            .order_by(VehicleLocation.recorded_at.desc())
-            .first()
-        )
+        active = assign_map.get(v.id)
+        last = loc_map.get(v.id)
         result.append(LatestLocationResponse(
             vehicle_id=v.id,
             reg_number=v.reg_number,

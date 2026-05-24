@@ -8,12 +8,16 @@ class AttendanceClockIn(BaseModel):
     employee_id: int
     date:        date
     entry_time:  time
-    image:       str   # base64 face photo — required for verification
+    image:       str        # base64 face photo — required for verification
+    latitude:    Optional[float] = None
+    longitude:   Optional[float] = None
 
 
 class AttendanceClockOut(BaseModel):
-    exit_time: time
-    image:     str   # base64 face photo — required for verification
+    exit_time:  time
+    image:      str        # base64 face photo — required for verification
+    latitude:   Optional[float] = None
+    longitude:  Optional[float] = None
 
 
 class AttendanceUpdate(BaseModel):
@@ -23,14 +27,18 @@ class AttendanceUpdate(BaseModel):
 
 
 class AttendanceResponse(BaseModel):
-    id:           int
-    employee_id:  int
-    date:         date
-    entry_time:   time
-    exit_time:    Optional[time]
-    hours_worked: Optional[Decimal]
-    created_at:   datetime
-    updated_at:   datetime
+    id:                  int
+    employee_id:         int
+    date:                date
+    entry_time:          time
+    exit_time:           Optional[time]
+    hours_worked:        Optional[Decimal]
+    clock_in_latitude:   Optional[float] = None
+    clock_in_longitude:  Optional[float] = None
+    clock_out_latitude:  Optional[float] = None
+    clock_out_longitude: Optional[float] = None
+    created_at:          datetime
+    updated_at:          datetime
 
     model_config = {"from_attributes": True}
 

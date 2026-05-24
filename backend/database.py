@@ -8,7 +8,21 @@ DATABASE_URL = os.getenv(
     "postgresql://erp_user:erp_pass@localhost:5432/erp_db"
 )
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=300)
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    pool_recycle=300,
+    pool_size=5,
+    max_overflow=2,
+    connect_args={
+        # TCP keepalives prevent cloud load balancers from silently dropping
+        # idle SSL connections, which causes "SSL connection closed unexpectedly"
+        "keepalives": 1,
+        "keepalives_idle": 10,
+        "keepalives_interval": 10,
+        "keepalives_count": 5,
+    },
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

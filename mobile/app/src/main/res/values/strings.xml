@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">ERP Mobile</string>
+    <string name="company_name">EcoNetVision</string>
+    <string name="app_subtitle">ERP Mobile Solution</string>
+    <string name="desc_logo">Company Logo</string>
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_attendance">Attendance</string>
+    <string name="nav_notifications">Alerts</string>
+    <string name="nav_settings">Settings</string>
+</resources>

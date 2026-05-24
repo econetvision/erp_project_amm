@@ -1,0 +1,7 @@
+*.pyc
+node_modules/
+dist/   
+mobile/app/build/
+mobile/.gradle/
+mobile/.idea/
+.env

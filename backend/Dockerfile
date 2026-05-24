@@ -14,4 +14,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 EXPOSE 8088
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8088} --workers 2"]
+CMD ["sh", "-c", "python migrate.py upgrade && uvicorn main:app --host 0.0.0.0 --port ${PORT:-8088} --workers 2"]

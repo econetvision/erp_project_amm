@@ -3,13 +3,31 @@
 CREATE TABLE IF NOT EXISTS employees (
     id                  SERIAL PRIMARY KEY,
     name                VARCHAR(255)   NOT NULL,
+    gender              VARCHAR(10),
+    date_of_birth       DATE,
+    blood_group         VARCHAR(5),
+    marital_status      VARCHAR(20),
+    emergency_contact   VARCHAR(20),
+    emergency_name      VARCHAR(255),
+    phone               VARCHAR(20),
+    email               VARCHAR(255),
+    phone_verified      VARCHAR(1)     DEFAULT 'N',
+    email_verified      VARCHAR(1)     DEFAULT 'N',
     address             TEXT           NOT NULL,
     aadhar_number       CHAR(12)       NOT NULL UNIQUE,
     bank_account_number VARCHAR(18)    NOT NULL,
+    ifsc_code           VARCHAR(11),
+    bank_name           VARCHAR(255),
+    kyc_status          VARCHAR(20)    DEFAULT 'pending',
+    kyc_verified_name   VARCHAR(255),
     hourly_rate         NUMERIC(10,2)  NOT NULL DEFAULT 0.00,
     shift               VARCHAR(10)    NOT NULL DEFAULT 'SHIFT_A' CHECK (shift IN ('SHIFT_A','SHIFT_B')),
     face_encoding       JSONB,
     photo               TEXT,
+    work_location_name  VARCHAR(255),
+    work_latitude       DOUBLE PRECISION,
+    work_longitude      DOUBLE PRECISION,
+    attendance_radius_km DOUBLE PRECISION DEFAULT 10.0,
     created_at          TIMESTAMP      NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMP      NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_bank_account_length CHECK (LENGTH(bank_account_number) BETWEEN 8 AND 18)
@@ -18,12 +36,18 @@ CREATE TABLE IF NOT EXISTS employees (
 CREATE INDEX IF NOT EXISTS idx_employees_aadhar ON employees(aadhar_number);
 
 CREATE TABLE IF NOT EXISTS users (
-    id           SERIAL PRIMARY KEY,
-    username     VARCHAR(50)    NOT NULL UNIQUE,
-    password_hash VARCHAR(255)  NOT NULL,
-    role         VARCHAR(20)    NOT NULL CHECK (role IN ('admin','supervisor','worker')),
-    employee_id  INTEGER        REFERENCES employees(id) ON DELETE SET NULL,
-    created_at   TIMESTAMP      NOT NULL DEFAULT NOW()
+    id            SERIAL PRIMARY KEY,
+    username      VARCHAR(50)    NOT NULL UNIQUE,
+    password_hash VARCHAR(255)   NOT NULL,
+    role          VARCHAR(20)    NOT NULL CHECK (role IN ('admin','supervisor','worker')),
+    employee_id   INTEGER        REFERENCES employees(id) ON DELETE SET NULL,
+    email         VARCHAR(255),
+    display_name  VARCHAR(255),
+    phone         VARCHAR(20),
+    photo_path    VARCHAR(500),
+    theme_preference JSONB,
+    created_at    TIMESTAMP      NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMP      NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
@@ -35,6 +59,10 @@ CREATE TABLE IF NOT EXISTS attendance (
     entry_time   TIME           NOT NULL,
     exit_time    TIME,
     hours_worked NUMERIC(5,2),
+    clock_in_latitude   DOUBLE PRECISION,
+    clock_in_longitude  DOUBLE PRECISION,
+    clock_out_latitude  DOUBLE PRECISION,
+    clock_out_longitude DOUBLE PRECISION,
     created_at   TIMESTAMP      NOT NULL DEFAULT NOW(),
     updated_at   TIMESTAMP      NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_attendance_employee_date UNIQUE (employee_id, date)
@@ -110,3 +138,170 @@ CREATE TABLE IF NOT EXISTS vehicle_locations (
 
 CREATE INDEX IF NOT EXISTS idx_vl_vehicle     ON vehicle_locations(vehicle_id);
 CREATE INDEX IF NOT EXISTS idx_vl_recorded_at ON vehicle_locations(recorded_at DESC);
+
+-- ── Job Routines ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS job_routines (
+    id                    SERIAL PRIMARY KEY,
+    name                  VARCHAR(255)   NOT NULL,
+    type                  VARCHAR(50)    NOT NULL CHECK (type IN ('absent_report','late_report','custom')),
+    frequency             VARCHAR(20)    NOT NULL CHECK (frequency IN ('daily','weekly','monthly')),
+    schedule_time         VARCHAR(5)     NOT NULL DEFAULT '08:00',
+    schedule_day_of_week  INTEGER        CHECK (schedule_day_of_week BETWEEN 0 AND 6),
+    schedule_day_of_month INTEGER        CHECK (schedule_day_of_month BETWEEN 1 AND 28),
+    delivery_channels     JSONB          NOT NULL DEFAULT '{"email": true, "in_app": true, "whatsapp": false}',
+    recipients            JSONB          NOT NULL DEFAULT '[]',
+    filters               JSONB,
+    is_active             BOOLEAN        NOT NULL DEFAULT TRUE,
+    created_by            INTEGER        REFERENCES users(id) ON DELETE SET NULL,
+    created_at            TIMESTAMP      NOT NULL DEFAULT NOW(),
+    updated_at            TIMESTAMP      NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS job_routine_logs (
+    id              SERIAL PRIMARY KEY,
+    job_id          INTEGER NOT NULL REFERENCES job_routines(id) ON DELETE CASCADE,
+    executed_at     TIMESTAMP NOT NULL DEFAULT NOW(),
+    status          VARCHAR(20) NOT NULL CHECK (status IN ('success','failed')),
+    result_summary  TEXT,
+    error_message   TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_jrl_job_id ON job_routine_logs(job_id);
+
+-- ── Notifications ────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS notifications (
+    id         SERIAL PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title      VARCHAR(255) NOT NULL,
+    body       TEXT,
+    type       VARCHAR(50)  NOT NULL DEFAULT 'info',
+    is_read    BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(user_id, is_read);
+
+-- ── Salary Structures ────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS salary_structures (
+    id          SERIAL PRIMARY KEY,
+    name        VARCHAR(255) NOT NULL UNIQUE,
+    description VARCHAR(500),
+    is_default  BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_at  TIMESTAMP    NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS salary_components (
+    id                    SERIAL PRIMARY KEY,
+    structure_id          INTEGER NOT NULL REFERENCES salary_structures(id) ON DELETE CASCADE,
+    name                  VARCHAR(100) NOT NULL,
+    type                  VARCHAR(20)  NOT NULL CHECK (type IN ('earning','deduction')),
+    calculation_type      VARCHAR(30)  NOT NULL CHECK (calculation_type IN ('fixed','percentage_of_basic','percentage_of_gross')),
+    amount_or_percentage  NUMERIC(12,4) NOT NULL DEFAULT 0,
+    is_mandatory          BOOLEAN NOT NULL DEFAULT TRUE,
+    display_order         SMALLINT NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_sc_structure ON salary_components(structure_id);
+
+CREATE TABLE IF NOT EXISTS employee_salary (
+    id             SERIAL PRIMARY KEY,
+    employee_id    INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    structure_id   INTEGER NOT NULL REFERENCES salary_structures(id) ON DELETE CASCADE,
+    basic_pay      NUMERIC(12,2) NOT NULL,
+    effective_from TIMESTAMP NOT NULL DEFAULT NOW(),
+    effective_to   TIMESTAMP,
+    created_at     TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_es_employee ON employee_salary(employee_id);
+
+-- ── Advances ─────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS advances (
+    id                SERIAL PRIMARY KEY,
+    employee_id       INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    amount            NUMERIC(12,2) NOT NULL,
+    disbursed_date    DATE NOT NULL,
+    repayment_months  INTEGER NOT NULL DEFAULT 1,
+    monthly_deduction NUMERIC(12,2) NOT NULL,
+    remaining_balance NUMERIC(12,2) NOT NULL,
+    status            VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active','repaid')),
+    notes             TEXT,
+    created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_advances_employee ON advances(employee_id);
+
+-- ── Payroll Runs ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS payroll_runs (
+    id               SERIAL PRIMARY KEY,
+    month            SMALLINT NOT NULL CHECK (month BETWEEN 1 AND 12),
+    year             SMALLINT NOT NULL CHECK (year > 2000),
+    status           VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','processing','completed','cancelled')),
+    run_by           INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    started_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+    completed_at     TIMESTAMP,
+    total_gross      NUMERIC(14,2),
+    total_net        NUMERIC(14,2),
+    total_deductions NUMERIC(14,2),
+    employee_count   INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS payroll_items (
+    id                   SERIAL PRIMARY KEY,
+    run_id               INTEGER NOT NULL REFERENCES payroll_runs(id) ON DELETE CASCADE,
+    employee_id          INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    basic_pay            NUMERIC(12,2) NOT NULL,
+    earnings_breakdown   JSONB NOT NULL DEFAULT '{}',
+    deductions_breakdown JSONB NOT NULL DEFAULT '{}',
+    days_worked          SMALLINT NOT NULL DEFAULT 0,
+    overtime_hours       NUMERIC(7,2) NOT NULL DEFAULT 0,
+    overtime_pay         NUMERIC(12,2) NOT NULL DEFAULT 0,
+    gross_pay            NUMERIC(12,2) NOT NULL,
+    total_deductions     NUMERIC(12,2) NOT NULL,
+    advance_deduction    NUMERIC(12,2) NOT NULL DEFAULT 0,
+    net_pay              NUMERIC(12,2) NOT NULL,
+    status               VARCHAR(20) NOT NULL DEFAULT 'calculated'
+);
+
+CREATE INDEX IF NOT EXISTS idx_pi_run ON payroll_items(run_id);
+CREATE INDEX IF NOT EXISTS idx_pi_employee ON payroll_items(employee_id);
+
+-- ── Work Locations ───────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS work_locations (
+    id                SERIAL PRIMARY KEY,
+    location_name     VARCHAR(255)     NOT NULL,
+    location_code     VARCHAR(50)      UNIQUE,
+    address           TEXT,
+    city              VARCHAR(100),
+    state             VARCHAR(100),
+    pincode           VARCHAR(10),
+    latitude          DOUBLE PRECISION NOT NULL,
+    longitude         DOUBLE PRECISION NOT NULL,
+    allowed_radius_km DOUBLE PRECISION NOT NULL DEFAULT 10.0,
+    work_type         VARCHAR(50),
+    supervisor_id     INTEGER          REFERENCES users(id) ON DELETE SET NULL,
+    is_active         BOOLEAN          NOT NULL DEFAULT TRUE,
+    created_by        INTEGER          REFERENCES users(id) ON DELETE SET NULL,
+    created_at        TIMESTAMPTZ      DEFAULT NOW(),
+    updated_at        TIMESTAMPTZ      DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_wl_city   ON work_locations(city);
+CREATE INDEX IF NOT EXISTS idx_wl_active ON work_locations(is_active);
+
+-- ── Employee Location Assignments ────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS employee_location_assignments (
+    id            SERIAL PRIMARY KEY,
+    employee_id   INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    location_id   INTEGER NOT NULL REFERENCES work_locations(id) ON DELETE CASCADE,
+    is_primary    BOOLEAN NOT NULL DEFAULT FALSE,
+    assigned_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    assigned_at   TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(employee_id, location_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ela_employee ON employee_location_assignments(employee_id);
+CREATE INDEX IF NOT EXISTS idx_ela_location ON employee_location_assignments(location_id);
