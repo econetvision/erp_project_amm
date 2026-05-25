@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getAllEmployees } from "../../api/employeeApi";
-import { clockIn, clockOut, getTodayStatus, faceScan } from "../../api/attendanceApi";
+import { clockIn, clockOut, getTodayStatus, faceScan, verifyBlink } from "../../api/attendanceApi";
 import AlertMessage from "../../components/AlertMessage";
 import type { Employee } from "../../types/employee";
 import type { Attendance, FaceScanResult } from "../../types/attendance";
@@ -11,6 +11,15 @@ function nowTimeStr() { return new Date().toTimeString().slice(0, 5); }
 export default function AttendanceEntry() {
   const [activeTab, setActiveTab] = useState("face");
   const [alert, setAlert]         = useState({ type: "", message: "" });
+
+  // ── Blink detection state (shared between tabs) ────────────────────────────
+  const blinkCanvasRef        = useRef<HTMLCanvasElement>(null);
+  const blinkFramesRef        = useRef<string[]>([]);
+  const blinkCaptureRef       = useRef<ReturnType<typeof setInterval> | null>(null);
+  const blinkCheckRef         = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isCheckingBlinkRef    = useRef(false);
+  const [blinkVerified, setBlinkVerified] = useState(false);
+  const [blinkStatus, setBlinkStatus]     = useState("");
 
   // ── Face Scan tab state ────────────────────────────────────────────────────
   const videoRef                    = useRef<HTMLVideoElement>(null);
@@ -42,7 +51,7 @@ export default function AttendanceEntry() {
     getAllEmployees({ all: true })
       .then((r) => setEmployees(r.data.items))
       .catch((e: Error) => setAlert({ type: "danger", message: e.message }));
-    return () => { stopStream(); stopManStream(); };
+    return () => { stopStream(); stopManStream(); stopBlinkDetection(); };
   }, []);
 
   useEffect(() => {
@@ -61,7 +70,10 @@ export default function AttendanceEntry() {
     if (camOpen && streamRef.current && videoRef.current) {
       const v = videoRef.current;
       v.srcObject = streamRef.current;
-      v.onloadedmetadata = () => v.play().then(() => setCamReady(true)).catch(() => {});
+      v.onloadedmetadata = () => v.play().then(() => {
+        setCamReady(true);
+        startBlinkDetection(v);
+      }).catch(() => {});
     }
     if (!camOpen) setCamReady(false);
   }, [camOpen]);
@@ -71,15 +83,59 @@ export default function AttendanceEntry() {
     if (manCamOpen && manStreamRef.current && manVideoRef.current) {
       const v = manVideoRef.current;
       v.srcObject = manStreamRef.current;
-      v.onloadedmetadata = () => v.play().then(() => setManCamReady(true)).catch(() => {});
+      v.onloadedmetadata = () => v.play().then(() => {
+        setManCamReady(true);
+        startBlinkDetection(v);
+      }).catch(() => {});
     }
     if (!manCamOpen) setManCamReady(false);
   }, [manCamOpen]);
+
+  // ── Blink detection helpers ────────────────────────────────────────────────
+  function startBlinkDetection(video: HTMLVideoElement) {
+    stopBlinkDetection();
+    setBlinkVerified(false);
+    setBlinkStatus("👁️ Please blink your eyes to verify you are a real person");
+    blinkFramesRef.current = [];
+    isCheckingBlinkRef.current = false;
+
+    blinkCaptureRef.current = setInterval(() => {
+      if (!video.videoWidth || !blinkCanvasRef.current) return;
+      const canvas = blinkCanvasRef.current;
+      canvas.width = 320;
+      canvas.height = 240;
+      canvas.getContext("2d")!.drawImage(video, 0, 0, 320, 240);
+      blinkFramesRef.current.push(canvas.toDataURL("image/jpeg", 0.5));
+      if (blinkFramesRef.current.length > 15) blinkFramesRef.current.shift();
+    }, 300);
+
+    blinkCheckRef.current = setInterval(async () => {
+      if (isCheckingBlinkRef.current || blinkFramesRef.current.length < 5) return;
+      isCheckingBlinkRef.current = true;
+      try {
+        const res = await verifyBlink(blinkFramesRef.current.slice());
+        if (res.data.blink_detected) {
+          setBlinkVerified(true);
+          setBlinkStatus("✅ Blink verified! You can now proceed.");
+          stopBlinkDetection();
+        }
+      } catch { /* ignore */ } finally {
+        isCheckingBlinkRef.current = false;
+      }
+    }, 2000);
+  }
+
+  function stopBlinkDetection() {
+    if (blinkCaptureRef.current) { clearInterval(blinkCaptureRef.current); blinkCaptureRef.current = null; }
+    if (blinkCheckRef.current) { clearInterval(blinkCheckRef.current); blinkCheckRef.current = null; }
+  }
 
   // ── Face Scan tab helpers ──────────────────────────────────────────────────
   async function openCamera() {
     setScanResult(null);
     setAlert({ type: "", message: "" });
+    setBlinkVerified(false);
+    setBlinkStatus("");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
       streamRef.current = stream;
@@ -90,6 +146,9 @@ export default function AttendanceEntry() {
   }
 
   function stopStream() {
+    stopBlinkDetection();
+    setBlinkVerified(false);
+    setBlinkStatus("");
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setCamOpen(false);
@@ -134,6 +193,8 @@ export default function AttendanceEntry() {
     setManPhoto(null);
     setManAction(action);
     setAlert({ type: "", message: "" });
+    setBlinkVerified(false);
+    setBlinkStatus("");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
       manStreamRef.current = stream;
@@ -145,6 +206,9 @@ export default function AttendanceEntry() {
   }
 
   function stopManStream() {
+    stopBlinkDetection();
+    setBlinkVerified(false);
+    setBlinkStatus("");
     manStreamRef.current?.getTracks().forEach((t) => t.stop());
     manStreamRef.current = null;
     setManCamOpen(false);
@@ -233,10 +297,17 @@ export default function AttendanceEntry() {
               <div style={{ display: camOpen ? "block" : "none" }} className="mb-3">
                 <video ref={videoRef} autoPlay playsInline muted
                   className="rounded border w-100" style={{ maxWidth: 420 }} />
+
+                {blinkStatus && !scanning && (
+                  <div className={`alert ${blinkVerified ? "alert-success" : "alert-info"} py-2 mt-2 mb-2`}>
+                    <span style={{ fontSize: "1.05rem" }}>{blinkStatus}</span>
+                  </div>
+                )}
+
                 <div className="mt-3">
                   <button className="btn btn-success btn-lg me-2"
-                    onClick={handleFaceScan} disabled={scanning || !camReady}>
-                    {scanning ? "Identifying…" : camReady ? "📸 Scan Face" : "Starting camera…"}
+                    onClick={handleFaceScan} disabled={scanning || !camReady || !blinkVerified}>
+                    {scanning ? "Identifying…" : !camReady ? "Starting camera…" : !blinkVerified ? "👁️ Waiting for blink…" : "📸 Scan Face"}
                   </button>
                   <button className="btn btn-outline-secondary" onClick={stopStream}>Cancel</button>
                 </div>
@@ -268,6 +339,7 @@ export default function AttendanceEntry() {
                 </div>
               )}
               <canvas ref={canvasRef} style={{ display: "none" }} />
+              <canvas ref={blinkCanvasRef} style={{ display: "none" }} />
             </div>
           </div>
         )}
@@ -308,9 +380,16 @@ export default function AttendanceEntry() {
                   <div style={{ display: manCamOpen ? "block" : "none" }} className="mb-3">
                     <video ref={manVideoRef} autoPlay playsInline muted
                       className="rounded border w-100" style={{ maxWidth: 420 }} />
+
+                    {blinkStatus && (
+                      <div className={`alert ${blinkVerified ? "alert-success" : "alert-info"} py-2 mt-2 mb-2`}>
+                        <span style={{ fontSize: "1.05rem" }}>{blinkStatus}</span>
+                      </div>
+                    )}
+
                     <div className="mt-2 d-flex justify-content-center gap-2">
-                      <button className="btn btn-success" onClick={captureManPhoto} disabled={!manCamReady}>
-                        {manCamReady ? "📸 Capture" : "Starting camera…"}
+                      <button className="btn btn-success" onClick={captureManPhoto} disabled={!manCamReady || !blinkVerified}>
+                        {!manCamReady ? "Starting camera…" : !blinkVerified ? "👁️ Waiting for blink…" : "📸 Capture"}
                       </button>
                       <button className="btn btn-outline-secondary" onClick={resetManualFlow}>Cancel</button>
                     </div>

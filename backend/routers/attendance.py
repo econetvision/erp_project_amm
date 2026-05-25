@@ -92,6 +92,25 @@ class FaceScanResponse(BaseModel):
     attendance:    AttendanceResponse
 
 
+class BlinkVerifyRequest(BaseModel):
+    frames: list[str]  # list of base64-encoded images
+
+
+class BlinkVerifyResponse(BaseModel):
+    blink_detected: bool
+
+
+# ── Blink verification endpoint ───────────────────────────────────────────────
+
+@router.post("/verify-blink", response_model=BlinkVerifyResponse)
+def verify_blink(payload: BlinkVerifyRequest, _: User = Depends(require_any)):
+    """Check if a blink is detected in the provided sequence of face frames."""
+    from services.face_service import detect_blink_in_frames
+    frames = payload.frames[-15:]  # limit to last 15 frames
+    result = detect_blink_in_frames(frames)
+    return BlinkVerifyResponse(blink_detected=result)
+
+
 # ── Dashboard endpoints (must appear before /{employee_id} routes) ────────────
 
 @router.get("/dashboard/overview", response_model=DashboardOverviewResponse)

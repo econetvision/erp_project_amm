@@ -126,3 +126,52 @@ def identify_employee(b64_image: str, employees: list) -> object | None:
     if matches[best_idx]:
         return valid_candidates[best_idx]
     return None
+
+
+def compute_ear(eye_points: list) -> float:
+    """Compute Eye Aspect Ratio (EAR) from 6 eye landmark points."""
+    p = np.array(eye_points, dtype=np.float64)
+    A = np.linalg.norm(p[1] - p[5])
+    B = np.linalg.norm(p[2] - p[4])
+    C = np.linalg.norm(p[0] - p[3])
+    if C == 0:
+        return 0.0
+    return (A + B) / (2.0 * C)
+
+
+def detect_blink_in_frames(b64_images: list[str]) -> bool:
+    """
+    Analyse a sequence of face frames and return True if a blink
+    (eyes open -> closed -> open) is detected via Eye Aspect Ratio.
+    """
+    EAR_THRESHOLD = 0.21
+    ears: list[float] = []
+
+    for b64 in b64_images:
+        try:
+            img = decode_image(b64)
+            landmarks_list = face_recognition.face_landmarks(img)
+            if not landmarks_list:
+                continue
+            lm = landmarks_list[0]
+            left_ear = compute_ear(lm["left_eye"])
+            right_ear = compute_ear(lm["right_eye"])
+            ears.append((left_ear + right_ear) / 2.0)
+        except Exception:
+            continue
+
+    if len(ears) < 3:
+        return False
+
+    # Detect open -> closed -> open pattern
+    had_open = False
+    had_closed = False
+    for ear in ears:
+        if ear >= EAR_THRESHOLD:
+            if had_closed:
+                return True
+            had_open = True
+        elif had_open:
+            had_closed = True
+
+    return False

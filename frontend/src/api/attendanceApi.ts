@@ -9,3 +9,4 @@ export const getTodayStatus   = (empId: number | string): Promise<AxiosResponse<
 export const updateAttendance = (id: number, data: Partial<Attendance>): Promise<AxiosResponse<Attendance>> => api.put(`/api/attendance/${id}`, data);
 export const deleteAttendance = (id: number): Promise<AxiosResponse<void>> => api.delete(`/api/attendance/${id}`);
 export const faceScan         = (image: string): Promise<AxiosResponse<FaceScanResult>> => api.post("/api/attendance/face-scan", { image });
+export const verifyBlink      = (frames: string[]): Promise<AxiosResponse<{blink_detected: boolean}>> => api.post("/api/attendance/verify-blink", { frames });
