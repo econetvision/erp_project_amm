@@ -5,6 +5,22 @@ export interface TemplateField {
   masked?: boolean;
 }
 
+export interface SectionStyle {
+  bgColor?: string;
+  textColor?: string;
+  borderColor?: string;
+  borderWidth?: number;
+  borderRadius?: number;
+  headerBg?: string;
+  headerTextColor?: string;
+  padding?: number;
+  /** table-specific */
+  stripedRows?: boolean;
+  rowHoverColor?: string;
+  colHeaderBg?: string;
+  colHeaderText?: string;
+}
+
 export interface TemplateSection {
   id: string;
   type: "header" | "info" | "table" | "summary" | "note" | "footer";
@@ -12,6 +28,11 @@ export interface TemplateSection {
   enabled: boolean;
   order: number;
   fields?: TemplateField[];
+  style?: SectionStyle;
+  /** column grouping: sections sharing the same colGroup render side-by-side */
+  colGroup?: string;
+  /** width fraction within colGroup (0-1, default 0.5) */
+  colWidth?: number;
 }
 
 export interface TemplateLayout {

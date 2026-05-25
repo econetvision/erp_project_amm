@@ -18,7 +18,6 @@ import VehicleForm      from "./pages/vehicles/VehicleForm";
 import AssignVehicle    from "./pages/tracking/AssignVehicle";
 import LiveTracking     from "./pages/tracking/LiveTracking";
 import LandingPage      from "./pages/landing/LandingPage";
-import Settings         from "./pages/settings/Settings";
 import JobList          from "./pages/jobs/JobList";
 import JobForm          from "./pages/jobs/JobForm";
 import SalaryStructures from "./pages/payroll/SalaryStructures";
@@ -177,9 +176,7 @@ function AppRoutes() {
         <Route path="profile" element={
           <RequireAuth><Profile /></RequireAuth>
         } />
-        <Route path="settings" element={
-          <RequireAuth><Settings /></RequireAuth>
-        } />
+        <Route path="settings" element={<Navigate to="/profile" replace />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -130,6 +130,7 @@ class PayslipTemplateCreate(BaseModel):
 class PayslipTemplateUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=120)
     description: Optional[str] = Field(None, max_length=500)
+    company_id: Optional[int] = None
     is_default: Optional[bool] = None
     is_active: Optional[bool] = None
     layout: Optional[dict] = None

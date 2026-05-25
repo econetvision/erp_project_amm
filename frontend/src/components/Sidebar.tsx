@@ -100,8 +100,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: "/jobs",              label: "Jobs",         icon: "jobs",     roles: ["master","admin"] },
       { to: "/company-settings",  label: "Company",      icon: "settings", roles: ["master","admin"] },
       { to: "/roles-permissions", label: "Roles",        icon: "users",    roles: ["admin"] },
-      { to: "/profile",           label: "Profile",      icon: "profile",  roles: ["master","admin","supervisor","worker"] },
-      { to: "/settings",          label: "Settings",     icon: "settings", roles: ["master","admin","supervisor","worker"] },
+      { to: "/profile",           label: "Profile & Settings", icon: "profile",  roles: ["master","admin","supervisor","worker"] },
     ],
   },
 ];
