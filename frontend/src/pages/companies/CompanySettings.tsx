@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getCompany, updateCompany, uploadCompanyLogo } from "../../api/companyApi";
+import { getCompany, getCompanies, updateCompany, uploadCompanyLogo } from "../../api/companyApi";
 import AlertMessage from "../../components/AlertMessage";
 import { useAuth } from "../../context/AuthContext";
 import type { Company, CompanyUpdate } from "../../types/company";
@@ -10,6 +10,7 @@ export default function CompanySettings() {
   const { auth } = useAuth();
   const navigate = useNavigate();
   const [company, setCompany] = useState<Company | null>(null);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [alert, setAlert] = useState({ type: "", message: "" });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("profile");
@@ -21,10 +22,25 @@ export default function CompanySettings() {
   const [attendanceConfig, setAttendanceConfig] = useState({ gps_enabled: true, geofencing: true, qr_enabled: false });
   const [features, setFeatures] = useState({ payroll: true, vehicles: true, attendance_face: true, jobs: true });
 
-  const companyId = id ? parseInt(id) : auth?.company_id;
+  const [selectedCoId, setSelectedCoId] = useState<number | null>(null);
+  const companyId = id ? parseInt(id) : (selectedCoId ?? auth?.company_id ?? null);
 
   useEffect(() => {
-    if (!companyId) return;
+    // For master users without company_id, load all companies for selection
+    if (!id && !auth?.company_id && auth?.role === "master") {
+      getCompanies({ all: true }).then(r => {
+        const list = (r.data as any).items || r.data || [];
+        setCompanies(list);
+        if (list.length > 0 && !selectedCoId) {
+          setSelectedCoId(list[0].id);
+        }
+        if (list.length === 0) setLoading(false);
+      }).catch(() => setLoading(false));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!companyId) { setLoading(false); return; }
     async function load() {
       try {
         const r = await getCompany(companyId!);
@@ -36,10 +52,10 @@ export default function CompanySettings() {
           state: r.data.state || "", pincode: r.data.pincode || "",
           gst_number: r.data.gst_number || "", pan_number: r.data.pan_number || "",
         });
-        if (r.data.theme_config) setThemeConfig({ ...themeConfig, ...r.data.theme_config });
-        if (r.data.payroll_config) setPayrollConfig({ ...payrollConfig, ...r.data.payroll_config });
-        if (r.data.attendance_config) setAttendanceConfig({ ...attendanceConfig, ...r.data.attendance_config });
-        if (r.data.features) setFeatures({ ...features, ...r.data.features });
+        if (r.data.theme_config) setThemeConfig(prev => ({ ...prev, ...r.data.theme_config }));
+        if (r.data.payroll_config) setPayrollConfig(prev => ({ ...prev, ...r.data.payroll_config }));
+        if (r.data.attendance_config) setAttendanceConfig(prev => ({ ...prev, ...r.data.attendance_config }));
+        if (r.data.features) setFeatures(prev => ({ ...prev, ...r.data.features }));
       } catch (e: any) {
         setAlert({ type: "danger", message: e.message });
       } finally {
@@ -115,7 +131,15 @@ export default function CompanySettings() {
   }
 
   if (loading) return <div className="d-flex justify-content-center py-5"><div className="spinner-border text-primary" /></div>;
-  if (!company) return <div className="alert alert-warning">Company not found.</div>;
+  if (!company && companies.length > 0) return (
+    <div className="container py-4">
+      <h4 className="fw-bold mb-3">Select Company</h4>
+      <select className="form-select w-auto" value={selectedCoId ?? ""} onChange={e => setSelectedCoId(parseInt(e.target.value))}>
+        {companies.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
+      </select>
+    </div>
+  );
+  if (!company) return <div className="alert alert-warning">No company found. Please create a company first.</div>;
 
   const TABS = [
     { key: "profile", label: "Profile" },

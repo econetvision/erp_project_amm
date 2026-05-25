@@ -6,6 +6,7 @@ Create Date: 2026-05-25
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.dialects import postgresql
 
 revision = "0012_payslip_templates"
@@ -68,40 +69,44 @@ DEFAULT_LAYOUT = {
 
 
 def upgrade() -> None:
-    op.create_table(
-        "payslip_templates",
-        sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
-        sa.Column("name", sa.String(120), nullable=False),
-        sa.Column("description", sa.String(500)),
-        sa.Column("company_id", sa.Integer, sa.ForeignKey("companies.id", ondelete="CASCADE"), nullable=True),
-        sa.Column("is_default", sa.Boolean, server_default="false", nullable=False),
-        sa.Column("is_active", sa.Boolean, server_default="true", nullable=False),
-        sa.Column("layout", postgresql.JSONB, nullable=False),
-        sa.Column("logo_url", sa.Text),
-        sa.Column("company_name", sa.String(200)),
-        sa.Column("company_address", sa.Text),
-        sa.Column("company_phone", sa.String(50)),
-        sa.Column("company_email", sa.String(200)),
-        sa.Column("footer_text", sa.Text),
-        sa.Column("signature_label", sa.String(200)),
-        sa.Column("created_by", sa.Integer, sa.ForeignKey("users.id", ondelete="SET NULL")),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
-    )
-    op.create_index("ix_payslip_templates_company", "payslip_templates", ["company_id"])
-
-    # Seed a default system-wide template
-    import json
-    op.execute(f"""
-        INSERT INTO payslip_templates (name, description, is_default, is_active, layout)
-        VALUES (
-            'Standard Payslip',
-            'Default payslip template with all standard fields',
-            true,
-            true,
-            '{json.dumps(DEFAULT_LAYOUT)}'::jsonb
+    if not sa_inspect(op.get_bind()).has_table("payslip_templates"):
+        op.create_table(
+            "payslip_templates",
+            sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
+            sa.Column("name", sa.String(120), nullable=False),
+            sa.Column("description", sa.String(500)),
+            sa.Column("company_id", sa.Integer, sa.ForeignKey("companies.id", ondelete="CASCADE"), nullable=True),
+            sa.Column("is_default", sa.Boolean, server_default="false", nullable=False),
+            sa.Column("is_active", sa.Boolean, server_default="true", nullable=False),
+            sa.Column("layout", postgresql.JSONB, nullable=False),
+            sa.Column("logo_url", sa.Text),
+            sa.Column("company_name", sa.String(200)),
+            sa.Column("company_address", sa.Text),
+            sa.Column("company_phone", sa.String(50)),
+            sa.Column("company_email", sa.String(200)),
+            sa.Column("footer_text", sa.Text),
+            sa.Column("signature_label", sa.String(200)),
+            sa.Column("created_by", sa.Integer, sa.ForeignKey("users.id", ondelete="SET NULL")),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
+            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()")),
         )
-    """)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_payslip_templates_company ON payslip_templates (company_id)")
+
+    # Seed a default system-wide template (skip if already exists)
+    bind = op.get_bind()
+    existing = bind.execute(sa.text("SELECT COUNT(*) FROM payslip_templates WHERE is_default = true")).scalar()
+    if existing == 0:
+        import json
+        op.execute(f"""
+            INSERT INTO payslip_templates (name, description, is_default, is_active, layout)
+            VALUES (
+                'Standard Payslip',
+                'Default payslip template with all standard fields',
+                true,
+                true,
+                '{json.dumps(DEFAULT_LAYOUT)}'::jsonb
+            )
+        """)
 
 
 def downgrade() -> None:

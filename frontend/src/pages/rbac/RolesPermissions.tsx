@@ -2,9 +2,12 @@ import { useEffect, useState, type FormEvent } from "react";
 import { getRoles, getPermissions, getPermissionModules, createRole, updateRole, deleteRole } from "../../api/rbacApi";
 import AlertMessage from "../../components/AlertMessage";
 import ConfirmModal from "../../components/ConfirmModal";
+import { useAuth } from "../../context/AuthContext";
 import type { Role, Permission } from "../../types/company";
 
 export default function RolesPermissions() {
+  const { auth } = useAuth();
+  const isMaster = auth?.role === "master";
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [modules, setModules] = useState<string[]>([]);
@@ -196,9 +199,11 @@ export default function RolesPermissions() {
                       </td>
                       <td className="text-muted small">{role.description || "—"}</td>
                       <td className="text-end">
-                        <button className="btn btn-sm btn-outline-primary me-1" onClick={() => openEdit(role)}>
-                          Edit
-                        </button>
+                        {(!role.is_system || isMaster) && (
+                          <button className="btn btn-sm btn-outline-primary me-1" onClick={() => openEdit(role)}>
+                            Edit
+                          </button>
+                        )}
                         {!role.is_system && (
                           <button className="btn btn-sm btn-outline-danger" onClick={() => setDelTarget(role)}>
                             Delete

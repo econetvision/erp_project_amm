@@ -50,6 +50,15 @@ logger.info("Running database seed...")
 seed()
 logger.info("Database seed completed")
 
+if os.getenv("SEED_TEST_DATA", "true").lower() in ("1", "true", "yes"):
+    from seed_test_data import seed_test_data
+    logger.info("Running test data seed...")
+    try:
+        seed_test_data()
+        logger.info("Test data seed completed")
+    except Exception as e:
+        logger.warning(f"Test data seed failed (non-fatal): {e}")
+
 app = FastAPI(
     title="ERP System API",
     description="Employee, Attendance and Payslip management",

@@ -8,7 +8,7 @@ class Attendance(Base):
     __tablename__ = "attendance"
 
     id           = Column(Integer, primary_key=True, index=True)
-    employee_id  = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False)
+    employee_id  = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     date         = Column(Date, nullable=False)
     entry_time   = Column(Time, nullable=False)
     exit_time    = Column(Time, nullable=True)
@@ -20,4 +20,4 @@ class Attendance(Base):
     created_at   = Column(DateTime(timezone=True), server_default=func.now())
     updated_at   = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    employee = relationship("Employee", back_populates="attendance")
+    employee = relationship("User", back_populates="attendance")

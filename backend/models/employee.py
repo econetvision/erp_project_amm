@@ -1,26 +1,27 @@
 from sqlalchemy import Column, Integer, String, Numeric, DateTime, Text, Date, Float, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 
 
 class Employee(Base):
+    """Legacy model – the employees table was merged into users by migration 0013.
+    Kept only so Alembic can reference the table during downgrades / history."""
     __tablename__ = "employees"
 
     id                  = Column(Integer, primary_key=True, index=True)
     company_id          = Column(Integer, ForeignKey("companies.id", ondelete="SET NULL"), nullable=True)
     name                = Column(String(255), nullable=False)
-    gender              = Column(String(10), nullable=True)           # male | female | other
+    gender              = Column(String(10), nullable=True)
     date_of_birth       = Column(Date, nullable=True)
-    blood_group         = Column(String(5), nullable=True)            # A+, B-, etc.
-    marital_status      = Column(String(20), nullable=True)           # single | married | divorced | widowed
+    blood_group         = Column(String(5), nullable=True)
+    marital_status      = Column(String(20), nullable=True)
     emergency_contact   = Column(String(20), nullable=True)
     emergency_name      = Column(String(255), nullable=True)
     phone               = Column(String(20), nullable=True)
     email               = Column(String(255), nullable=True)
-    phone_verified      = Column(String(1), nullable=True, default="N")   # Y | N
-    email_verified      = Column(String(1), nullable=True, default="N")   # Y | N
+    phone_verified      = Column(String(1), nullable=True, default="N")
+    email_verified      = Column(String(1), nullable=True, default="N")
     address             = Column(Text, nullable=False)
     aadhar_number       = Column(String(12), nullable=False, unique=True)
     bank_account_number = Column(String(18), nullable=False)
@@ -38,7 +39,3 @@ class Employee(Base):
     attendance_radius_km = Column(Float, nullable=True, default=10.0)
     created_at          = Column(DateTime(timezone=True), server_default=func.now())
     updated_at          = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-
-    attendance = relationship("Attendance", back_populates="employee", cascade="all, delete")
-    payslips   = relationship("Payslip",    back_populates="employee", cascade="all, delete")
-    location_assignments = relationship("EmployeeLocationAssignment", back_populates="employee", cascade="all, delete")

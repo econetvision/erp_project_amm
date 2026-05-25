@@ -64,7 +64,6 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: "/employees",      label: "Employees",      icon: "employees", roles: ["master","admin","supervisor"] },
       { to: "/work-locations", label: "Work Locations", icon: "tracking",  roles: ["master","admin","supervisor"] },
-      { to: "/users",          label: "Users",          icon: "users",     roles: ["master","admin"] },
     ],
   },
   {
@@ -97,9 +96,10 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "SYSTEM",
     items: [
+      { to: "/users",              label: "Users",        icon: "users",    roles: ["master","admin"] },
       { to: "/jobs",              label: "Jobs",         icon: "jobs",     roles: ["master","admin"] },
       { to: "/company-settings",  label: "Company",      icon: "settings", roles: ["master","admin"] },
-      { to: "/roles-permissions", label: "Roles",        icon: "users",    roles: ["admin"] },
+      { to: "/roles-permissions", label: "Roles",        icon: "users",    roles: ["master","admin"] },
       { to: "/profile",           label: "Profile & Settings", icon: "profile",  roles: ["master","admin","supervisor","worker"] },
     ],
   },

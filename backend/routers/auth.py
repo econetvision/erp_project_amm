@@ -39,7 +39,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         role=user.role,
         username=user.username,
         company_id=user.company_id,
-        employee_id=user.employee_id,
+        employee_id=user.id,
         email=user.email,
         display_name=user.display_name,
         lock_timeout=user.lock_timeout,
@@ -110,9 +110,12 @@ def list_users(
     per_page: int = Query(10, ge=1, le=100),
     search: str = Query("", alias="q"),
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ):
     q = db.query(User)
+    # Non-master users should not see master accounts
+    if current_user.role != "master":
+        q = q.filter(User.role != "master")
     if search:
         q = q.filter(
             or_(
@@ -144,7 +147,6 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db), _: User = De
         password_hash=hash_password(payload.password),
         role=payload.role,
         company_id=payload.company_id,
-        employee_id=payload.employee_id,
         email=payload.email,
         display_name=payload.display_name,
         phone=payload.phone,

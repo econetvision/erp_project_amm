@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from database import get_db
 from models.user import User
-from models.employee import Employee
+from models.user import User
 from models.company import Company
 from models.attendance import Attendance
 from models.rbac import AuditLog
@@ -20,7 +20,7 @@ def master_overview(
     """Master dashboard overview — cross-company analytics."""
     total_companies = db.query(func.count(Company.id)).scalar() or 0
     active_companies = db.query(func.count(Company.id)).filter(Company.is_active == True).scalar() or 0
-    total_employees = db.query(func.count(Employee.id)).scalar() or 0
+    total_employees = db.query(func.count(User.id)).scalar() or 0
     total_users = db.query(func.count(User.id)).scalar() or 0
 
     # Users by role
@@ -29,8 +29,8 @@ def master_overview(
 
     # Employees per company
     emp_per_company = db.query(
-        Company.name, func.count(Employee.id)
-    ).outerjoin(Employee, Employee.company_id == Company.id).group_by(Company.name).all()
+        Company.name, func.count(User.id)
+    ).outerjoin(User, User.company_id == Company.id).group_by(Company.name).all()
     employees_by_company = [{"company": name, "count": count} for name, count in emp_per_company]
 
     # Recent audit logs
@@ -66,7 +66,7 @@ def companies_summary(
     companies = db.query(Company).order_by(Company.name).all()
     result = []
     for c in companies:
-        emp_count = db.query(func.count(Employee.id)).filter(Employee.company_id == c.id).scalar() or 0
+        emp_count = db.query(func.count(User.id)).filter(User.company_id == c.id).scalar() or 0
         user_count = db.query(func.count(User.id)).filter(User.company_id == c.id).scalar() or 0
         admin_count = db.query(func.count(User.id)).filter(
             User.company_id == c.id, User.role == "admin"
@@ -120,7 +120,6 @@ def impersonate_user(
         "role": target.role,
         "username": target.username,
         "company_id": target.company_id,
-        "employee_id": target.employee_id,
         "display_name": target.display_name,
         "impersonated": True,
     }

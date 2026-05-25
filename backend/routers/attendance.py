@@ -5,7 +5,6 @@ from sqlalchemy import extract
 from datetime import date
 from database import get_db
 from models.attendance import Attendance
-from models.employee import Employee
 from models.holiday import PublicHoliday
 from models.user import User
 from schemas.attendance import (
@@ -35,7 +34,7 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-def validate_geofence(emp: Employee, latitude: float | None, longitude: float | None, db: Session | None = None):
+def validate_geofence(emp: User, latitude: float | None, longitude: float | None, db: Session | None = None):
     """Raise 403 if employee has assigned locations and the provided coordinates are outside all allowed radii."""
     # First check multi-location assignments if db is available
     if db:
@@ -129,7 +128,7 @@ def dashboard_overview(
         .all()
     )
     holiday_dates    = {h.date for h in holiday_rows}
-    total_employees  = db.query(Employee).count()
+    total_employees  = db.query(User).filter(User.role.in_(["worker", "supervisor"])).count()
     working_day_list = get_working_days_in_month(year, month, holiday_dates)
     daily_entries    = get_dashboard_overview(db, month, year, holiday_dates)
 
@@ -168,7 +167,7 @@ def daily_summary(
     _:          object  = Depends(require_admin_or_supervisor),
 ):
     holiday = db.query(PublicHoliday).filter(PublicHoliday.date == date_param).first()
-    employees = db.query(Employee).order_by(Employee.id).all()
+    employees = db.query(User).filter(User.role.in_(["worker", "supervisor"])).order_by(User.id).all()
     records   = db.query(Attendance).filter(Attendance.date == date_param).all()
     rec_map   = {r.employee_id: r for r in records}
 
@@ -205,10 +204,10 @@ def daily_summary(
 @router.post("/clock-in", response_model=AttendanceResponse, status_code=201)
 def clock_in(payload: AttendanceClockIn, db: Session = Depends(get_db), current: User = Depends(require_any)):
     # Workers can only clock in for themselves
-    if current.role == "worker" and current.employee_id != payload.employee_id:
+    if current.role == "worker" and current.id != payload.employee_id:
         raise HTTPException(status_code=403, detail="Workers can only clock in for themselves")
 
-    emp = db.query(Employee).filter(Employee.id == payload.employee_id).first()
+    emp = db.query(User).filter(User.id == payload.employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 
@@ -243,10 +242,10 @@ def clock_out(attendance_id: int, payload: AttendanceClockOut, db: Session = Dep
         raise HTTPException(status_code=400, detail="Already clocked out")
 
     # Workers can only clock out for themselves
-    if current.role == "worker" and current.employee_id != record.employee_id:
+    if current.role == "worker" and current.id != record.employee_id:
         raise HTTPException(status_code=403, detail="Workers can only clock out for themselves")
 
-    emp = db.query(Employee).filter(Employee.id == record.employee_id).first()
+    emp = db.query(User).filter(User.id == record.employee_id).first()
     validate_geofence(emp, payload.latitude, payload.longitude, db)
     verify_employee_face(payload.image, emp)
 
@@ -267,7 +266,7 @@ def get_monthly_report(
     db: Session = Depends(get_db),
     _: User = Depends(require_admin_or_supervisor),
 ):
-    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     records = (
@@ -317,7 +316,7 @@ def update_attendance(attendance_id: int, payload: AttendanceUpdate, db: Session
     for key, value in payload.model_dump(exclude_none=True).items():
         setattr(record, key, value)
     if record.entry_time and record.exit_time:
-        emp = db.query(Employee).filter(Employee.id == record.employee_id).first()
+        emp = db.query(User).filter(User.id == record.employee_id).first()
         record.hours_worked = calculate_hours_worked(record.entry_time, record.exit_time, emp.shift if emp else None)
     db.commit()
     db.refresh(record)
@@ -336,7 +335,7 @@ def delete_attendance(attendance_id: int, db: Session = Depends(get_db), _: User
 @router.post("/face-scan", response_model=FaceScanResponse, status_code=201)
 def face_scan_clock(payload: FaceScanRequest, db: Session = Depends(get_db), _: User = Depends(require_any)):
     """Identify employee from face image and auto clock in or clock out."""
-    employees = db.query(Employee).filter(Employee.face_encoding.isnot(None)).all()
+    employees = db.query(User).filter(User.face_encoding.isnot(None)).all()
     emp = identify_employee(payload.image, employees)
     if not emp:
         raise HTTPException(status_code=404, detail="No matching employee found. Please register your face first.")

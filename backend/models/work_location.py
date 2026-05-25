@@ -8,6 +8,7 @@ class WorkLocation(Base):
     __tablename__ = "work_locations"
 
     id                = Column(Integer, primary_key=True, index=True)
+    company_id        = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=True)
     location_name     = Column(String(255), nullable=False)
     location_code     = Column(String(50), nullable=True, unique=True)
     address           = Column(Text, nullable=True)
@@ -32,12 +33,12 @@ class EmployeeLocationAssignment(Base):
     __tablename__ = "employee_location_assignments"
 
     id            = Column(Integer, primary_key=True, index=True)
-    employee_id   = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False)
+    employee_id   = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     location_id   = Column(Integer, ForeignKey("work_locations.id", ondelete="CASCADE"), nullable=False)
     is_primary    = Column(Boolean, nullable=False, default=False)
     assigned_by   = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     assigned_at   = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
-    employee = relationship("Employee", back_populates="location_assignments")
+    employee = relationship("User", back_populates="location_assignments", foreign_keys=[employee_id])
     location = relationship("WorkLocation", back_populates="assignments")

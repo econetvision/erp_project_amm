@@ -6,6 +6,7 @@ Create Date: 2026-05-25
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.dialects.postgresql import JSONB
 
 revision = "0010_multi_tenant"
@@ -14,88 +15,104 @@ branch_labels = None
 depends_on = None
 
 
+def _table_exists(name):
+    return sa_inspect(op.get_bind()).has_table(name)
+
+
+def _column_exists(table, column):
+    cols = [c["name"] for c in sa_inspect(op.get_bind()).get_columns(table)]
+    return column in cols
+
+
 def upgrade():
     # ── Companies table ──────────────────────────────────────────────────────
-    op.create_table(
-        "companies",
-        sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("name", sa.String(255), nullable=False, unique=True),
-        sa.Column("code", sa.String(50), nullable=False, unique=True),
-        sa.Column("logo_path", sa.String(500)),
-        sa.Column("address", sa.Text),
-        sa.Column("city", sa.String(100)),
-        sa.Column("state", sa.String(100)),
-        sa.Column("country", sa.String(100), server_default="India"),
-        sa.Column("pincode", sa.String(10)),
-        sa.Column("phone", sa.String(20)),
-        sa.Column("email", sa.String(255)),
-        sa.Column("website", sa.String(255)),
-        sa.Column("gst_number", sa.String(20)),
-        sa.Column("pan_number", sa.String(10)),
-        sa.Column("timezone", sa.String(50), server_default="Asia/Kolkata"),
-        sa.Column("currency", sa.String(10), server_default="INR"),
-        sa.Column("is_active", sa.Boolean, nullable=False, server_default="true"),
-        sa.Column("theme_config", JSONB),
-        sa.Column("payroll_config", JSONB),
-        sa.Column("attendance_config", JSONB),
-        sa.Column("features", JSONB),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-    )
+    if not _table_exists("companies"):
+        op.create_table(
+            "companies",
+            sa.Column("id", sa.Integer, primary_key=True),
+            sa.Column("name", sa.String(255), nullable=False, unique=True),
+            sa.Column("code", sa.String(50), nullable=False, unique=True),
+            sa.Column("logo_path", sa.String(500)),
+            sa.Column("address", sa.Text),
+            sa.Column("city", sa.String(100)),
+            sa.Column("state", sa.String(100)),
+            sa.Column("country", sa.String(100), server_default="India"),
+            sa.Column("pincode", sa.String(10)),
+            sa.Column("phone", sa.String(20)),
+            sa.Column("email", sa.String(255)),
+            sa.Column("website", sa.String(255)),
+            sa.Column("gst_number", sa.String(20)),
+            sa.Column("pan_number", sa.String(10)),
+            sa.Column("timezone", sa.String(50), server_default="Asia/Kolkata"),
+            sa.Column("currency", sa.String(10), server_default="INR"),
+            sa.Column("is_active", sa.Boolean, nullable=False, server_default="true"),
+            sa.Column("theme_config", JSONB),
+            sa.Column("payroll_config", JSONB),
+            sa.Column("attendance_config", JSONB),
+            sa.Column("features", JSONB),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        )
 
     # ── Permissions table ────────────────────────────────────────────────────
-    op.create_table(
-        "permissions",
-        sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("code", sa.String(100), nullable=False, unique=True),
-        sa.Column("name", sa.String(255), nullable=False),
-        sa.Column("module", sa.String(50), nullable=False),
-        sa.Column("description", sa.Text),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-    )
+    if not _table_exists("permissions"):
+        op.create_table(
+            "permissions",
+            sa.Column("id", sa.Integer, primary_key=True),
+            sa.Column("code", sa.String(100), nullable=False, unique=True),
+            sa.Column("name", sa.String(255), nullable=False),
+            sa.Column("module", sa.String(50), nullable=False),
+            sa.Column("description", sa.Text),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        )
 
     # ── Roles table ──────────────────────────────────────────────────────────
-    op.create_table(
-        "roles",
-        sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("name", sa.String(50), nullable=False),
-        sa.Column("company_id", sa.Integer, sa.ForeignKey("companies.id", ondelete="CASCADE")),
-        sa.Column("is_system", sa.Boolean, nullable=False, server_default="false"),
-        sa.Column("description", sa.Text),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.UniqueConstraint("name", "company_id", name="uq_role_name_company"),
-    )
+    if not _table_exists("roles"):
+        op.create_table(
+            "roles",
+            sa.Column("id", sa.Integer, primary_key=True),
+            sa.Column("name", sa.String(50), nullable=False),
+            sa.Column("company_id", sa.Integer, sa.ForeignKey("companies.id", ondelete="CASCADE")),
+            sa.Column("is_system", sa.Boolean, nullable=False, server_default="false"),
+            sa.Column("description", sa.Text),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+            sa.UniqueConstraint("name", "company_id", name="uq_role_name_company"),
+        )
 
     # ── Role Permissions table ───────────────────────────────────────────────
-    op.create_table(
-        "role_permissions",
-        sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("role_id", sa.Integer, sa.ForeignKey("roles.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("permission_id", sa.Integer, sa.ForeignKey("permissions.id", ondelete="CASCADE"), nullable=False),
-        sa.UniqueConstraint("role_id", "permission_id", name="uq_role_permission"),
-    )
+    if not _table_exists("role_permissions"):
+        op.create_table(
+            "role_permissions",
+            sa.Column("id", sa.Integer, primary_key=True),
+            sa.Column("role_id", sa.Integer, sa.ForeignKey("roles.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("permission_id", sa.Integer, sa.ForeignKey("permissions.id", ondelete="CASCADE"), nullable=False),
+            sa.UniqueConstraint("role_id", "permission_id", name="uq_role_permission"),
+        )
 
     # ── Audit Logs table ─────────────────────────────────────────────────────
-    op.create_table(
-        "audit_logs",
-        sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id", ondelete="SET NULL")),
-        sa.Column("company_id", sa.Integer, sa.ForeignKey("companies.id", ondelete="SET NULL")),
-        sa.Column("action", sa.String(50), nullable=False),
-        sa.Column("entity_type", sa.String(50)),
-        sa.Column("entity_id", sa.Integer),
-        sa.Column("details", sa.Text),
-        sa.Column("ip_address", sa.String(45)),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-    )
-    op.create_index("idx_audit_logs_user", "audit_logs", ["user_id"])
-    op.create_index("idx_audit_logs_company", "audit_logs", ["company_id"])
-    op.create_index("idx_audit_logs_created", "audit_logs", ["created_at"])
+    if not _table_exists("audit_logs"):
+        op.create_table(
+            "audit_logs",
+            sa.Column("id", sa.Integer, primary_key=True),
+            sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id", ondelete="SET NULL")),
+            sa.Column("company_id", sa.Integer, sa.ForeignKey("companies.id", ondelete="SET NULL")),
+            sa.Column("action", sa.String(50), nullable=False),
+            sa.Column("entity_type", sa.String(50)),
+            sa.Column("entity_id", sa.Integer),
+            sa.Column("details", sa.Text),
+            sa.Column("ip_address", sa.String(45)),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        )
+    op.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs (user_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_company ON audit_logs (company_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs (created_at)")
 
     # ── Add company_id to users ──────────────────────────────────────────────
-    op.add_column("users", sa.Column("company_id", sa.Integer, sa.ForeignKey("companies.id", ondelete="SET NULL")))
-    op.add_column("users", sa.Column("is_active", sa.Boolean, server_default="true"))
+    if not _column_exists("users", "company_id"):
+        op.add_column("users", sa.Column("company_id", sa.Integer, sa.ForeignKey("companies.id", ondelete="SET NULL")))
+    if not _column_exists("users", "is_active"):
+        op.add_column("users", sa.Column("is_active", sa.Boolean, server_default="true"))
 
     # ── Update role constraint to allow 'master' ─────────────────────────────
     # Drop old CHECK constraint if it exists (PostgreSQL)
@@ -106,8 +123,10 @@ def upgrade():
     )
 
     # ── Add company_id to employees ──────────────────────────────────────────
-    op.add_column("employees", sa.Column("company_id", sa.Integer, sa.ForeignKey("companies.id", ondelete="SET NULL")))
-    op.create_index("idx_employees_company", "employees", ["company_id"])
+    if _table_exists("employees") and not _column_exists("employees", "company_id"):
+        op.add_column("employees", sa.Column("company_id", sa.Integer, sa.ForeignKey("companies.id", ondelete="SET NULL")))
+    if _table_exists("employees"):
+        op.execute("CREATE INDEX IF NOT EXISTS idx_employees_company ON employees (company_id)")
 
     # ── Seed default permissions ─────────────────────────────────────────────
     permissions = [

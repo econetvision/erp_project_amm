@@ -41,7 +41,6 @@ export interface UserCreate {
   password: string;
   role: "master" | "admin" | "supervisor" | "worker";
   company_id?: number | null;
-  employee_id: number | null;
   email?: string;
   display_name?: string;
   phone?: string;

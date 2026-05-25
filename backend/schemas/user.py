@@ -13,7 +13,6 @@ class UserCreate(BaseModel):
     password:     str
     role:         Literal["master", "admin", "supervisor", "worker"]
     company_id:   Optional[int] = None
-    employee_id:  Optional[int] = None
     email:        Optional[str] = None
     display_name: Optional[str] = None
     phone:        Optional[str] = None
@@ -39,7 +38,6 @@ class AdminUserUpdate(BaseModel):
     phone:        Optional[str] = Field(None, max_length=20)
     role:         Optional[Literal["master", "admin", "supervisor", "worker"]] = None
     company_id:   Optional[int] = None
-    employee_id:  Optional[int] = None
     password:     Optional[str] = Field(None, min_length=4)
 
 
@@ -53,11 +51,11 @@ class UserResponse(BaseModel):
     username:     str
     role:         str
     company_id:   Optional[int] = None
-    employee_id:  Optional[int] = None
     email:        Optional[str] = None
     display_name: Optional[str] = None
     phone:        Optional[str] = None
     photo_path:   Optional[str] = None
+    name:         Optional[str] = None
     has_pin:      bool = False
     lock_timeout: Optional[int] = None
     theme_preference: Optional[dict] = None

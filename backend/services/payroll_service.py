@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import extract
 from fastapi import HTTPException
-from models.employee import Employee
+from models.user import User
 from models.salary_structure import SalaryStructure, SalaryComponent, EmployeeSalary
 from models.advance import Advance
 from models.payroll_run import PayrollRun, PayrollItem
@@ -32,7 +32,7 @@ def create_payroll_run(db: Session, month: int, year: int, user_id: int) -> Payr
     db.add(run)
     db.flush()
 
-    employees = db.query(Employee).order_by(Employee.id).all()
+    employees = db.query(User).filter(User.role.in_(["worker", "supervisor"])).order_by(User.id).all()
     total_gross = Decimal("0")
     total_deductions = Decimal("0")
     total_net = Decimal("0")
@@ -55,7 +55,7 @@ def create_payroll_run(db: Session, month: int, year: int, user_id: int) -> Payr
 
 
 def _calculate_employee_payroll(
-    db: Session, emp: Employee, month: int, year: int, run_id: int,
+    db: Session, emp: User, month: int, year: int, run_id: int,
 ) -> PayrollItem:
     # Get active salary assignment
     salary = (

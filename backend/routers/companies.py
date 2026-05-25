@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from database import get_db
 from models.company import Company
-from models.employee import Employee
+from models.user import User
 from models.user import User
 from schemas.company import CompanyCreate, CompanyUpdate, CompanyResponse, CompanyStats
 from auth.dependencies import require_master, require_admin, get_current_user
@@ -72,7 +72,7 @@ def company_stats(
     companies = db.query(Company).all()
     result = []
     for c in companies:
-        emp_count = db.query(func.count(Employee.id)).filter(Employee.company_id == c.id).scalar() or 0
+        emp_count = db.query(func.count(User.id)).filter(User.company_id == c.id).scalar() or 0
         user_count = db.query(func.count(User.id)).filter(User.company_id == c.id).scalar() or 0
         result.append(CompanyStats(
             id=c.id,

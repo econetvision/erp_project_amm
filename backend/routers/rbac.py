@@ -43,8 +43,11 @@ def list_roles(
 ):
     q = db.query(Role)
     if current_user.role != "master":
+        # Show company roles + system roles, but exclude the master system role
         q = q.filter(
             (Role.company_id == current_user.company_id) | (Role.company_id.is_(None))
+        ).filter(
+            ~((Role.name == "master") & (Role.is_system == True))
         )
     roles = q.order_by(Role.name).all()
     result = []

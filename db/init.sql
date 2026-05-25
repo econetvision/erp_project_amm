@@ -27,64 +27,55 @@ CREATE TABLE IF NOT EXISTS companies (
     updated_at      TIMESTAMPTZ    DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS employees (
+CREATE TABLE IF NOT EXISTS users (
     id                  SERIAL PRIMARY KEY,
+    username            VARCHAR(50)    NOT NULL UNIQUE,
+    password_hash       VARCHAR(255)   NOT NULL,
+    role                VARCHAR(20)    NOT NULL CHECK (role IN ('master','admin','supervisor','worker')),
     company_id          INTEGER        REFERENCES companies(id) ON DELETE SET NULL,
-    name                VARCHAR(255)   NOT NULL,
+    email               VARCHAR(255),
+    display_name        VARCHAR(255),
+    phone               VARCHAR(20),
+    photo_path          VARCHAR(500),
+    pin_hash            VARCHAR(255),
+    lock_timeout        INTEGER        DEFAULT 2,
+    theme_preference    JSONB,
+    is_active           BOOLEAN        NOT NULL DEFAULT TRUE,
+    -- Employee fields (populated for workers/supervisors)
+    name                VARCHAR(255),
     gender              VARCHAR(10),
     date_of_birth       DATE,
     blood_group         VARCHAR(5),
     marital_status      VARCHAR(20),
     emergency_contact   VARCHAR(20),
     emergency_name      VARCHAR(255),
-    phone               VARCHAR(20),
-    email               VARCHAR(255),
-    phone_verified      VARCHAR(1)     DEFAULT 'N',
-    email_verified      VARCHAR(1)     DEFAULT 'N',
-    address             TEXT           NOT NULL,
-    aadhar_number       CHAR(12)       NOT NULL UNIQUE,
-    bank_account_number VARCHAR(18)    NOT NULL,
+    address             TEXT,
+    aadhar_number       VARCHAR(12)    UNIQUE,
+    bank_account_number VARCHAR(18),
     ifsc_code           VARCHAR(11),
     bank_name           VARCHAR(255),
     kyc_status          VARCHAR(20)    DEFAULT 'pending',
     kyc_verified_name   VARCHAR(255),
-    hourly_rate         NUMERIC(10,2)  NOT NULL DEFAULT 0.00,
-    shift               VARCHAR(10)    NOT NULL DEFAULT 'SHIFT_A' CHECK (shift IN ('SHIFT_A','SHIFT_B')),
+    hourly_rate         NUMERIC(10,2)  DEFAULT 0.00,
+    shift               VARCHAR(10)    DEFAULT 'SHIFT_A',
     face_encoding       JSONB,
     photo               TEXT,
     work_location_name  VARCHAR(255),
     work_latitude       DOUBLE PRECISION,
     work_longitude      DOUBLE PRECISION,
     attendance_radius_km DOUBLE PRECISION DEFAULT 10.0,
+    phone_verified      VARCHAR(1)     DEFAULT 'N',
+    email_verified      VARCHAR(1)     DEFAULT 'N',
     created_at          TIMESTAMP      NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMP      NOT NULL DEFAULT NOW(),
-    CONSTRAINT chk_bank_account_length CHECK (LENGTH(bank_account_number) BETWEEN 8 AND 18)
-);
-
-CREATE INDEX IF NOT EXISTS idx_employees_aadhar ON employees(aadhar_number);
-
-CREATE TABLE IF NOT EXISTS users (
-    id            SERIAL PRIMARY KEY,
-    username      VARCHAR(50)    NOT NULL UNIQUE,
-    password_hash VARCHAR(255)   NOT NULL,
-    role          VARCHAR(20)    NOT NULL CHECK (role IN ('master','admin','supervisor','worker')),
-    company_id    INTEGER        REFERENCES companies(id) ON DELETE SET NULL,
-    employee_id   INTEGER        REFERENCES employees(id) ON DELETE SET NULL,
-    email         VARCHAR(255),
-    display_name  VARCHAR(255),
-    phone         VARCHAR(20),
-    photo_path    VARCHAR(500),
-    is_active     BOOLEAN        NOT NULL DEFAULT TRUE,
-    theme_preference JSONB,
-    created_at    TIMESTAMP      NOT NULL DEFAULT NOW(),
-    updated_at    TIMESTAMP      NOT NULL DEFAULT NOW()
+    updated_at          TIMESTAMP      NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_aadhar ON users(aadhar_number) WHERE aadhar_number IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS attendance (
     id           SERIAL PRIMARY KEY,
-    employee_id  INTEGER        NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_id  INTEGER        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     date         DATE           NOT NULL,
     entry_time   TIME           NOT NULL,
     exit_time    TIME,
@@ -103,7 +94,7 @@ CREATE INDEX IF NOT EXISTS idx_attendance_date        ON attendance(date);
 
 CREATE TABLE IF NOT EXISTS payslips (
     id           SERIAL PRIMARY KEY,
-    employee_id  INTEGER        NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_id  INTEGER        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     month        SMALLINT       NOT NULL CHECK (month BETWEEN 1 AND 12),
     year         SMALLINT       NOT NULL CHECK (year > 2000),
     days_worked  SMALLINT       NOT NULL DEFAULT 0,
@@ -146,7 +137,7 @@ CREATE INDEX IF NOT EXISTS idx_vehicles_reg ON vehicles(reg_number);
 CREATE TABLE IF NOT EXISTS vehicle_assignments (
     id           SERIAL PRIMARY KEY,
     vehicle_id   INTEGER        NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
-    employee_id  INTEGER        NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_id  INTEGER        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     assigned_at  TIMESTAMP      NOT NULL DEFAULT NOW(),
     released_at  TIMESTAMP,
     notes        TEXT,
@@ -237,7 +228,7 @@ CREATE INDEX IF NOT EXISTS idx_sc_structure ON salary_components(structure_id);
 
 CREATE TABLE IF NOT EXISTS employee_salary (
     id             SERIAL PRIMARY KEY,
-    employee_id    INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     structure_id   INTEGER NOT NULL REFERENCES salary_structures(id) ON DELETE CASCADE,
     basic_pay      NUMERIC(12,2) NOT NULL,
     effective_from TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -250,7 +241,7 @@ CREATE INDEX IF NOT EXISTS idx_es_employee ON employee_salary(employee_id);
 -- ── Advances ─────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS advances (
     id                SERIAL PRIMARY KEY,
-    employee_id       INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     amount            NUMERIC(12,2) NOT NULL,
     disbursed_date    DATE NOT NULL,
     repayment_months  INTEGER NOT NULL DEFAULT 1,
@@ -282,7 +273,7 @@ CREATE TABLE IF NOT EXISTS payroll_runs (
 CREATE TABLE IF NOT EXISTS payroll_items (
     id                   SERIAL PRIMARY KEY,
     run_id               INTEGER NOT NULL REFERENCES payroll_runs(id) ON DELETE CASCADE,
-    employee_id          INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     basic_pay            NUMERIC(12,2) NOT NULL,
     earnings_breakdown   JSONB NOT NULL DEFAULT '{}',
     deductions_breakdown JSONB NOT NULL DEFAULT '{}',
@@ -302,6 +293,7 @@ CREATE INDEX IF NOT EXISTS idx_pi_employee ON payroll_items(employee_id);
 -- ── Work Locations ───────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS work_locations (
     id                SERIAL PRIMARY KEY,
+    company_id        INTEGER          REFERENCES companies(id) ON DELETE CASCADE,
     location_name     VARCHAR(255)     NOT NULL,
     location_code     VARCHAR(50)      UNIQUE,
     address           TEXT,
@@ -325,7 +317,7 @@ CREATE INDEX IF NOT EXISTS idx_wl_active ON work_locations(is_active);
 -- ── Employee Location Assignments ────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS employee_location_assignments (
     id            SERIAL PRIMARY KEY,
-    employee_id   INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     location_id   INTEGER NOT NULL REFERENCES work_locations(id) ON DELETE CASCADE,
     is_primary    BOOLEAN NOT NULL DEFAULT FALSE,
     assigned_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -382,7 +374,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user    ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_company ON audit_logs(company_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
-CREATE INDEX IF NOT EXISTS idx_employees_company  ON employees(company_id);
+CREATE INDEX IF NOT EXISTS idx_users_company    ON users(company_id);
 
 -- ═══════════════════════════════════════════════════════════════════
 -- INTEGRATION MANAGEMENT TABLES

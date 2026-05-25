@@ -36,7 +36,7 @@ class EmployeeSalary(Base):
     __tablename__ = "employee_salary"
 
     id              = Column(Integer, primary_key=True, index=True)
-    employee_id     = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False)
+    employee_id     = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     structure_id    = Column(Integer, ForeignKey("salary_structures.id", ondelete="CASCADE"), nullable=False)
     basic_pay       = Column(Numeric(12, 2), nullable=False)
     effective_from  = Column(DateTime(timezone=True), server_default=func.now())

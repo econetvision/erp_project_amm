@@ -336,9 +336,13 @@ def update_company_integration(
 def delete_company_integration(
     company_id: int,
     integration_id: int,
-    current_user: User = Depends(require_master),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if current_user.role not in ("master", "admin"):
+        raise HTTPException(403, "Admin or master access required")
+    if current_user.role != "master" and current_user.company_id != company_id:
+        raise HTTPException(403, "Access denied")
     ci = db.query(CompanyIntegration).filter(
         CompanyIntegration.id == integration_id, CompanyIntegration.company_id == company_id,
     ).first()

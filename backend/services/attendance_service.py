@@ -94,7 +94,7 @@ def calc_overtime(hours_worked, shift: str) -> Decimal:
 
 
 def get_dashboard_overview(db: Session, month: int, year: int, holiday_dates: set) -> list:
-    from models.employee import Employee
+    from models.user import User
 
     records = (
         db.query(Attendance)
@@ -111,7 +111,7 @@ def get_dashboard_overview(db: Session, month: int, year: int, holiday_dates: se
     for r in records:
         by_date.setdefault(r.date, []).append(r)
 
-    total_employees = db.query(Employee).count()
+    total_employees = db.query(User).filter(User.role.in_(["worker", "supervisor"])).count()
     working_days    = get_working_days_in_month(year, month, holiday_dates)
 
     result = []
@@ -133,9 +133,9 @@ def get_dashboard_overview(db: Session, month: int, year: int, holiday_dates: se
 
 
 def get_employee_stats(db: Session, month: int, year: int, holiday_dates: set) -> list:
-    from models.employee import Employee
+    from models.user import User
 
-    employees = db.query(Employee).order_by(Employee.id).all()
+    employees = db.query(User).filter(User.role.in_(["worker", "supervisor"])).order_by(User.id).all()
     records   = (
         db.query(Attendance)
         .filter(

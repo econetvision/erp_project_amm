@@ -226,14 +226,10 @@ def get_integration_dashboard(db: Session, company_id: Optional[int] = None) -> 
     ]
 
     # Recent failures
-    fail_q = (
-        db.query(ProviderLog)
-        .filter(ProviderLog.status == "failed")
-        .order_by(ProviderLog.created_at.desc())
-        .limit(20)
-    )
+    fail_q = db.query(ProviderLog).filter(ProviderLog.status == "failed")
     if company_id:
         fail_q = fail_q.filter(ProviderLog.company_id == company_id)
+    fail_q = fail_q.order_by(ProviderLog.created_at.desc()).limit(20)
     recent_failures = []
     for log in fail_q.all():
         pname = None

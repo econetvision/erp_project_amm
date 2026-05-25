@@ -6,6 +6,7 @@ Create Date: 2026-05-25
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.dialects.postgresql import JSONB
 
 revision = "0011_integrations"
@@ -14,10 +15,15 @@ branch_labels = None
 depends_on = None
 
 
+def _table_exists(name):
+    return sa_inspect(op.get_bind()).has_table(name)
+
+
 def upgrade() -> None:
     # ── integration_providers ────────────────────────────────────────
-    op.create_table(
-        "integration_providers",
+    if not _table_exists("integration_providers"):
+        op.create_table(
+            "integration_providers",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("category", sa.String(50), nullable=False),
         sa.Column("code", sa.String(100), nullable=False, unique=True),
@@ -32,7 +38,8 @@ def upgrade() -> None:
     )
 
     # ── company_integrations ─────────────────────────────────────────
-    op.create_table(
+    if not _table_exists("company_integrations"):
+      op.create_table(
         "company_integrations",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("company_id", sa.Integer, sa.ForeignKey("companies.id", ondelete="CASCADE"), nullable=False),
@@ -52,11 +59,12 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.UniqueConstraint("company_id", "provider_id", name="uq_company_provider"),
-    )
-    op.create_index("ix_ci_company_category", "company_integrations", ["company_id", "category"])
+      )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_ci_company_category ON company_integrations (company_id, category)")
 
     # ── global_integration_defaults ──────────────────────────────────
-    op.create_table(
+    if not _table_exists("global_integration_defaults"):
+      op.create_table(
         "global_integration_defaults",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("category", sa.String(50), nullable=False, unique=True),
@@ -70,7 +78,8 @@ def upgrade() -> None:
     )
 
     # ── provider_logs ────────────────────────────────────────────────
-    op.create_table(
+    if not _table_exists("provider_logs"):
+      op.create_table(
         "provider_logs",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("company_id", sa.Integer, sa.ForeignKey("companies.id", ondelete="SET NULL"), nullable=True),
@@ -85,11 +94,12 @@ def upgrade() -> None:
         sa.Column("retry_count", sa.Integer, nullable=False, server_default="0"),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
-    op.create_index("ix_pl_company_category", "provider_logs", ["company_id", "category"])
-    op.create_index("ix_pl_created", "provider_logs", ["created_at"])
+    op.execute("CREATE INDEX IF NOT EXISTS ix_pl_company_category ON provider_logs (company_id, category)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_pl_created ON provider_logs (created_at)")
 
     # ── webhook_logs ─────────────────────────────────────────────────
-    op.create_table(
+    if not _table_exists("webhook_logs"):
+      op.create_table(
         "webhook_logs",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("provider_id", sa.Integer, sa.ForeignKey("integration_providers.id", ondelete="SET NULL"), nullable=True),
@@ -103,7 +113,8 @@ def upgrade() -> None:
     )
 
     # ── provider_usage ───────────────────────────────────────────────
-    op.create_table(
+    if not _table_exists("provider_usage"):
+      op.create_table(
         "provider_usage",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("company_id", sa.Integer, sa.ForeignKey("companies.id", ondelete="CASCADE"), nullable=False),
@@ -116,20 +127,23 @@ def upgrade() -> None:
         sa.Column("total_latency_ms", sa.Integer, nullable=False, server_default="0"),
         sa.UniqueConstraint("company_id", "provider_id", "date", name="uq_usage_daily"),
     )
-    op.create_index("ix_pu_date", "provider_usage", ["date"])
+    op.execute("CREATE INDEX IF NOT EXISTS ix_pu_date ON provider_usage (date)")
 
-    # ── Seed default providers ───────────────────────────────────────
-    providers_table = sa.table(
-        "integration_providers",
-        sa.column("category", sa.String),
-        sa.column("code", sa.String),
-        sa.column("name", sa.String),
-        sa.column("description", sa.Text),
-        sa.column("is_active", sa.Boolean),
-        sa.column("version", sa.String),
-    )
+    # ── Seed default providers (skip if already populated) ─────────
+    bind = op.get_bind()
+    row_count = bind.execute(sa.text("SELECT COUNT(*) FROM integration_providers")).scalar()
+    if row_count == 0:
+        providers_table = sa.table(
+            "integration_providers",
+            sa.column("category", sa.String),
+            sa.column("code", sa.String),
+            sa.column("name", sa.String),
+            sa.column("description", sa.Text),
+            sa.column("is_active", sa.Boolean),
+            sa.column("version", sa.String),
+        )
 
-    op.bulk_insert(providers_table, [
+        op.bulk_insert(providers_table, [
         # SMS
         {"category": "sms", "code": "twilio_sms",     "name": "Twilio SMS",         "description": "Twilio programmable SMS & Verify", "is_active": True, "version": "1.0"},
         {"category": "sms", "code": "msg91_sms",      "name": "MSG91",              "description": "MSG91 transactional & OTP SMS",     "is_active": True, "version": "1.0"},
@@ -158,20 +172,18 @@ def upgrade() -> None:
         {"category": "bank", "code": "setu_bank",      "name": "Setu",             "description": "Setu fintech APIs",                   "is_active": True, "version": "1.0"},
     ])
 
-    # Add integration permissions
-    perms_table = sa.table(
-        "permissions",
-        sa.column("code", sa.String),
-        sa.column("name", sa.String),
-        sa.column("module", sa.String),
-        sa.column("description", sa.Text),
-    )
-    op.bulk_insert(perms_table, [
-        {"code": "integrations.view",       "name": "View Integrations",       "module": "integrations", "description": "View integration dashboard & logs"},
-        {"code": "integrations.manage",     "name": "Manage Integrations",     "module": "integrations", "description": "Configure company integrations"},
-        {"code": "integrations.admin",      "name": "Admin Integrations",      "module": "integrations", "description": "Manage provider catalogue & global defaults"},
-        {"code": "integrations.secrets",    "name": "Manage Secrets",          "module": "integrations", "description": "View and edit provider credentials"},
-    ])
+    # Add integration permissions (idempotent via raw SQL)
+    for code, name, desc in [
+        ("integrations.view",    "View Integrations",   "View integration dashboard & logs"),
+        ("integrations.manage",  "Manage Integrations", "Configure company integrations"),
+        ("integrations.admin",   "Admin Integrations",  "Manage provider catalogue & global defaults"),
+        ("integrations.secrets", "Manage Secrets",      "View and edit provider credentials"),
+    ]:
+        op.execute(
+            f"INSERT INTO permissions (code, name, module, description) "
+            f"VALUES ('{code}', '{name}', 'integrations', '{desc}') "
+            f"ON CONFLICT (code) DO NOTHING"
+        )
 
 
 def downgrade() -> None:

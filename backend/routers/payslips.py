@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from models.payslip import Payslip
-from models.employee import Employee
 from models.user import User
 from schemas.payslip import PayslipGenerateRequest, PayslipResponse
 from services.payslip_service import generate_or_regenerate_payslip
@@ -12,7 +11,7 @@ router = APIRouter()
 
 
 def _to_response(payslip: Payslip, db: Session) -> PayslipResponse:
-    emp = db.query(Employee).filter(Employee.id == payslip.employee_id).first()
+    emp = db.query(User).filter(User.id == payslip.employee_id).first()
     return PayslipResponse(
         id=payslip.id,
         employee_id=payslip.employee_id,

@@ -379,7 +379,7 @@ export default function CompanyIntegrations() {
                           ) : (
                             <span className="badge bg-warning text-dark">Not Set</span>
                           )}
-                          {isMaster && (
+                          {(isMaster || auth?.role === "admin") && (
                             <button className="btn btn-link btn-sm p-0 ms-2"
                               onClick={() => { setEditCreds(editCreds === ci.id ? null : ci.id); setEditCredFields([{ key: "", value: "" }]); }}>
                               {editCreds === ci.id ? "Cancel" : "Edit"}
@@ -404,7 +404,7 @@ export default function CompanyIntegrations() {
                               onClick={() => handleTest(ci.provider_id)}>
                               {testing === ci.provider_id ? "…" : "🔗 Test"}
                             </button>
-                            {isMaster && (
+                            {(isMaster || auth?.role === "admin") && (
                               <button className="btn btn-outline-danger" onClick={() => handleDelete(ci.id)}>🗑️</button>
                             )}
                           </div>
