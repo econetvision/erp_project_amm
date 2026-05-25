@@ -78,8 +78,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("erp_locked");
   }
 
+  function switchCompany(companyId: number) {
+    if (auth) {
+      const updated = { ...auth, company_id: companyId };
+      setAuth(updated);
+      localStorage.setItem("erp_auth", JSON.stringify(updated));
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ auth, locked, login, logout, lock, unlock }}>
+    <AuthContext.Provider value={{ auth, locked, login, logout, lock, unlock, switchCompany }}>
       {children}
     </AuthContext.Provider>
   );

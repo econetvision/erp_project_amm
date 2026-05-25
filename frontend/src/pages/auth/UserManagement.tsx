@@ -9,7 +9,7 @@ import type { User } from "../../types/auth";
 
 const EMPTY = {
   username: "", password: "", confirmPassword: "", role: "worker",
-  employee_id: "", display_name: "", email: "", phone: "",
+  employee_id: "", display_name: "", email: "", phone: "", company_id: "",
 };
 const STEPS = [
   { title: "Account", icon: "🔑" },
@@ -73,7 +73,8 @@ export default function UserManagement() {
       await createUser({
         username: form.username,
         password: form.password,
-        role: form.role as "admin" | "supervisor" | "worker",
+        role: form.role as "master" | "admin" | "supervisor" | "worker",
+        company_id: form.company_id ? parseInt(form.company_id) : undefined,
         employee_id: form.employee_id ? parseInt(form.employee_id) : null,
         display_name: form.display_name || undefined,
         email: form.email || undefined,
@@ -129,7 +130,7 @@ export default function UserManagement() {
     finally { setLoading(false); }
   }
 
-  const ROLE_BADGE: Record<string, string> = { admin: "danger", supervisor: "warning", worker: "success" };
+  const ROLE_BADGE: Record<string, string> = { master: "dark", admin: "danger", supervisor: "warning", worker: "success" };
 
   function getPageNumbers(): (number | "...")[] {
     const arr: (number | "...")[] = [];
@@ -170,6 +171,7 @@ export default function UserManagement() {
                     <div className="col-md-6">
                       <label className="form-label fw-semibold">Role <span className="text-danger">*</span></label>
                       <select className="form-select" value={form.role} onChange={set("role")}>
+                        <option value="master">Master</option>
                         <option value="admin">Admin</option>
                         <option value="supervisor">Supervisor</option>
                         <option value="worker">Worker</option>
@@ -329,6 +331,7 @@ export default function UserManagement() {
                   <label className="form-label fw-semibold">Role</label>
                   <select className="form-select" value={editForm.role}
                     onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
+                    <option value="master">Master</option>
                     <option value="admin">Admin</option>
                     <option value="supervisor">Supervisor</option>
                     <option value="worker">Worker</option>

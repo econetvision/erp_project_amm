@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, DateTime, Text, Date, Float
+from sqlalchemy import Column, Integer, String, Numeric, DateTime, Text, Date, Float, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -9,6 +9,7 @@ class Employee(Base):
     __tablename__ = "employees"
 
     id                  = Column(Integer, primary_key=True, index=True)
+    company_id          = Column(Integer, ForeignKey("companies.id", ondelete="SET NULL"), nullable=True)
     name                = Column(String(255), nullable=False)
     gender              = Column(String(10), nullable=True)           # male | female | other
     date_of_birth       = Column(Date, nullable=True)

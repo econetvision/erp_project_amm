@@ -1,7 +1,35 @@
 -- ERP DATABASE SCHEMA
 
+-- ── Companies ────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS companies (
+    id              SERIAL PRIMARY KEY,
+    name            VARCHAR(255)   NOT NULL UNIQUE,
+    code            VARCHAR(50)    NOT NULL UNIQUE,
+    logo_path       VARCHAR(500),
+    address         TEXT,
+    city            VARCHAR(100),
+    state           VARCHAR(100),
+    country         VARCHAR(100)   DEFAULT 'India',
+    pincode         VARCHAR(10),
+    phone           VARCHAR(20),
+    email           VARCHAR(255),
+    website         VARCHAR(255),
+    gst_number      VARCHAR(20),
+    pan_number      VARCHAR(10),
+    timezone        VARCHAR(50)    DEFAULT 'Asia/Kolkata',
+    currency        VARCHAR(10)    DEFAULT 'INR',
+    is_active       BOOLEAN        NOT NULL DEFAULT TRUE,
+    theme_config    JSONB,
+    payroll_config  JSONB,
+    attendance_config JSONB,
+    features        JSONB,
+    created_at      TIMESTAMPTZ    DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ    DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS employees (
     id                  SERIAL PRIMARY KEY,
+    company_id          INTEGER        REFERENCES companies(id) ON DELETE SET NULL,
     name                VARCHAR(255)   NOT NULL,
     gender              VARCHAR(10),
     date_of_birth       DATE,
@@ -39,12 +67,14 @@ CREATE TABLE IF NOT EXISTS users (
     id            SERIAL PRIMARY KEY,
     username      VARCHAR(50)    NOT NULL UNIQUE,
     password_hash VARCHAR(255)   NOT NULL,
-    role          VARCHAR(20)    NOT NULL CHECK (role IN ('admin','supervisor','worker')),
+    role          VARCHAR(20)    NOT NULL CHECK (role IN ('master','admin','supervisor','worker')),
+    company_id    INTEGER        REFERENCES companies(id) ON DELETE SET NULL,
     employee_id   INTEGER        REFERENCES employees(id) ON DELETE SET NULL,
     email         VARCHAR(255),
     display_name  VARCHAR(255),
     phone         VARCHAR(20),
     photo_path    VARCHAR(500),
+    is_active     BOOLEAN        NOT NULL DEFAULT TRUE,
     theme_preference JSONB,
     created_at    TIMESTAMP      NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMP      NOT NULL DEFAULT NOW()
@@ -305,3 +335,170 @@ CREATE TABLE IF NOT EXISTS employee_location_assignments (
 
 CREATE INDEX IF NOT EXISTS idx_ela_employee ON employee_location_assignments(employee_id);
 CREATE INDEX IF NOT EXISTS idx_ela_location ON employee_location_assignments(location_id);
+
+-- ── Permissions ──────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS permissions (
+    id          SERIAL PRIMARY KEY,
+    code        VARCHAR(100)   NOT NULL UNIQUE,
+    name        VARCHAR(255)   NOT NULL,
+    module      VARCHAR(50)    NOT NULL,
+    description TEXT,
+    created_at  TIMESTAMPTZ    DEFAULT NOW()
+);
+
+-- ── Roles ────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS roles (
+    id          SERIAL PRIMARY KEY,
+    name        VARCHAR(50)    NOT NULL,
+    company_id  INTEGER        REFERENCES companies(id) ON DELETE CASCADE,
+    is_system   BOOLEAN        NOT NULL DEFAULT FALSE,
+    description TEXT,
+    created_at  TIMESTAMPTZ    DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ    DEFAULT NOW(),
+    UNIQUE(name, company_id)
+);
+
+-- ── Role Permissions ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS role_permissions (
+    id            SERIAL PRIMARY KEY,
+    role_id       INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    permission_id INTEGER NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+    UNIQUE(role_id, permission_id)
+);
+
+-- ── Audit Logs ───────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id          SERIAL PRIMARY KEY,
+    user_id     INTEGER     REFERENCES users(id) ON DELETE SET NULL,
+    company_id  INTEGER     REFERENCES companies(id) ON DELETE SET NULL,
+    action      VARCHAR(50) NOT NULL,
+    entity_type VARCHAR(50),
+    entity_id   INTEGER,
+    details     TEXT,
+    ip_address  VARCHAR(45),
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user    ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_company ON audit_logs(company_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_employees_company  ON employees(company_id);
+
+-- ═══════════════════════════════════════════════════════════════════
+-- INTEGRATION MANAGEMENT TABLES
+-- ═══════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS integration_providers (
+    id              SERIAL PRIMARY KEY,
+    category        VARCHAR(50)  NOT NULL,
+    code            VARCHAR(100) NOT NULL UNIQUE,
+    name            VARCHAR(255) NOT NULL,
+    description     TEXT,
+    logo_url        VARCHAR(500),
+    config_schema   JSONB,
+    is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+    version         VARCHAR(20) DEFAULT '1.0',
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS company_integrations (
+    id                  SERIAL PRIMARY KEY,
+    company_id          INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    provider_id         INTEGER NOT NULL REFERENCES integration_providers(id) ON DELETE CASCADE,
+    category            VARCHAR(50)  NOT NULL,
+    is_enabled          BOOLEAN NOT NULL DEFAULT TRUE,
+    is_default          BOOLEAN NOT NULL DEFAULT FALSE,
+    priority            INTEGER NOT NULL DEFAULT 0,
+    is_fallback         BOOLEAN NOT NULL DEFAULT FALSE,
+    credentials         JSONB,
+    config              JSONB,
+    daily_quota         INTEGER,
+    monthly_quota       INTEGER,
+    rate_limit_per_min  INTEGER,
+    last_health_check   TIMESTAMPTZ,
+    health_status       VARCHAR(20) DEFAULT 'unknown',
+    created_at          TIMESTAMPTZ DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(company_id, provider_id)
+);
+CREATE INDEX IF NOT EXISTS ix_ci_company_category ON company_integrations(company_id, category);
+
+CREATE TABLE IF NOT EXISTS global_integration_defaults (
+    id                      SERIAL PRIMARY KEY,
+    category                VARCHAR(50) NOT NULL UNIQUE,
+    provider_id             INTEGER REFERENCES integration_providers(id) ON DELETE SET NULL,
+    fallback_provider_id    INTEGER REFERENCES integration_providers(id) ON DELETE SET NULL,
+    credentials             JSONB,
+    config                  JSONB,
+    is_enabled              BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at              TIMESTAMPTZ DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS provider_logs (
+    id              SERIAL PRIMARY KEY,
+    company_id      INTEGER REFERENCES companies(id) ON DELETE SET NULL,
+    provider_id     INTEGER REFERENCES integration_providers(id) ON DELETE SET NULL,
+    category        VARCHAR(50)  NOT NULL,
+    action          VARCHAR(100) NOT NULL,
+    status          VARCHAR(20)  NOT NULL DEFAULT 'pending',
+    request_data    JSONB,
+    response_data   JSONB,
+    error_message   TEXT,
+    latency_ms      INTEGER,
+    retry_count     INTEGER NOT NULL DEFAULT 0,
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS ix_pl_company_category ON provider_logs(company_id, category);
+CREATE INDEX IF NOT EXISTS ix_pl_created ON provider_logs(created_at);
+
+CREATE TABLE IF NOT EXISTS webhook_logs (
+    id              SERIAL PRIMARY KEY,
+    provider_id     INTEGER REFERENCES integration_providers(id) ON DELETE SET NULL,
+    company_id      INTEGER REFERENCES companies(id) ON DELETE SET NULL,
+    event_type      VARCHAR(100),
+    payload         JSONB,
+    headers         JSONB,
+    status          VARCHAR(20) NOT NULL DEFAULT 'received',
+    error_message   TEXT,
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS provider_usage (
+    id                  SERIAL PRIMARY KEY,
+    company_id          INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    provider_id         INTEGER NOT NULL REFERENCES integration_providers(id) ON DELETE CASCADE,
+    category            VARCHAR(50) NOT NULL,
+    date                TIMESTAMPTZ NOT NULL,
+    request_count       INTEGER NOT NULL DEFAULT 0,
+    success_count       INTEGER NOT NULL DEFAULT 0,
+    failure_count       INTEGER NOT NULL DEFAULT 0,
+    total_latency_ms    INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(company_id, provider_id, date)
+);
+CREATE INDEX IF NOT EXISTS ix_pu_date ON provider_usage(date);
+
+-- ================================================================
+-- PAYSLIP TEMPLATES
+-- ================================================================
+CREATE TABLE IF NOT EXISTS payslip_templates (
+    id              SERIAL PRIMARY KEY,
+    name            VARCHAR(120) NOT NULL,
+    description     VARCHAR(500),
+    company_id      INTEGER REFERENCES companies(id) ON DELETE CASCADE,
+    is_default      BOOLEAN NOT NULL DEFAULT false,
+    is_active       BOOLEAN NOT NULL DEFAULT true,
+    layout          JSONB NOT NULL DEFAULT '{}'::jsonb,
+    logo_url        TEXT,
+    company_name    VARCHAR(200),
+    company_address TEXT,
+    company_phone   VARCHAR(50),
+    company_email   VARCHAR(200),
+    footer_text     TEXT,
+    signature_label VARCHAR(200),
+    created_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at      TIMESTAMPTZ DEFAULT now(),
+    updated_at      TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_payslip_templates_company ON payslip_templates(company_id);

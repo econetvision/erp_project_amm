@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from database import engine, Base
 from routers import employees, attendance, payslips, auth, holidays, vehicles, assignments, tracking, jobs, notifications, payroll, locations
+from routers import companies, rbac, master as master_router, integrations as integrations_router
+from routers import payslip_templates
 from logging_config import setup_logging, get_logger
 
 # Setup logging before anything else
@@ -20,6 +22,10 @@ import models.salary_structure  # noqa: F401
 import models.advance           # noqa: F401
 import models.payroll_run       # noqa: F401
 import models.work_location     # noqa: F401
+import models.company           # noqa: F401
+import models.rbac              # noqa: F401
+import models.integration       # noqa: F401
+import models.payslip_template  # noqa: F401
 
 # ── Run DB migrations on startup ──────────────────────────────────────────────
 from alembic.config import Config as AlembicConfig
@@ -74,6 +80,11 @@ app.include_router(jobs.router,        prefix="/api/jobs",        tags=["Jobs"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
 app.include_router(payroll.router, prefix="/api/payroll", tags=["Payroll"])
 app.include_router(locations.router, prefix="/api/locations", tags=["Work Locations"])
+app.include_router(companies.router, prefix="/api/companies", tags=["Companies"])
+app.include_router(rbac.router, prefix="/api/rbac", tags=["RBAC"])
+app.include_router(master_router.router, prefix="/api/master", tags=["Master"])
+app.include_router(integrations_router.router, prefix="/api/integrations", tags=["Integrations"])
+app.include_router(payslip_templates.router, prefix="/api/payslip-templates", tags=["Payslip Templates"])
 
 
 # ── Scheduled Job Runner ──────────────────────────────────────────────────────

@@ -1,8 +1,9 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import NotificationBell from "./NotificationBell";
+import CompanySwitcher from "./CompanySwitcher";
 import { useAuth } from "../context/AuthContext";
 
-const ROLE_BADGE: Record<string, string> = { admin: "danger", supervisor: "warning", worker: "success" };
+const ROLE_BADGE: Record<string, string> = { master: "dark", admin: "danger", supervisor: "warning", worker: "success" };
 
 export default function Navbar() {
   const { auth, logout, lock } = useAuth();
@@ -24,6 +25,7 @@ export default function Navbar() {
       <div className="erp-topbar__right">
         {auth && (
           <>
+            {auth.role === "master" && <CompanySwitcher />}
             <NotificationBell />
 
             <NavLink to="/settings" className="erp-topbar__icon-btn" title="Settings">
