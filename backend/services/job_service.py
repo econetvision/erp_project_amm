@@ -2,7 +2,7 @@ import logging
 from datetime import date, datetime, time
 from sqlalchemy.orm import Session
 from sqlalchemy import extract
-from models.employee import Employee
+from models.user import User
 from models.attendance import Attendance
 from models.user import User
 from models.notification import Notification
@@ -42,7 +42,7 @@ def execute_job(db: Session, job: JobRoutine, target_date: date | None = None):
 
 
 def _absent_report(db: Session, target: date, filters: dict | None) -> dict:
-    employees = db.query(Employee).order_by(Employee.id).all()
+    employees = db.query(User).order_by(User.id).all()
     present_ids = {
         a.employee_id
         for a in db.query(Attendance).filter(Attendance.date == target).all()
@@ -78,7 +78,7 @@ def _late_report(db: Session, target: date, filters: dict | None) -> dict:
     )
     late = []
     for r in records:
-        emp = db.query(Employee).filter(Employee.id == r.employee_id).first()
+        emp = db.query(User).filter(User.id == r.employee_id).first()
         if emp and is_late_arrival(r.entry_time, emp.shift):
             shift_start = SHIFTS.get(emp.shift, {}).get("start", time(0, 0))
             late.append({"emp": emp, "entry": r.entry_time, "shift_start": shift_start})

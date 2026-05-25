@@ -33,12 +33,13 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == payload.username).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    token = create_access_token({"sub": str(user.id), "role": user.role})
+    token = create_access_token({"sub": str(user.id), "role": user.role, "company_id": user.company_id})
     return TokenResponse(
         access_token=token,
         role=user.role,
         username=user.username,
-        employee_id=user.employee_id,
+        company_id=user.company_id,
+        employee_id=user.id,
         email=user.email,
         display_name=user.display_name,
         lock_timeout=user.lock_timeout,
@@ -109,9 +110,12 @@ def list_users(
     per_page: int = Query(10, ge=1, le=100),
     search: str = Query("", alias="q"),
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ):
     q = db.query(User)
+    # Non-master users should not see master accounts
+    if current_user.role != "master":
+        q = q.filter(User.role != "master")
     if search:
         q = q.filter(
             or_(
@@ -135,11 +139,14 @@ def list_users(
 def create_user(payload: UserCreate, db: Session = Depends(get_db), _: User = Depends(require_admin)):
     if db.query(User).filter(User.username == payload.username).first():
         raise HTTPException(status_code=400, detail="Username already exists")
+    # Only master can create master users
+    if payload.role == "master" and _.role != "master":
+        raise HTTPException(status_code=403, detail="Only master users can create master accounts")
     user = User(
         username=payload.username,
         password_hash=hash_password(payload.password),
         role=payload.role,
-        employee_id=payload.employee_id,
+        company_id=payload.company_id,
         email=payload.email,
         display_name=payload.display_name,
         phone=payload.phone,

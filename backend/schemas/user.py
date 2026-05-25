@@ -11,8 +11,8 @@ class LoginRequest(BaseModel):
 class UserCreate(BaseModel):
     username:     str
     password:     str
-    role:         Literal["admin", "supervisor", "worker"]
-    employee_id:  Optional[int] = None
+    role:         Literal["master", "admin", "supervisor", "worker"]
+    company_id:   Optional[int] = None
     email:        Optional[str] = None
     display_name: Optional[str] = None
     phone:        Optional[str] = None
@@ -36,8 +36,8 @@ class AdminUserUpdate(BaseModel):
     display_name: Optional[str] = Field(None, max_length=255)
     email:        Optional[str] = Field(None, max_length=255)
     phone:        Optional[str] = Field(None, max_length=20)
-    role:         Optional[Literal["admin", "supervisor", "worker"]] = None
-    employee_id:  Optional[int] = None
+    role:         Optional[Literal["master", "admin", "supervisor", "worker"]] = None
+    company_id:   Optional[int] = None
     password:     Optional[str] = Field(None, min_length=4)
 
 
@@ -50,14 +50,16 @@ class UserResponse(BaseModel):
     id:           int
     username:     str
     role:         str
-    employee_id:  Optional[int] = None
+    company_id:   Optional[int] = None
     email:        Optional[str] = None
     display_name: Optional[str] = None
     phone:        Optional[str] = None
     photo_path:   Optional[str] = None
+    name:         Optional[str] = None
     has_pin:      bool = False
     lock_timeout: Optional[int] = None
     theme_preference: Optional[dict] = None
+    is_active:    Optional[bool] = True
     created_at:   Optional[datetime] = None
     updated_at:   Optional[datetime] = None
 
@@ -82,6 +84,7 @@ class TokenResponse(BaseModel):
     token_type:   str = "bearer"
     role:         str
     username:     str
+    company_id:   Optional[int] = None
     employee_id:  Optional[int] = None
     email:        Optional[str] = None
     display_name: Optional[str] = None

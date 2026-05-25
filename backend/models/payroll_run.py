@@ -28,7 +28,7 @@ class PayrollItem(Base):
 
     id                   = Column(Integer, primary_key=True, index=True)
     run_id               = Column(Integer, ForeignKey("payroll_runs.id", ondelete="CASCADE"), nullable=False)
-    employee_id          = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False)
+    employee_id          = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     basic_pay            = Column(Numeric(12, 2), nullable=False)
     earnings_breakdown   = Column(JSONB, nullable=False, default={})   # {HRA: 5000, DA: 2000, ...}
     deductions_breakdown = Column(JSONB, nullable=False, default={})   # {ESI: 375, PF: 6000, ...}

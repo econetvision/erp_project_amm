@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from database import get_db
 from models.vehicle import Vehicle
 from models.vehicle_assignment import VehicleAssignment
-from models.employee import Employee
 from models.user import User
 from schemas.vehicle_assignment import AssignRequest, AssignmentResponse
 from auth.dependencies import require_admin_or_supervisor
@@ -44,7 +43,7 @@ def assign_vehicle(payload: AssignRequest, db: Session = Depends(get_db), _: Use
     if vehicle.status == "maintenance":
         raise HTTPException(status_code=400, detail="Vehicle is under maintenance")
 
-    employee = db.query(Employee).filter(Employee.id == payload.employee_id).first()
+    employee = db.query(User).filter(User.id == payload.employee_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
 

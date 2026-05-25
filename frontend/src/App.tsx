@@ -18,7 +18,6 @@ import VehicleForm      from "./pages/vehicles/VehicleForm";
 import AssignVehicle    from "./pages/tracking/AssignVehicle";
 import LiveTracking     from "./pages/tracking/LiveTracking";
 import LandingPage      from "./pages/landing/LandingPage";
-import Settings         from "./pages/settings/Settings";
 import JobList          from "./pages/jobs/JobList";
 import JobForm          from "./pages/jobs/JobForm";
 import SalaryStructures from "./pages/payroll/SalaryStructures";
@@ -26,8 +25,17 @@ import PayrollRunPage   from "./pages/payroll/PayrollRun";
 import PayrollDetail    from "./pages/payroll/PayrollDetail";
 import AdvancesPage     from "./pages/payroll/Advances";
 import PayrollSettings  from "./pages/payroll/PayrollSettings";
+import PayslipBuilder   from "./pages/payroll/PayslipBuilder";
 import WorkLocations    from "./pages/locations/WorkLocations";
 import Profile          from "./pages/profile/Profile";
+import MasterDashboard  from "./pages/master/MasterDashboard";
+import CompanyList      from "./pages/companies/CompanyList";
+import CompanySettings  from "./pages/companies/CompanySettings";
+import RolesPermissions from "./pages/rbac/RolesPermissions";
+import AuditLogs        from "./pages/rbac/AuditLogs";
+import IntegrationDashboard from "./pages/integrations/IntegrationDashboard";
+import ProviderManagement   from "./pages/integrations/ProviderManagement";
+import CompanyIntegrations  from "./pages/integrations/CompanyIntegrations";
 
 // Redirect unauthenticated users to login
 function RequireAuth({ children, roles }: { children: ReactNode; roles?: string[] }) {
@@ -52,76 +60,113 @@ function AppRoutes() {
 
       <Route element={<Layout />}>
 
-        {/* Admin + Supervisor */}
+        {/* Master only */}
+        <Route path="master" element={
+          <RequireAuth roles={["master"]}><MasterDashboard /></RequireAuth>
+        } />
+        <Route path="companies" element={
+          <RequireAuth roles={["master"]}><CompanyList /></RequireAuth>
+        } />
+        <Route path="companies/:id" element={
+          <RequireAuth roles={["master"]}><CompanySettings /></RequireAuth>
+        } />
+        <Route path="audit-logs" element={
+          <RequireAuth roles={["master","admin"]}><AuditLogs /></RequireAuth>
+        } />
+
+        {/* Integrations — master + admin */}
+        <Route path="integrations" element={
+          <RequireAuth roles={["master","admin"]}><IntegrationDashboard /></RequireAuth>
+        } />
+        <Route path="integrations/providers" element={
+          <RequireAuth roles={["master"]}><ProviderManagement /></RequireAuth>
+        } />
+        <Route path="integrations/company" element={
+          <RequireAuth roles={["master","admin"]}><CompanyIntegrations /></RequireAuth>
+        } />
+        <Route path="integrations/company/:companyId" element={
+          <RequireAuth roles={["master"]}><CompanyIntegrations /></RequireAuth>
+        } />
+
+        {/* Admin + Supervisor + Master */}
         <Route path="employees" element={
-          <RequireAuth roles={["admin","supervisor"]}><EmployeeList /></RequireAuth>
+          <RequireAuth roles={["master","admin","supervisor"]}><EmployeeList /></RequireAuth>
         } />
         <Route path="employees/new" element={
-          <RequireAuth roles={["admin","supervisor"]}><EmployeeForm /></RequireAuth>
+          <RequireAuth roles={["master","admin","supervisor"]}><EmployeeForm /></RequireAuth>
         } />
         <Route path="employees/:id/edit" element={
-          <RequireAuth roles={["admin","supervisor"]}><EmployeeForm /></RequireAuth>
+          <RequireAuth roles={["master","admin","supervisor"]}><EmployeeForm /></RequireAuth>
         } />
         <Route path="work-locations" element={
-          <RequireAuth roles={["admin","supervisor"]}><WorkLocations /></RequireAuth>
+          <RequireAuth roles={["master","admin","supervisor"]}><WorkLocations /></RequireAuth>
         } />
         <Route path="dashboard" element={
-          <RequireAuth roles={["admin","supervisor"]}><Dashboard /></RequireAuth>
+          <RequireAuth roles={["master","admin","supervisor"]}><Dashboard /></RequireAuth>
         } />
         <Route path="attendance/report" element={
-          <RequireAuth roles={["admin","supervisor"]}><AttendanceReport /></RequireAuth>
+          <RequireAuth roles={["master","admin","supervisor"]}><AttendanceReport /></RequireAuth>
         } />
 
-        {/* Admin only */}
+        {/* Admin + Master only */}
         <Route path="payslips" element={
-          <RequireAuth roles={["admin"]}><PayslipGenerate /></RequireAuth>
+          <RequireAuth roles={["master","admin"]}><PayslipGenerate /></RequireAuth>
         } />
         <Route path="payslips/:employeeId/:year/:month" element={
-          <RequireAuth roles={["admin"]}><PayslipView /></RequireAuth>
+          <RequireAuth roles={["master","admin"]}><PayslipView /></RequireAuth>
         } />
         <Route path="users" element={
-          <RequireAuth roles={["admin"]}><UserManagement /></RequireAuth>
+          <RequireAuth roles={["master","admin"]}><UserManagement /></RequireAuth>
         } />
         <Route path="jobs" element={
-          <RequireAuth roles={["admin"]}><JobList /></RequireAuth>
+          <RequireAuth roles={["master","admin"]}><JobList /></RequireAuth>
         } />
         <Route path="jobs/new" element={
-          <RequireAuth roles={["admin"]}><JobForm /></RequireAuth>
+          <RequireAuth roles={["master","admin"]}><JobForm /></RequireAuth>
         } />
         <Route path="jobs/:id/edit" element={
-          <RequireAuth roles={["admin"]}><JobForm /></RequireAuth>
+          <RequireAuth roles={["master","admin"]}><JobForm /></RequireAuth>
         } />
         <Route path="payroll/structures" element={
-          <RequireAuth roles={["admin"]}><SalaryStructures /></RequireAuth>
+          <RequireAuth roles={["master","admin"]}><SalaryStructures /></RequireAuth>
         } />
         <Route path="payroll/runs" element={
-          <RequireAuth roles={["admin"]}><PayrollRunPage /></RequireAuth>
+          <RequireAuth roles={["master","admin"]}><PayrollRunPage /></RequireAuth>
         } />
         <Route path="payroll/runs/:id" element={
-          <RequireAuth roles={["admin"]}><PayrollDetail /></RequireAuth>
+          <RequireAuth roles={["master","admin"]}><PayrollDetail /></RequireAuth>
         } />
         <Route path="payroll/advances" element={
-          <RequireAuth roles={["admin"]}><AdvancesPage /></RequireAuth>
+          <RequireAuth roles={["master","admin"]}><AdvancesPage /></RequireAuth>
         } />
         <Route path="payroll/settings" element={
-          <RequireAuth roles={["admin"]}><PayrollSettings /></RequireAuth>
+          <RequireAuth roles={["master","admin"]}><PayrollSettings /></RequireAuth>
+        } />
+        <Route path="payroll/templates" element={
+          <RequireAuth roles={["master","admin"]}><PayslipBuilder /></RequireAuth>
         } />
         <Route path="vehicles/new" element={
-          <RequireAuth roles={["admin"]}><VehicleForm /></RequireAuth>
+          <RequireAuth roles={["master","admin"]}><VehicleForm /></RequireAuth>
         } />
         <Route path="vehicles/:id/edit" element={
-          <RequireAuth roles={["admin"]}><VehicleForm /></RequireAuth>
+          <RequireAuth roles={["master","admin"]}><VehicleForm /></RequireAuth>
+        } />
+        <Route path="company-settings" element={
+          <RequireAuth roles={["master","admin"]}><CompanySettings /></RequireAuth>
+        } />
+        <Route path="roles-permissions" element={
+          <RequireAuth roles={["master","admin"]}><RolesPermissions /></RequireAuth>
         } />
 
-        {/* Admin + Supervisor */}
+        {/* Admin + Supervisor + Master */}
         <Route path="vehicles" element={
-          <RequireAuth roles={["admin","supervisor"]}><VehicleList /></RequireAuth>
+          <RequireAuth roles={["master","admin","supervisor"]}><VehicleList /></RequireAuth>
         } />
         <Route path="tracking/assign" element={
-          <RequireAuth roles={["admin","supervisor"]}><AssignVehicle /></RequireAuth>
+          <RequireAuth roles={["master","admin","supervisor"]}><AssignVehicle /></RequireAuth>
         } />
         <Route path="tracking/live" element={
-          <RequireAuth roles={["admin","supervisor"]}><LiveTracking /></RequireAuth>
+          <RequireAuth roles={["master","admin","supervisor"]}><LiveTracking /></RequireAuth>
         } />
 
         {/* All roles */}
@@ -131,9 +176,7 @@ function AppRoutes() {
         <Route path="profile" element={
           <RequireAuth><Profile /></RequireAuth>
         } />
-        <Route path="settings" element={
-          <RequireAuth><Settings /></RequireAuth>
-        } />
+        <Route path="settings" element={<Navigate to="/profile" replace />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

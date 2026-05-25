@@ -7,7 +7,7 @@ class Advance(Base):
     __tablename__ = "advances"
 
     id                = Column(Integer, primary_key=True, index=True)
-    employee_id       = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False)
+    employee_id       = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     amount            = Column(Numeric(12, 2), nullable=False)
     disbursed_date    = Column(Date, nullable=False)
     repayment_months  = Column(Integer, nullable=False, default=1)

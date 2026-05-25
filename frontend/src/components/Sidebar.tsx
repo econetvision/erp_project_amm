@@ -43,45 +43,64 @@ interface NavSection {
 
 const NAV_SECTIONS: NavSection[] = [
   {
+    title: "MASTER",
+    items: [
+      { to: "/master",           label: "Overview",      icon: "dashboard",  roles: ["master"] },
+      { to: "/companies",        label: "Companies",     icon: "dashboard",  roles: ["master"] },
+      { to: "/roles-permissions", label: "Roles",        icon: "users",      roles: ["master"] },
+      { to: "/audit-logs",       label: "Audit Logs",    icon: "reports",    roles: ["master"] },
+    ],
+  },
+  {
     title: "MAIN",
     items: [
-      { to: "/dashboard",        label: "Dashboard",   icon: "dashboard",  roles: ["admin","supervisor"] },
-      { to: "/attendance",        label: "Attendance",  icon: "attendance", roles: ["admin","supervisor","worker"] },
-      { to: "/attendance/report", label: "Reports",     icon: "reports",    roles: ["admin","supervisor"] },
+      { to: "/dashboard",        label: "Dashboard",   icon: "dashboard",  roles: ["master","admin","supervisor"] },
+      { to: "/attendance",        label: "Attendance",  icon: "attendance", roles: ["master","admin","supervisor","worker"] },
+      { to: "/attendance/report", label: "Reports",     icon: "reports",    roles: ["master","admin","supervisor"] },
     ],
   },
   {
     title: "WORKFORCE",
     items: [
-      { to: "/employees",      label: "Employees",      icon: "employees", roles: ["admin","supervisor"] },
-      { to: "/work-locations", label: "Work Locations", icon: "tracking",  roles: ["admin","supervisor"] },
-      { to: "/users",          label: "Users",          icon: "users",     roles: ["admin"] },
+      { to: "/employees",      label: "Employees",      icon: "employees", roles: ["master","admin","supervisor"] },
+      { to: "/work-locations", label: "Work Locations", icon: "tracking",  roles: ["master","admin","supervisor"] },
     ],
   },
   {
     title: "PAYROLL",
     items: [
-      { to: "/payslips",           label: "Payslips",    icon: "payslips",   roles: ["admin"] },
-      { to: "/payroll/runs",       label: "Payroll",     icon: "payroll",    roles: ["admin"] },
-      { to: "/payroll/structures", label: "Structures",  icon: "structures", roles: ["admin"] },
-      { to: "/payroll/advances",   label: "Advances",    icon: "advances",   roles: ["admin"] },
-      { to: "/payroll/settings",   label: "Settings",    icon: "payrollSettings", roles: ["admin"] },
+      { to: "/payslips",           label: "Payslips",    icon: "payslips",   roles: ["master","admin"] },
+      { to: "/payroll/runs",       label: "Payroll",     icon: "payroll",    roles: ["master","admin"] },
+      { to: "/payroll/structures", label: "Structures",  icon: "structures", roles: ["master","admin"] },
+      { to: "/payroll/advances",   label: "Advances",    icon: "advances",   roles: ["master","admin"] },
+      { to: "/payroll/templates",  label: "Templates",   icon: "payrollSettings", roles: ["master","admin"] },
+      { to: "/payroll/settings",   label: "Settings",    icon: "payrollSettings", roles: ["master","admin"] },
+    ],
+  },
+  {
+    title: "INTEGRATIONS",
+    items: [
+      { to: "/integrations",            label: "Dashboard",   icon: "settings",  roles: ["master","admin"] },
+      { to: "/integrations/providers",   label: "Providers",   icon: "settings",  roles: ["master"] },
+      { to: "/integrations/company",     label: "Company",     icon: "settings",  roles: ["master","admin"] },
     ],
   },
   {
     title: "FLEET",
     items: [
-      { to: "/vehicles",        label: "Vehicles",   icon: "vehicles", roles: ["admin","supervisor"] },
-      { to: "/tracking/assign", label: "Assign",     icon: "assign",   roles: ["admin","supervisor"] },
-      { to: "/tracking/live",   label: "Live Track", icon: "tracking", roles: ["admin","supervisor"] },
+      { to: "/vehicles",        label: "Vehicles",   icon: "vehicles", roles: ["master","admin","supervisor"] },
+      { to: "/tracking/assign", label: "Assign",     icon: "assign",   roles: ["master","admin","supervisor"] },
+      { to: "/tracking/live",   label: "Live Track", icon: "tracking", roles: ["master","admin","supervisor"] },
     ],
   },
   {
     title: "SYSTEM",
     items: [
-      { to: "/jobs",     label: "Jobs",     icon: "jobs",     roles: ["admin"] },
-      { to: "/profile",  label: "Profile",  icon: "profile",  roles: ["admin","supervisor","worker"] },
-      { to: "/settings", label: "Settings", icon: "settings", roles: ["admin","supervisor","worker"] },
+      { to: "/users",              label: "Users",        icon: "users",    roles: ["master","admin"] },
+      { to: "/jobs",              label: "Jobs",         icon: "jobs",     roles: ["master","admin"] },
+      { to: "/company-settings",  label: "Company",      icon: "settings", roles: ["master","admin"] },
+      { to: "/roles-permissions", label: "Roles",        icon: "users",    roles: ["master","admin"] },
+      { to: "/profile",           label: "Profile & Settings", icon: "profile",  roles: ["master","admin","supervisor","worker"] },
     ],
   },
 ];

@@ -3,14 +3,14 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func as sa_func
 from database import get_db
 from models.work_location import WorkLocation, EmployeeLocationAssignment
-from models.employee import Employee
+from models.user import User
 from models.user import User
 from schemas.work_location import (
     WorkLocationCreate, WorkLocationUpdate, WorkLocationResponse,
     EmployeeLocationAssignmentCreate, EmployeeLocationAssignmentResponse,
     BulkAssignRequest,
 )
-from auth.dependencies import require_admin_or_supervisor, require_admin
+from auth.dependencies import require_admin_or_supervisor, require_admin, get_current_user
 
 router = APIRouter()
 
@@ -18,13 +18,19 @@ router = APIRouter()
 # ── Stats endpoint ────────────────────────────────────────────────────────────
 
 @router.get("/stats")
-def location_stats(db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
-    total = db.query(WorkLocation).count()
-    active = db.query(WorkLocation).filter(WorkLocation.is_active == True).count()
-    total_assigned = db.query(EmployeeLocationAssignment).count()
+def location_stats(db: Session = Depends(get_db), current_user: User = Depends(require_admin_or_supervisor)):
+    q = db.query(WorkLocation)
+    if current_user.role != "master":
+        q = q.filter(WorkLocation.company_id == current_user.company_id)
+    total = q.count()
+    active = q.filter(WorkLocation.is_active == True).count()
+    aq = db.query(EmployeeLocationAssignment)
+    if current_user.role != "master":
+        aq = aq.join(WorkLocation).filter(WorkLocation.company_id == current_user.company_id)
+    total_assigned = aq.count()
     city_rows = (
-        db.query(WorkLocation.city, sa_func.count(WorkLocation.id))
-        .filter(WorkLocation.city.isnot(None), WorkLocation.city != "")
+        q.filter(WorkLocation.city.isnot(None), WorkLocation.city != "")
+        .with_entities(WorkLocation.city, sa_func.count(WorkLocation.id))
         .group_by(WorkLocation.city)
         .all()
     )
@@ -45,9 +51,12 @@ def list_locations(
     city: str = Query(""),
     active_only: bool = Query(True),
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin_or_supervisor),
+    current_user: User = Depends(require_admin_or_supervisor),
 ):
     q = db.query(WorkLocation)
+    # Company-scope: admin/supervisor see only their company's locations
+    if current_user.role != "master":
+        q = q.filter(WorkLocation.company_id == current_user.company_id)
     if active_only:
         q = q.filter(WorkLocation.is_active == True)
     if search:
@@ -80,7 +89,7 @@ def create_location(
         existing = db.query(WorkLocation).filter(WorkLocation.location_code == payload.location_code).first()
         if existing:
             raise HTTPException(status_code=400, detail="Location code already exists")
-    loc = WorkLocation(**payload.model_dump(), created_by=current.id)
+    loc = WorkLocation(**payload.model_dump(), company_id=current.company_id, created_by=current.id)
     db.add(loc)
     db.commit()
     db.refresh(loc)
@@ -143,7 +152,7 @@ def list_location_employees(location_id: int, db: Session = Depends(get_db), _: 
     )
     results = []
     for a in assignments:
-        emp = db.query(Employee).filter(Employee.id == a.employee_id).first()
+        emp = db.query(User).filter(User.id == a.employee_id).first()
         resp = EmployeeLocationAssignmentResponse(
             id=a.id,
             employee_id=a.employee_id,
@@ -164,7 +173,7 @@ def assign_employee(
     db: Session = Depends(get_db),
     current: User = Depends(require_admin_or_supervisor),
 ):
-    emp = db.query(Employee).filter(Employee.id == payload.employee_id).first()
+    emp = db.query(User).filter(User.id == payload.employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     loc = db.query(WorkLocation).filter(WorkLocation.id == payload.location_id).first()
@@ -226,7 +235,7 @@ def assign_bulk(
 
     assigned = 0
     for emp_id in payload.employee_ids:
-        emp = db.query(Employee).filter(Employee.id == emp_id).first()
+        emp = db.query(User).filter(User.id == emp_id).first()
         if not emp:
             continue
         existing = db.query(EmployeeLocationAssignment).filter(

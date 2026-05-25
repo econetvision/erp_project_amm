@@ -1,7 +1,7 @@
 from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from models.employee   import Employee
+from models.user import User
 from models.attendance import Attendance
 from models.payslip    import Payslip
 from schemas.payslip   import PayslipGenerateRequest
@@ -14,7 +14,7 @@ PF_RATE  = Decimal("0.12")
 
 
 def generate_or_regenerate_payslip(db: Session, request: PayslipGenerateRequest) -> Payslip:
-    employee = db.query(Employee).filter(Employee.id == request.employee_id).first()
+    employee = db.query(User).filter(User.id == request.employee_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
 

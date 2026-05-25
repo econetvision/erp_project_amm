@@ -1,15 +1,13 @@
 import { useEffect, useState, useCallback, type FormEvent } from "react";
 import { getUsers, createUser, deleteUser, updateUser } from "../../api/authApi";
-import { getAllEmployees } from "../../api/employeeApi";
 import AlertMessage from "../../components/AlertMessage";
 import ConfirmModal from "../../components/ConfirmModal";
 import MultiStepForm from "../../components/MultiStepForm";
-import type { Employee } from "../../types/employee";
 import type { User } from "../../types/auth";
 
 const EMPTY = {
   username: "", password: "", confirmPassword: "", role: "worker",
-  employee_id: "", display_name: "", email: "", phone: "",
+  display_name: "", email: "", phone: "", company_id: "",
 };
 const STEPS = [
   { title: "Account", icon: "🔑" },
@@ -19,7 +17,6 @@ const STEPS = [
 
 export default function UserManagement() {
   const [users, setUsers]         = useState<User[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
   const [form, setForm]           = useState(EMPTY);
   const [step, setStep]           = useState(0);
   const [alert, setAlert]         = useState({ type: "", message: "" });
@@ -32,7 +29,7 @@ export default function UserManagement() {
   const [showForm, setShowForm]   = useState(false);
   const [delTarget, setDelTarget] = useState<User | null>(null);
   const [editTarget, setEditTarget] = useState<User | null>(null);
-  const [editForm, setEditForm]   = useState({ display_name: "", email: "", phone: "", role: "worker", employee_id: "", password: "" });
+  const [editForm, setEditForm]   = useState({ display_name: "", email: "", phone: "", role: "worker", password: "" });
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -45,10 +42,6 @@ export default function UserManagement() {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
   useEffect(() => { setPage(1); }, [search]);
-
-  useEffect(() => {
-    getAllEmployees({ all: true }).then(r => setEmployees(r.data.items)).catch(() => {});
-  }, []);
 
   function set(field: string) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -73,8 +66,8 @@ export default function UserManagement() {
       await createUser({
         username: form.username,
         password: form.password,
-        role: form.role as "admin" | "supervisor" | "worker",
-        employee_id: form.employee_id ? parseInt(form.employee_id) : null,
+        role: form.role as "master" | "admin" | "supervisor" | "worker",
+        company_id: form.company_id ? parseInt(form.company_id) : undefined,
         display_name: form.display_name || undefined,
         email: form.email || undefined,
         phone: form.phone || undefined,
@@ -102,7 +95,6 @@ export default function UserManagement() {
       email: u.email || "",
       phone: u.phone || "",
       role: u.role,
-      employee_id: u.employee_id ? String(u.employee_id) : "",
       password: "",
     });
     setShowForm(false);
@@ -118,8 +110,6 @@ export default function UserManagement() {
       if (editForm.email) payload.email = editForm.email;
       if (editForm.phone) payload.phone = editForm.phone;
       if (editForm.role) payload.role = editForm.role;
-      if (editForm.employee_id) payload.employee_id = parseInt(editForm.employee_id);
-      else payload.employee_id = null;
       if (editForm.password) payload.password = editForm.password;
       await updateUser(editTarget.id, payload);
       setAlert({ type: "success", message: `User "${editTarget.username}" updated.` });
@@ -129,7 +119,7 @@ export default function UserManagement() {
     finally { setLoading(false); }
   }
 
-  const ROLE_BADGE: Record<string, string> = { admin: "danger", supervisor: "warning", worker: "success" };
+  const ROLE_BADGE: Record<string, string> = { master: "dark", admin: "danger", supervisor: "warning", worker: "success" };
 
   function getPageNumbers(): (number | "...")[] {
     const arr: (number | "...")[] = [];
@@ -170,6 +160,7 @@ export default function UserManagement() {
                     <div className="col-md-6">
                       <label className="form-label fw-semibold">Role <span className="text-danger">*</span></label>
                       <select className="form-select" value={form.role} onChange={set("role")}>
+                        <option value="master">Master</option>
                         <option value="admin">Admin</option>
                         <option value="supervisor">Supervisor</option>
                         <option value="worker">Worker</option>
@@ -189,17 +180,6 @@ export default function UserManagement() {
                         <div className="invalid-feedback">Passwords do not match.</div>
                       )}
                     </div>
-                    {form.role === "worker" && (
-                      <div className="col-12">
-                        <label className="form-label fw-semibold">Link to Employee</label>
-                        <select className="form-select" value={form.employee_id} onChange={set("employee_id")} required>
-                          <option value="">-- Select Employee --</option>
-                          {employees.map(emp => (
-                            <option key={emp.id} value={emp.id}>{emp.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
                     <div className="col-12 d-flex justify-content-end">
                       <button type="button" className="btn btn-primary" disabled={!canAdvance()}
                         onClick={() => setStep(1)}>
@@ -281,18 +261,6 @@ export default function UserManagement() {
                           </div>
                         </div>
                       </div>
-                      {form.role === "worker" && form.employee_id && (
-                        <div className="col-12">
-                          <div className="card bg-light">
-                            <div className="card-body py-2">
-                              <small className="text-muted">Linked Employee</small>
-                              <div className="fw-semibold">
-                                {employees.find(e => e.id === parseInt(form.employee_id))?.name ?? `#${form.employee_id}`}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
                     <div className="d-flex justify-content-between">
                       <button type="button" className="btn btn-outline-secondary" onClick={() => setStep(1)}>← Back</button>
@@ -329,6 +297,7 @@ export default function UserManagement() {
                   <label className="form-label fw-semibold">Role</label>
                   <select className="form-select" value={editForm.role}
                     onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
+                    <option value="master">Master</option>
                     <option value="admin">Admin</option>
                     <option value="supervisor">Supervisor</option>
                     <option value="worker">Worker</option>
@@ -343,14 +312,6 @@ export default function UserManagement() {
                   <label className="form-label fw-semibold">Phone</label>
                   <input className="form-control" type="tel" value={editForm.phone}
                     onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} />
-                </div>
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold">Link to Employee</label>
-                  <select className="form-select" value={editForm.employee_id}
-                    onChange={e => setEditForm(f => ({ ...f, employee_id: e.target.value }))}>
-                    <option value="">— None —</option>
-                    {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
-                  </select>
                 </div>
                 <div className="col-md-6">
                   <label className="form-label fw-semibold">New Password <small className="text-muted">(leave blank to keep)</small></label>
@@ -388,11 +349,11 @@ export default function UserManagement() {
         <div className="table-responsive">
           <table className="table table-hover mb-0">
             <thead className="table-dark">
-              <tr><th>#</th><th>Username</th><th>Display Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Employee</th><th></th></tr>
+              <tr><th>#</th><th>Username</th><th>Display Name</th><th>Email</th><th>Phone</th><th>Role</th><th></th></tr>
             </thead>
             <tbody>
               {users.length === 0 ? (
-                <tr><td colSpan={8} className="text-center text-muted py-3">No users found.</td></tr>
+                <tr><td colSpan={7} className="text-center text-muted py-3">No users found.</td></tr>
               ) : users.map(u => (
                 <tr key={u.id}>
                   <td>{u.id}</td>
@@ -405,7 +366,6 @@ export default function UserManagement() {
                       {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
                     </span>
                   </td>
-                  <td>{u.employee_id ? (employees.find(e => e.id === u.employee_id)?.name ?? `#${u.employee_id}`) : "—"}</td>
                   <td>
                     <div className="d-flex gap-1">
                       <button className="btn btn-sm btn-outline-primary" onClick={() => openEdit(u)}>Edit</button>

@@ -22,7 +22,7 @@ export default function Login() {
       if (res.data.role === "worker") {
         navigate("/attendance");
       } else {
-        navigate("/employees");
+        navigate("/dashboard");
       }
     } catch (e: any) {
       setError(e.message);

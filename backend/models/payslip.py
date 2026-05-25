@@ -8,7 +8,7 @@ class Payslip(Base):
     __tablename__ = "payslips"
 
     id           = Column(Integer, primary_key=True, index=True)
-    employee_id  = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False)
+    employee_id  = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     month        = Column(SmallInteger, nullable=False)
     year         = Column(SmallInteger, nullable=False)
     days_worked  = Column(SmallInteger, nullable=False, default=0)
@@ -21,4 +21,4 @@ class Payslip(Base):
     net_pay      = Column(Numeric(12, 2), nullable=False)
     generated_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    employee = relationship("Employee", back_populates="payslips")
+    employee = relationship("User", back_populates="payslips")

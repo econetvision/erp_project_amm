@@ -8,7 +8,7 @@ export const getMe           = (): Promise<AxiosResponse<User>> => api.get("/api
 export const getUsers        = (params?: { page?: number; per_page?: number; q?: string }): Promise<AxiosResponse<PaginatedResponse<User>>> => api.get("/api/auth/users", { params });
 export const createUser      = (data: UserCreate): Promise<AxiosResponse<User>> => api.post("/api/auth/users", data);
 export const deleteUser      = (id: number): Promise<AxiosResponse<void>> => api.delete(`/api/auth/users/${id}`);
-export const updateUser      = (id: number, data: { display_name?: string; email?: string; phone?: string; role?: string; employee_id?: number | null; password?: string }): Promise<AxiosResponse<User>> => api.put(`/api/auth/users/${id}`, data);
+export const updateUser      = (id: number, data: { display_name?: string; email?: string; phone?: string; role?: string; password?: string }): Promise<AxiosResponse<User>> => api.put(`/api/auth/users/${id}`, data);
 export const updateProfile   = (data: UserUpdate): Promise<AxiosResponse<User>> => api.put("/api/auth/me", data);
 export const changePassword  = (data: PasswordChangeRequest): Promise<AxiosResponse<{ detail: string }>> => api.put("/api/auth/me/password", data);
 export const uploadUserPhoto = (image: string): Promise<AxiosResponse<User>> => api.post("/api/auth/me/photo", { image });

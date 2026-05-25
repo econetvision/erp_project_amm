@@ -3,7 +3,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from models.user import User
-from models.employee import Employee
 from models.salary_structure import SalaryStructure, SalaryComponent, EmployeeSalary
 from models.advance import Advance
 from models.payroll_run import PayrollRun, PayrollItem
@@ -91,7 +90,7 @@ def get_employee_salary(employee_id: int, db: Session = Depends(get_db), _: User
 
 @router.post("/employees/{employee_id}/salary", response_model=EmployeeSalaryResponse, status_code=201)
 def assign_salary(employee_id: int, payload: EmployeeSalaryCreate, db: Session = Depends(get_db), _: User = Depends(require_admin)):
-    emp = db.query(Employee).filter(Employee.id == employee_id).first()
+    emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     # Deactivate current assignment
@@ -171,7 +170,7 @@ def get_run(run_id: int, db: Session = Depends(get_db), _: User = Depends(requir
     resp = PayrollRunDetailResponse.model_validate(run)
     item_responses = []
     for item in items:
-        emp = db.query(Employee).filter(Employee.id == item.employee_id).first()
+        emp = db.query(User).filter(User.id == item.employee_id).first()
         ir = PayrollItemResponse.model_validate(item)
         ir.employee_name = emp.name if emp else "Unknown"
         item_responses.append(ir)

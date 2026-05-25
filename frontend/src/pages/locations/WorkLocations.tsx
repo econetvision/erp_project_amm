@@ -236,7 +236,185 @@ export default function WorkLocations() {
   const unassignedEmployees = employees.filter(e => !assignedEmpIds.has(e.id));
 
   if (!GOOGLE_MAPS_API_KEY) {
-    return <div className="p-4 text-center text-danger fw-bold">Google Maps API key is not configured. Set REACT_APP_GOOGLE_MAPS_API_KEY in your .env file.</div>;
+    // Fallback: render without Google Maps – manual lat/lng entry, table-only view
+    return (
+      <div>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h4 className="mb-0">📍 Work Locations Management</h4>
+          <button className="btn btn-primary" onClick={openCreate}>+ Add Location</button>
+        </div>
+
+        <AlertMessage {...alert} onClose={() => setAlert({ type: "", message: "" })} />
+
+        <div className="card shadow-sm mb-3">
+          <div className="card-body py-2">
+            <div className="row align-items-center">
+              <div className="col-md-4">
+                <div className="input-group input-group-sm">
+                  <span className="input-group-text">🔍</span>
+                  <input className="form-control" placeholder="Search locations..." value={search} onChange={e => setSearch(e.target.value)} />
+                </div>
+              </div>
+              <div className="col-md-8 text-muted small">
+                Manage work locations. Set <code>REACT_APP_GOOGLE_MAPS_API_KEY</code> to enable map view.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Create/Edit form without map */}
+        {showForm && (
+          <div className="card shadow-sm mb-3">
+            <div className="card-header bg-primary text-white">
+              <h6 className="mb-0">{editId ? "✏️ Edit Location" : "➕ New Location"}</h6>
+            </div>
+            <div className="card-body">
+              <div className="row g-3">
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold small">Location Name *</label>
+                  <input className="form-control form-control-sm" name="location_name" value={form.location_name} onChange={handleChange} />
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold small">Code</label>
+                  <input className="form-control form-control-sm" name="location_code" value={form.location_code || ""} onChange={handleChange} placeholder="e.g. DY-01" />
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold small">Type</label>
+                  <select className="form-select form-select-sm" name="work_type" value={form.work_type || ""} onChange={handleChange}>
+                    <option value="">— Select —</option>
+                    {WORK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                </div>
+                <div className="col-md-12">
+                  <label className="form-label fw-semibold small">Address</label>
+                  <input className="form-control form-control-sm" name="address" value={form.address || ""} onChange={handleChange} placeholder="Full address" />
+                </div>
+                <div className="col-md-4">
+                  <input className="form-control form-control-sm" name="city" placeholder="City" value={form.city || ""} onChange={handleChange} />
+                </div>
+                <div className="col-md-4">
+                  <input className="form-control form-control-sm" name="state" placeholder="State" value={form.state || ""} onChange={handleChange} />
+                </div>
+                <div className="col-md-4">
+                  <input className="form-control form-control-sm" name="pincode" placeholder="Pincode" value={form.pincode || ""} onChange={handleChange} />
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold small">Latitude *</label>
+                  <input className="form-control form-control-sm" type="number" step="any" name="latitude" value={form.latitude} onChange={handleChange} />
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold small">Longitude *</label>
+                  <input className="form-control form-control-sm" type="number" step="any" name="longitude" value={form.longitude} onChange={handleChange} />
+                </div>
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold small">Radius (km)</label>
+                  <input className="form-control form-control-sm" type="number" step="0.1" min="0.1" max="100" name="allowed_radius_km" value={form.allowed_radius_km} onChange={handleChange} />
+                </div>
+              </div>
+              <div className="d-flex gap-2 align-items-center mt-3">
+                <button className="btn btn-success btn-sm" onClick={handleSave} disabled={saving}>
+                  {saving ? "Saving..." : editId ? "Update" : "Create"}
+                </button>
+                <button className="btn btn-outline-secondary btn-sm" onClick={() => setShowForm(false)}>Cancel</button>
+                {editId && (
+                  <div className="form-check form-switch ms-auto">
+                    <input className="form-check-input" type="checkbox" id="activeToggle"
+                      checked={form.is_active !== false}
+                      onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />
+                    <label className="form-check-label small" htmlFor="activeToggle">
+                      {form.is_active !== false ? "Active" : "Inactive"}
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Assignment panel */}
+        {assignLoc && (
+          <div className="card shadow-sm mb-3">
+            <div className="card-header bg-success text-white d-flex justify-content-between align-items-center">
+              <h6 className="mb-0">👥 {assignLoc.location_name}</h6>
+              <button className="btn btn-sm btn-outline-light" onClick={() => setAssignLoc(null)}>✕</button>
+            </div>
+            <div className="card-body">
+              <h6 className="fw-bold small text-success">Assigned ({assignments.length})</h6>
+              {assignments.length === 0 && <p className="text-muted small">No employees assigned yet.</p>}
+              <div className="list-group list-group-flush mb-3">
+                {assignments.map(a => (
+                  <div key={a.id} className="list-group-item d-flex justify-content-between align-items-center px-0 py-1">
+                    <span className="small">{a.employee_name}{a.is_primary && <span className="badge bg-info ms-1">Primary</span>}</span>
+                    <button className="btn btn-sm btn-outline-danger py-0" onClick={() => handleUnassign(a.id)}>✕</button>
+                  </div>
+                ))}
+              </div>
+              <hr />
+              <h6 className="fw-bold small text-primary">Add Employees</h6>
+              <div className="border rounded p-2 mb-2" style={{ maxHeight: 180, overflowY: "auto" }}>
+                {unassignedEmployees.map(emp => (
+                  <div key={emp.id} className="form-check">
+                    <input className="form-check-input" type="checkbox" id={`emp-${emp.id}`}
+                      checked={selectedEmps.includes(emp.id)}
+                      onChange={e => setSelectedEmps(prev => e.target.checked ? [...prev, emp.id] : prev.filter(x => x !== emp.id))} />
+                    <label className="form-check-label small" htmlFor={`emp-${emp.id}`}>{emp.name} (ID: {emp.id})</label>
+                  </div>
+                ))}
+                {unassignedEmployees.length === 0 && <p className="text-muted small mb-0">All employees assigned.</p>}
+              </div>
+              {selectedEmps.length > 0 && (
+                <button className="btn btn-success btn-sm w-100" onClick={handleAssign}>✓ Assign {selectedEmps.length} Employee(s)</button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Locations table */}
+        <div className="card shadow-sm">
+          <div className="table-responsive">
+            <table className="table table-hover mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th>Name</th>
+                  <th>Code</th>
+                  <th>City</th>
+                  <th>Type</th>
+                  <th>Radius</th>
+                  <th>Employees</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {locations.length === 0 && (
+                  <tr><td colSpan={8} className="text-center text-muted py-4">No locations found. Click "+ Add Location" to create one.</td></tr>
+                )}
+                {locations.map(loc => (
+                  <tr key={loc.id} className={!loc.is_active ? "table-secondary" : ""}>
+                    <td className="fw-semibold">{loc.location_name}</td>
+                    <td><span className="badge bg-secondary">{loc.location_code || "—"}</span></td>
+                    <td>{[loc.city, loc.state].filter(Boolean).join(", ") || "—"}</td>
+                    <td>{loc.work_type || "—"}</td>
+                    <td>{loc.allowed_radius_km} km</td>
+                    <td>{loc.employee_count}</td>
+                    <td><span className={`badge bg-${loc.is_active ? "success" : "warning"}`}>{loc.is_active ? "Active" : "Inactive"}</span></td>
+                    <td className="text-end">
+                      <button className="btn btn-sm btn-outline-primary me-1" onClick={() => openEdit(loc)}>Edit</button>
+                      <button className="btn btn-sm btn-outline-success me-1" onClick={() => openAssignments(loc)}>Assign</button>
+                      <button className="btn btn-sm btn-outline-danger" onClick={() => setConfirmDelete(loc.id)}>Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <ConfirmModal show={confirmDelete !== null} title="Delete Location"
+          message="Are you sure you want to delete this location?" confirmLabel="Delete" variant="danger"
+          onConfirm={handleDelete} onCancel={() => setConfirmDelete(null)} />
+      </div>
+    );
   }
 
   return (

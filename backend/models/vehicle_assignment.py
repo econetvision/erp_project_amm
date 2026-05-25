@@ -9,10 +9,10 @@ class VehicleAssignment(Base):
 
     id          = Column(Integer, primary_key=True, index=True)
     vehicle_id  = Column(Integer, ForeignKey("vehicles.id",  ondelete="CASCADE"), nullable=False)
-    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False)
+    employee_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     assigned_at = Column(DateTime(timezone=True), server_default=func.now())
     released_at = Column(DateTime(timezone=True), nullable=True)
     notes       = Column(Text, nullable=True)
 
     vehicle  = relationship("Vehicle",  back_populates="assignments")
-    employee = relationship("Employee")
+    employee = relationship("User")

@@ -8,18 +8,21 @@ export interface TokenResponse {
   token_type: string;
   role: string;
   username: string;
+  company_id: number | null;
   employee_id: number | null;
   email: string | null;
   display_name: string | null;
   lock_timeout: number | null;
   has_pin?: boolean;
   theme_preference?: { mode: string; primaryColor: string; accentColor: string } | null;
+  impersonated?: boolean;
 }
 
 export interface User {
   id: number;
   username: string;
   role: string;
+  company_id: number | null;
   employee_id: number | null;
   email: string | null;
   display_name: string | null;
@@ -27,6 +30,7 @@ export interface User {
   photo_path: string | null;
   has_pin: boolean;
   lock_timeout: number | null;
+  is_active?: boolean;
   theme_preference?: { mode: string; primaryColor: string; accentColor: string } | null;
   created_at?: string;
   updated_at?: string;
@@ -35,8 +39,8 @@ export interface User {
 export interface UserCreate {
   username: string;
   password: string;
-  role: "admin" | "supervisor" | "worker";
-  employee_id: number | null;
+  role: "master" | "admin" | "supervisor" | "worker";
+  company_id?: number | null;
   email?: string;
   display_name?: string;
   phone?: string;
@@ -61,4 +65,5 @@ export interface AuthContextType {
   logout: () => void;
   lock: () => void;
   unlock: () => void;
+  switchCompany: (companyId: number) => void;
 }

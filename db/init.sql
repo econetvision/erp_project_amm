@@ -1,60 +1,81 @@
 -- ERP DATABASE SCHEMA
 
-CREATE TABLE IF NOT EXISTS employees (
+-- ── Companies ────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS companies (
+    id              SERIAL PRIMARY KEY,
+    name            VARCHAR(255)   NOT NULL UNIQUE,
+    code            VARCHAR(50)    NOT NULL UNIQUE,
+    logo_path       VARCHAR(500),
+    address         TEXT,
+    city            VARCHAR(100),
+    state           VARCHAR(100),
+    country         VARCHAR(100)   DEFAULT 'India',
+    pincode         VARCHAR(10),
+    phone           VARCHAR(20),
+    email           VARCHAR(255),
+    website         VARCHAR(255),
+    gst_number      VARCHAR(20),
+    pan_number      VARCHAR(10),
+    timezone        VARCHAR(50)    DEFAULT 'Asia/Kolkata',
+    currency        VARCHAR(10)    DEFAULT 'INR',
+    is_active       BOOLEAN        NOT NULL DEFAULT TRUE,
+    theme_config    JSONB,
+    payroll_config  JSONB,
+    attendance_config JSONB,
+    features        JSONB,
+    created_at      TIMESTAMPTZ    DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ    DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS users (
     id                  SERIAL PRIMARY KEY,
-    name                VARCHAR(255)   NOT NULL,
+    username            VARCHAR(50)    NOT NULL UNIQUE,
+    password_hash       VARCHAR(255)   NOT NULL,
+    role                VARCHAR(20)    NOT NULL CHECK (role IN ('master','admin','supervisor','worker')),
+    company_id          INTEGER        REFERENCES companies(id) ON DELETE SET NULL,
+    email               VARCHAR(255),
+    display_name        VARCHAR(255),
+    phone               VARCHAR(20),
+    photo_path          VARCHAR(500),
+    pin_hash            VARCHAR(255),
+    lock_timeout        INTEGER        DEFAULT 2,
+    theme_preference    JSONB,
+    is_active           BOOLEAN        NOT NULL DEFAULT TRUE,
+    -- Employee fields (populated for workers/supervisors)
+    name                VARCHAR(255),
     gender              VARCHAR(10),
     date_of_birth       DATE,
     blood_group         VARCHAR(5),
     marital_status      VARCHAR(20),
     emergency_contact   VARCHAR(20),
     emergency_name      VARCHAR(255),
-    phone               VARCHAR(20),
-    email               VARCHAR(255),
-    phone_verified      VARCHAR(1)     DEFAULT 'N',
-    email_verified      VARCHAR(1)     DEFAULT 'N',
-    address             TEXT           NOT NULL,
-    aadhar_number       CHAR(12)       NOT NULL UNIQUE,
-    bank_account_number VARCHAR(18)    NOT NULL,
+    address             TEXT,
+    aadhar_number       VARCHAR(12)    UNIQUE,
+    bank_account_number VARCHAR(18),
     ifsc_code           VARCHAR(11),
     bank_name           VARCHAR(255),
     kyc_status          VARCHAR(20)    DEFAULT 'pending',
     kyc_verified_name   VARCHAR(255),
-    hourly_rate         NUMERIC(10,2)  NOT NULL DEFAULT 0.00,
-    shift               VARCHAR(10)    NOT NULL DEFAULT 'SHIFT_A' CHECK (shift IN ('SHIFT_A','SHIFT_B')),
+    hourly_rate         NUMERIC(10,2)  DEFAULT 0.00,
+    shift               VARCHAR(10)    DEFAULT 'SHIFT_A',
     face_encoding       JSONB,
     photo               TEXT,
     work_location_name  VARCHAR(255),
     work_latitude       DOUBLE PRECISION,
     work_longitude      DOUBLE PRECISION,
     attendance_radius_km DOUBLE PRECISION DEFAULT 10.0,
+    phone_verified      VARCHAR(1)     DEFAULT 'N',
+    email_verified      VARCHAR(1)     DEFAULT 'N',
     created_at          TIMESTAMP      NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMP      NOT NULL DEFAULT NOW(),
-    CONSTRAINT chk_bank_account_length CHECK (LENGTH(bank_account_number) BETWEEN 8 AND 18)
-);
-
-CREATE INDEX IF NOT EXISTS idx_employees_aadhar ON employees(aadhar_number);
-
-CREATE TABLE IF NOT EXISTS users (
-    id            SERIAL PRIMARY KEY,
-    username      VARCHAR(50)    NOT NULL UNIQUE,
-    password_hash VARCHAR(255)   NOT NULL,
-    role          VARCHAR(20)    NOT NULL CHECK (role IN ('admin','supervisor','worker')),
-    employee_id   INTEGER        REFERENCES employees(id) ON DELETE SET NULL,
-    email         VARCHAR(255),
-    display_name  VARCHAR(255),
-    phone         VARCHAR(20),
-    photo_path    VARCHAR(500),
-    theme_preference JSONB,
-    created_at    TIMESTAMP      NOT NULL DEFAULT NOW(),
-    updated_at    TIMESTAMP      NOT NULL DEFAULT NOW()
+    updated_at          TIMESTAMP      NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_aadhar ON users(aadhar_number) WHERE aadhar_number IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS attendance (
     id           SERIAL PRIMARY KEY,
-    employee_id  INTEGER        NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_id  INTEGER        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     date         DATE           NOT NULL,
     entry_time   TIME           NOT NULL,
     exit_time    TIME,
@@ -73,7 +94,7 @@ CREATE INDEX IF NOT EXISTS idx_attendance_date        ON attendance(date);
 
 CREATE TABLE IF NOT EXISTS payslips (
     id           SERIAL PRIMARY KEY,
-    employee_id  INTEGER        NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_id  INTEGER        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     month        SMALLINT       NOT NULL CHECK (month BETWEEN 1 AND 12),
     year         SMALLINT       NOT NULL CHECK (year > 2000),
     days_worked  SMALLINT       NOT NULL DEFAULT 0,
@@ -116,7 +137,7 @@ CREATE INDEX IF NOT EXISTS idx_vehicles_reg ON vehicles(reg_number);
 CREATE TABLE IF NOT EXISTS vehicle_assignments (
     id           SERIAL PRIMARY KEY,
     vehicle_id   INTEGER        NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
-    employee_id  INTEGER        NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_id  INTEGER        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     assigned_at  TIMESTAMP      NOT NULL DEFAULT NOW(),
     released_at  TIMESTAMP,
     notes        TEXT,
@@ -207,7 +228,7 @@ CREATE INDEX IF NOT EXISTS idx_sc_structure ON salary_components(structure_id);
 
 CREATE TABLE IF NOT EXISTS employee_salary (
     id             SERIAL PRIMARY KEY,
-    employee_id    INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     structure_id   INTEGER NOT NULL REFERENCES salary_structures(id) ON DELETE CASCADE,
     basic_pay      NUMERIC(12,2) NOT NULL,
     effective_from TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -220,7 +241,7 @@ CREATE INDEX IF NOT EXISTS idx_es_employee ON employee_salary(employee_id);
 -- ── Advances ─────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS advances (
     id                SERIAL PRIMARY KEY,
-    employee_id       INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     amount            NUMERIC(12,2) NOT NULL,
     disbursed_date    DATE NOT NULL,
     repayment_months  INTEGER NOT NULL DEFAULT 1,
@@ -252,7 +273,7 @@ CREATE TABLE IF NOT EXISTS payroll_runs (
 CREATE TABLE IF NOT EXISTS payroll_items (
     id                   SERIAL PRIMARY KEY,
     run_id               INTEGER NOT NULL REFERENCES payroll_runs(id) ON DELETE CASCADE,
-    employee_id          INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     basic_pay            NUMERIC(12,2) NOT NULL,
     earnings_breakdown   JSONB NOT NULL DEFAULT '{}',
     deductions_breakdown JSONB NOT NULL DEFAULT '{}',
@@ -272,6 +293,7 @@ CREATE INDEX IF NOT EXISTS idx_pi_employee ON payroll_items(employee_id);
 -- ── Work Locations ───────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS work_locations (
     id                SERIAL PRIMARY KEY,
+    company_id        INTEGER          REFERENCES companies(id) ON DELETE CASCADE,
     location_name     VARCHAR(255)     NOT NULL,
     location_code     VARCHAR(50)      UNIQUE,
     address           TEXT,
@@ -295,7 +317,7 @@ CREATE INDEX IF NOT EXISTS idx_wl_active ON work_locations(is_active);
 -- ── Employee Location Assignments ────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS employee_location_assignments (
     id            SERIAL PRIMARY KEY,
-    employee_id   INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     location_id   INTEGER NOT NULL REFERENCES work_locations(id) ON DELETE CASCADE,
     is_primary    BOOLEAN NOT NULL DEFAULT FALSE,
     assigned_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -305,3 +327,170 @@ CREATE TABLE IF NOT EXISTS employee_location_assignments (
 
 CREATE INDEX IF NOT EXISTS idx_ela_employee ON employee_location_assignments(employee_id);
 CREATE INDEX IF NOT EXISTS idx_ela_location ON employee_location_assignments(location_id);
+
+-- ── Permissions ──────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS permissions (
+    id          SERIAL PRIMARY KEY,
+    code        VARCHAR(100)   NOT NULL UNIQUE,
+    name        VARCHAR(255)   NOT NULL,
+    module      VARCHAR(50)    NOT NULL,
+    description TEXT,
+    created_at  TIMESTAMPTZ    DEFAULT NOW()
+);
+
+-- ── Roles ────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS roles (
+    id          SERIAL PRIMARY KEY,
+    name        VARCHAR(50)    NOT NULL,
+    company_id  INTEGER        REFERENCES companies(id) ON DELETE CASCADE,
+    is_system   BOOLEAN        NOT NULL DEFAULT FALSE,
+    description TEXT,
+    created_at  TIMESTAMPTZ    DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ    DEFAULT NOW(),
+    UNIQUE(name, company_id)
+);
+
+-- ── Role Permissions ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS role_permissions (
+    id            SERIAL PRIMARY KEY,
+    role_id       INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    permission_id INTEGER NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+    UNIQUE(role_id, permission_id)
+);
+
+-- ── Audit Logs ───────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id          SERIAL PRIMARY KEY,
+    user_id     INTEGER     REFERENCES users(id) ON DELETE SET NULL,
+    company_id  INTEGER     REFERENCES companies(id) ON DELETE SET NULL,
+    action      VARCHAR(50) NOT NULL,
+    entity_type VARCHAR(50),
+    entity_id   INTEGER,
+    details     TEXT,
+    ip_address  VARCHAR(45),
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user    ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_company ON audit_logs(company_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_users_company    ON users(company_id);
+
+-- ═══════════════════════════════════════════════════════════════════
+-- INTEGRATION MANAGEMENT TABLES
+-- ═══════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS integration_providers (
+    id              SERIAL PRIMARY KEY,
+    category        VARCHAR(50)  NOT NULL,
+    code            VARCHAR(100) NOT NULL UNIQUE,
+    name            VARCHAR(255) NOT NULL,
+    description     TEXT,
+    logo_url        VARCHAR(500),
+    config_schema   JSONB,
+    is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+    version         VARCHAR(20) DEFAULT '1.0',
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS company_integrations (
+    id                  SERIAL PRIMARY KEY,
+    company_id          INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    provider_id         INTEGER NOT NULL REFERENCES integration_providers(id) ON DELETE CASCADE,
+    category            VARCHAR(50)  NOT NULL,
+    is_enabled          BOOLEAN NOT NULL DEFAULT TRUE,
+    is_default          BOOLEAN NOT NULL DEFAULT FALSE,
+    priority            INTEGER NOT NULL DEFAULT 0,
+    is_fallback         BOOLEAN NOT NULL DEFAULT FALSE,
+    credentials         JSONB,
+    config              JSONB,
+    daily_quota         INTEGER,
+    monthly_quota       INTEGER,
+    rate_limit_per_min  INTEGER,
+    last_health_check   TIMESTAMPTZ,
+    health_status       VARCHAR(20) DEFAULT 'unknown',
+    created_at          TIMESTAMPTZ DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(company_id, provider_id)
+);
+CREATE INDEX IF NOT EXISTS ix_ci_company_category ON company_integrations(company_id, category);
+
+CREATE TABLE IF NOT EXISTS global_integration_defaults (
+    id                      SERIAL PRIMARY KEY,
+    category                VARCHAR(50) NOT NULL UNIQUE,
+    provider_id             INTEGER REFERENCES integration_providers(id) ON DELETE SET NULL,
+    fallback_provider_id    INTEGER REFERENCES integration_providers(id) ON DELETE SET NULL,
+    credentials             JSONB,
+    config                  JSONB,
+    is_enabled              BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at              TIMESTAMPTZ DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS provider_logs (
+    id              SERIAL PRIMARY KEY,
+    company_id      INTEGER REFERENCES companies(id) ON DELETE SET NULL,
+    provider_id     INTEGER REFERENCES integration_providers(id) ON DELETE SET NULL,
+    category        VARCHAR(50)  NOT NULL,
+    action          VARCHAR(100) NOT NULL,
+    status          VARCHAR(20)  NOT NULL DEFAULT 'pending',
+    request_data    JSONB,
+    response_data   JSONB,
+    error_message   TEXT,
+    latency_ms      INTEGER,
+    retry_count     INTEGER NOT NULL DEFAULT 0,
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS ix_pl_company_category ON provider_logs(company_id, category);
+CREATE INDEX IF NOT EXISTS ix_pl_created ON provider_logs(created_at);
+
+CREATE TABLE IF NOT EXISTS webhook_logs (
+    id              SERIAL PRIMARY KEY,
+    provider_id     INTEGER REFERENCES integration_providers(id) ON DELETE SET NULL,
+    company_id      INTEGER REFERENCES companies(id) ON DELETE SET NULL,
+    event_type      VARCHAR(100),
+    payload         JSONB,
+    headers         JSONB,
+    status          VARCHAR(20) NOT NULL DEFAULT 'received',
+    error_message   TEXT,
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS provider_usage (
+    id                  SERIAL PRIMARY KEY,
+    company_id          INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    provider_id         INTEGER NOT NULL REFERENCES integration_providers(id) ON DELETE CASCADE,
+    category            VARCHAR(50) NOT NULL,
+    date                TIMESTAMPTZ NOT NULL,
+    request_count       INTEGER NOT NULL DEFAULT 0,
+    success_count       INTEGER NOT NULL DEFAULT 0,
+    failure_count       INTEGER NOT NULL DEFAULT 0,
+    total_latency_ms    INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(company_id, provider_id, date)
+);
+CREATE INDEX IF NOT EXISTS ix_pu_date ON provider_usage(date);
+
+-- ================================================================
+-- PAYSLIP TEMPLATES
+-- ================================================================
+CREATE TABLE IF NOT EXISTS payslip_templates (
+    id              SERIAL PRIMARY KEY,
+    name            VARCHAR(120) NOT NULL,
+    description     VARCHAR(500),
+    company_id      INTEGER REFERENCES companies(id) ON DELETE CASCADE,
+    is_default      BOOLEAN NOT NULL DEFAULT false,
+    is_active       BOOLEAN NOT NULL DEFAULT true,
+    layout          JSONB NOT NULL DEFAULT '{}'::jsonb,
+    logo_url        TEXT,
+    company_name    VARCHAR(200),
+    company_address TEXT,
+    company_phone   VARCHAR(50),
+    company_email   VARCHAR(200),
+    footer_text     TEXT,
+    signature_label VARCHAR(200),
+    created_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at      TIMESTAMPTZ DEFAULT now(),
+    updated_at      TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_payslip_templates_company ON payslip_templates(company_id);
