@@ -125,7 +125,18 @@ def upgrade():
         WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.employee_id = e.id)
     """)
 
-    # ── Step 4: Update FKs in child tables ────────────────────────────────────
+    # ── Step 4a: Drop old FK constraints BEFORE updating data ────────────────
+    # The FKs still point to employees(id); updating employee_id to users.id
+    # values would violate them, so drop first.
+    op.execute("ALTER TABLE attendance DROP CONSTRAINT IF EXISTS attendance_employee_id_fkey")
+    op.execute("ALTER TABLE payslips DROP CONSTRAINT IF EXISTS payslips_employee_id_fkey")
+    op.execute("ALTER TABLE advances DROP CONSTRAINT IF EXISTS advances_employee_id_fkey")
+    op.execute("ALTER TABLE vehicle_assignments DROP CONSTRAINT IF EXISTS vehicle_assignments_employee_id_fkey")
+    op.execute("ALTER TABLE employee_location_assignments DROP CONSTRAINT IF EXISTS employee_location_assignments_employee_id_fkey")
+    op.execute("ALTER TABLE payroll_items DROP CONSTRAINT IF EXISTS payroll_items_employee_id_fkey")
+    op.execute("ALTER TABLE employee_salary DROP CONSTRAINT IF EXISTS employee_salary_employee_id_fkey")
+
+    # ── Step 4b: Update FKs in child tables ───────────────────────────────────
     # For each child table, update employee_id to point to users.id instead
 
     # attendance: update employee_id to the user.id that absorbed that employee
@@ -213,17 +224,8 @@ def upgrade():
         AND NOT EXISTS (SELECT 1 FROM users u2 WHERE u2.employee_id = es.employee_id AND u2.username != 'emp_' || es.employee_id)
     """)
 
-    # ── Step 5: Drop old FK constraints and re-create pointing to users ───────
-    # Drop constraints referencing employees
-    op.execute("ALTER TABLE attendance DROP CONSTRAINT IF EXISTS attendance_employee_id_fkey")
-    op.execute("ALTER TABLE payslips DROP CONSTRAINT IF EXISTS payslips_employee_id_fkey")
-    op.execute("ALTER TABLE advances DROP CONSTRAINT IF EXISTS advances_employee_id_fkey")
-    op.execute("ALTER TABLE vehicle_assignments DROP CONSTRAINT IF EXISTS vehicle_assignments_employee_id_fkey")
-    op.execute("ALTER TABLE employee_location_assignments DROP CONSTRAINT IF EXISTS employee_location_assignments_employee_id_fkey")
-    op.execute("ALTER TABLE payroll_items DROP CONSTRAINT IF EXISTS payroll_items_employee_id_fkey")
-    op.execute("ALTER TABLE employee_salary DROP CONSTRAINT IF EXISTS employee_salary_employee_id_fkey")
-
-    # Add new FK constraints pointing to users(id)
+    # ── Step 5: Re-create FK constraints pointing to users ──────────────────
+    # (Constraints were already dropped in Step 4a above)
     op.execute("ALTER TABLE attendance ADD CONSTRAINT attendance_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE")
     op.execute("ALTER TABLE payslips ADD CONSTRAINT payslips_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE")
     op.execute("ALTER TABLE advances ADD CONSTRAINT advances_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE")
