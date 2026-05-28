@@ -77,4 +77,4 @@ jobs:
         run: |
           echo "Waiting for deployment to be live..."
           sleep 30
-          curl -f ${{ secrets.RAILWAY_BACKEND_URL }}/health || echo "Health check failed, please verify manually"
+          curl -f https://${{ secrets.RAILWAY_BACKEND_URL }}/health || echo "Health check failed, please verify manually"
