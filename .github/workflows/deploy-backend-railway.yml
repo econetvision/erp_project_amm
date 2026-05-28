@@ -37,9 +37,10 @@ jobs:
           echo "Skipping linting for now. Add flake8 or pylint if needed."
 
       - name: Install Railway CLI
+        shell: bash
         run: |
-          curl -fsSL https://railway.app/install.sh | sh
-          echo "$HOME/.railway/bin" >> $GITHUB_PATH
+          curl -fsSL https://railway.app/install.sh | bash
+          echo "${HOME}/.railway/bin" >> $GITHUB_PATH
 
       - name: Deploy to Railway
         working-directory: ./backend
