@@ -25,7 +25,6 @@ jobs:
           curl -fsSL https://railway.app/install.sh | bash
           echo "$HOME/.railway/bin" >> $GITHUB_PATH
 
-<<<<<<< HEAD
       - name: Deploy to Railway
         working-directory: ./backend
         env:
@@ -37,11 +36,9 @@ jobs:
           echo "Deploying backend to Railway..."
           railway link ${{ secrets.RAILWAY_PROJECT_ID }}
           railway up --service backend
-=======
       - name: Verify Railway CLI Installation
         shell: bash
         run: railway --version
->>>>>>> 99436340eee45ff81956a67ba50e63f7f6154119
 
       - name: Create Railway Config
         shell: bash
