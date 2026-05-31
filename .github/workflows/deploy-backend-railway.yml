@@ -34,6 +34,15 @@ jobs:
           echo '{"projectId": "${{ secrets.RAILWAY_PROJECT_ID }}"}' > railway.json
           cat railway.json
 
+      - name: List Railway Services
+        shell: bash
+        working-directory: ./backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "Available services in the project:"
+          railway status || echo "Could not get status"
+
       - name: Deploy to Railway
         shell: bash
         working-directory: ./backend
@@ -41,7 +50,7 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           echo "Starting deployment to Railway..."
-          railway up
+          railway up --service erp_project_amm
 
       - name: Health Check
         shell: bash
