@@ -43,6 +43,9 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
           REACT_APP_GOOGLE_MAPS_API_KEY: ${{ secrets.REACT_APP_GOOGLE_MAPS_API_KEY }}
+          REACT_APP_VERSION: ${{ github.ref_name }}-${{ github.run_number }}
+          REACT_APP_BUILD_SHA: ${{ github.sha }}
+          REACT_APP_BUILD_TIME: ${{ github.event.head_commit.timestamp }}
 
       - name: Deploy to Vercel
         working-directory: ./frontend

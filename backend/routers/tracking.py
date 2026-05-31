@@ -10,7 +10,7 @@ from models.vehicle_assignment import VehicleAssignment
 from models.vehicle_location import VehicleLocation
 from models.user import User
 from schemas.vehicle_location import LocationPush, LocationResponse, LatestLocationResponse
-from auth.dependencies import require_admin_or_supervisor
+from auth.dependencies import require_admin_or_supervisor, get_current_user
 
 router = APIRouter()
 
@@ -22,7 +22,7 @@ _latest: Dict[int, dict] = {}
 
 # ── REST: push location (for devices that can't hold WebSocket) ──────────────
 @router.post("/push", response_model=LocationResponse, status_code=201)
-def push_location(payload: LocationPush, db: Session = Depends(get_db)):
+def push_location(payload: LocationPush, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     vehicle = db.query(Vehicle).filter(Vehicle.id == payload.vehicle_id).first()
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")

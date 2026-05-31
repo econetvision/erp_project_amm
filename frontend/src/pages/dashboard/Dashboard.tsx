@@ -8,6 +8,7 @@ import { getDashboardOverview, getEmployeeStats } from "../../api/dashboardApi";
 import { getHolidays, createHoliday, deleteHoliday } from "../../api/holidayApi";
 import { useAuth } from "../../context/AuthContext";
 import AlertMessage from "../../components/AlertMessage";
+import SystemInfo from "../../components/SystemInfo";
 import type { Holiday } from "../../types/vehicle";
 import type { DashboardOverview, EmployeeStat, DailyEntry } from "../../types/attendance";
 
@@ -365,6 +366,9 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* System & Deployment Info (admin/master only) */}
+      {(auth?.role === "admin" || auth?.role === "master") && <SystemInfo />}
 
       {/* Admin-only Holiday Panel */}
       {auth?.role === "admin" && (

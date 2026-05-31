@@ -45,6 +45,9 @@ jobs:
         working-directory: ./backend
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          APP_VERSION: ${{ github.ref_name }}-${{ github.run_number }}
+          BUILD_SHA: ${{ github.sha }}
+          BUILD_TIME: ${{ github.event.head_commit.timestamp }}
         run: |
           echo "Deploying backend to Railway..."
           railway link ${{ secrets.RAILWAY_PROJECT_ID }}

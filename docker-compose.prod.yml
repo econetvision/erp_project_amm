@@ -22,6 +22,10 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-1.0.0}
+        BUILD_SHA: ${BUILD_SHA:-unknown}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
     container_name: erp_backend
     restart: always
     environment:
@@ -35,7 +39,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        REACT_APP_API_URL: ""   # empty = nginx proxies /api/ to backend
+        REACT_APP_API_URL: ""
+        REACT_APP_VERSION: ${APP_VERSION:-1.0.0}
+        REACT_APP_BUILD_SHA: ${BUILD_SHA:-unknown}
+        REACT_APP_BUILD_TIME: ${BUILD_TIME:-unknown}   # empty = nginx proxies /api/ to backend
     container_name: erp_frontend
     restart: always
     ports:
