@@ -29,23 +29,27 @@ jobs:
 
       - name: Create Railway Config
         shell: bash
-        working-directory: ./backend
         run: |
           echo '{"projectId": "${{ secrets.RAILWAY_PROJECT_ID }}"}' > railway.json
           cat railway.json
 
-      - name: List Railway Services
+      - name: Create Railway Service Config
         shell: bash
-        working-directory: ./backend
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          echo "Available services in the project:"
-          railway status || echo "Could not get status"
+          cat > railway.toml <<EOF
+          [build]
+          builder = "NIXPACKS"
+          buildCommand = "cd backend && pip install -r requirements.txt"
+
+          [deploy]
+          startCommand = "cd backend && uvicorn main:app --host 0.0.0.0 --port \$PORT"
+          restartPolicyType = "ON_FAILURE"
+          restartPolicyMaxRetries = 10
+          EOF
+          cat railway.toml
 
       - name: Deploy to Railway
         shell: bash
-        working-directory: ./backend
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
