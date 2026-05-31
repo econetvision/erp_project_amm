@@ -21,17 +21,23 @@ jobs:
         shell: bash
         run: |
           curl -fsSL https://railway.app/install.sh | bash
-          export PATH="$HOME/.railway/bin:$PATH"
-          railway --version
+          echo "$HOME/.railway/bin" >> $GITHUB_PATH
+
+      - name: Verify Railway CLI Installation
+        shell: bash
+        run: railway --version
+
+      - name: Link Railway Project
+        shell: bash
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway link ${{ secrets.RAILWAY_PROJECT_ID }}
 
       - name: Deploy to Railway
         shell: bash
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          export PATH="$HOME/.railway/bin:$PATH"
-          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway up --service backend
+        run: railway up --service backend
 
       - name: Health Check
         shell: bash
@@ -50,5 +56,7 @@ jobs:
           echo "**Platform:** Railway" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Backend URL:** https://${{ secrets.RAILWAY_BACKEND_URL }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "View logs at: https://railway.app/dashboard" >> $GITHUB_STEP_SUMMARY
