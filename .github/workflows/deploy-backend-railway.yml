@@ -58,7 +58,7 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           echo "Checking database migration status..."
-          railway run --service erp_project_amm python backend/migrate.py current
+          railway run --service erp_project_amm -- bash -c "cd backend && python migrate.py current"
 
       - name: Deployment Summary
         shell: bash
