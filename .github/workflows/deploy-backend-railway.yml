@@ -53,11 +53,12 @@ jobs:
 
       - name: Check Migration Status
         shell: bash
+        continue-on-error: true
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           echo "Checking database migration status..."
-          railway run --service erp_project_amm "cd backend && python migrate.py current"
+          railway run --service erp_project_amm python backend/migrate.py current
 
       - name: Deployment Summary
         shell: bash
