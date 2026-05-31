@@ -137,12 +137,16 @@ def start_scheduler():
     scheduler.start()
     logger.info("Background scheduler started successfully")
     logger.info(f"Application started - Version: {app.version}")
+    logger.info(f"Build SHA: {os.getenv('BUILD_SHA', 'dev')}")
 
 @app.on_event("shutdown")
 def stop_scheduler():
     logger.info("Shutting down background scheduler...")
-    scheduler.shutdown()
+    scheduler.shutdown(wait=False)
     logger.info("Background scheduler stopped")
+    # Close DB engine connections cleanly
+    engine.dispose()
+    logger.info("Database connections closed")
     logger.info("Application shutdown complete")
 
 

@@ -54,13 +54,23 @@ jobs:
           echo "Starting deployment to Railway..."
           railway up --service erp_project_amm
 
-      - name: Health Check
+      - name: Health Check (with retry)
         shell: bash
         continue-on-error: true
         run: |
           echo "Waiting for deployment to be live..."
-          sleep 45
-          curl -f https://${{ secrets.RAILWAY_BACKEND_URL }}/health || echo "Health check failed, please verify manually at Railway dashboard"
+          for i in 1 2 3 4 5; do
+            echo "Health check attempt $i/5..."
+            sleep 30
+            if curl -sf "https://${{ secrets.RAILWAY_BACKEND_URL }}/health"; then
+              echo ""
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying..."
+          done
+          echo "All health check attempts failed. Please verify manually at Railway dashboard."
+          exit 1
 
       - name: Check Migration Status
         shell: bash

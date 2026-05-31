@@ -28,6 +28,7 @@ services:
         BUILD_SHA: ${BUILD_SHA:-dev}
         BUILD_TIME: ${BUILD_TIME:-unknown}
     container_name: erp_backend
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://erp_user:erp_pass@postgres:5432/erp_db
       TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
@@ -38,6 +39,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8088/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
     volumes:
       - ./backend:/app
 
@@ -52,10 +59,12 @@ services:
         REACT_APP_BUILD_SHA: ${BUILD_SHA:-dev}
         REACT_APP_BUILD_TIME: ${BUILD_TIME:-unknown}
     container_name: erp_frontend
+    restart: unless-stopped
     ports:
       - "3000:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   postgres_data:
