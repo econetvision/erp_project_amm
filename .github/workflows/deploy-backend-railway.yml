@@ -41,7 +41,7 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           echo "Starting deployment to Railway..."
-          railway up --service backend
+          railway up
 
       - name: Health Check
         shell: bash
