@@ -51,6 +51,14 @@ jobs:
           sleep 45
           curl -f https://${{ secrets.RAILWAY_BACKEND_URL }}/health || echo "Health check failed, please verify manually at Railway dashboard"
 
+      - name: Check Migration Status
+        shell: bash
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "Checking database migration status..."
+          railway run --service erp_project_amm "cd backend && python migrate.py current"
+
       - name: Deployment Summary
         shell: bash
         run: |
