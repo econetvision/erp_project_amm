@@ -25,17 +25,6 @@ jobs:
           curl -fsSL https://railway.app/install.sh | bash
           echo "$HOME/.railway/bin" >> $GITHUB_PATH
 
-      - name: Deploy to Railway
-        working-directory: ./backend
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          APP_VERSION: ${{ github.ref_name }}-${{ github.run_number }}
-          BUILD_SHA: ${{ github.sha }}
-          BUILD_TIME: ${{ github.event.head_commit.timestamp }}
-        run: |
-          echo "Deploying backend to Railway..."
-          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway up --service backend
       - name: Verify Railway CLI Installation
         shell: bash
         run: railway --version
@@ -50,6 +39,9 @@ jobs:
         shell: bash
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          APP_VERSION: ${{ github.ref_name }}-${{ github.run_number }}
+          BUILD_SHA: ${{ github.sha }}
+          BUILD_TIME: ${{ github.event.head_commit.timestamp }}
         run: |
           echo "Starting deployment to Railway..."
           railway up --service erp_project_amm
