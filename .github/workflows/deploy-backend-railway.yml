@@ -6,6 +6,8 @@ on:
       - master
     paths:
       - 'backend/**'
+      - 'Procfile'
+      - 'nixpacks.toml'
       - '.github/workflows/deploy-backend-railway.yml'
   workflow_dispatch:
 
@@ -33,21 +35,6 @@ jobs:
           echo '{"projectId": "${{ secrets.RAILWAY_PROJECT_ID }}"}' > railway.json
           cat railway.json
 
-      - name: Create Railway Service Config
-        shell: bash
-        run: |
-          cat > railway.toml <<EOF
-          [build]
-          builder = "NIXPACKS"
-          buildCommand = "cd backend && pip install -r requirements.txt"
-
-          [deploy]
-          startCommand = "cd backend && uvicorn main:app --host 0.0.0.0 --port \$PORT"
-          restartPolicyType = "ON_FAILURE"
-          restartPolicyMaxRetries = 10
-          EOF
-          cat railway.toml
-
       - name: Deploy to Railway
         shell: bash
         env:
@@ -61,13 +48,13 @@ jobs:
         continue-on-error: true
         run: |
           echo "Waiting for deployment to be live..."
-          sleep 30
-          curl -f https://${{ secrets.RAILWAY_BACKEND_URL }}/health || echo "Health check failed, please verify manually"
+          sleep 45
+          curl -f https://${{ secrets.RAILWAY_BACKEND_URL }}/health || echo "Health check failed, please verify manually at Railway dashboard"
 
       - name: Deployment Summary
         shell: bash
         run: |
-          echo "### ✅ Backend Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Backend Deployment Triggered" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** Production" >> $GITHUB_STEP_SUMMARY
           echo "**Platform:** Railway" >> $GITHUB_STEP_SUMMARY
@@ -76,4 +63,4 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Backend URL:** https://${{ secrets.RAILWAY_BACKEND_URL }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "View logs at: https://railway.app/dashboard" >> $GITHUB_STEP_SUMMARY
+          echo "View deployment logs at: https://railway.app/dashboard" >> $GITHUB_STEP_SUMMARY
