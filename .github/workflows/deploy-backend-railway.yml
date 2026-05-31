@@ -17,6 +17,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Debug - Check Secrets
+        shell: bash
+        run: |
+          echo "Checking if secrets are set..."
+          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "ERROR: RAILWAY_TOKEN is not set"
+            exit 1
+          else
+            echo "RAILWAY_TOKEN is set (length: ${#RAILWAY_TOKEN})"
+          fi
+          if [ -z "${{ secrets.RAILWAY_PROJECT_ID }}" ]; then
+            echo "ERROR: RAILWAY_PROJECT_ID is not set"
+            exit 1
+          else
+            echo "RAILWAY_PROJECT_ID is set"
+          fi
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
       - name: Install Railway CLI
         shell: bash
         run: |
@@ -31,13 +50,17 @@ jobs:
         shell: bash
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway link ${{ secrets.RAILWAY_PROJECT_ID }}
+        run: |
+          echo "Linking to project: ${{ secrets.RAILWAY_PROJECT_ID }}"
+          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
 
       - name: Deploy to Railway
         shell: bash
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service backend
+        run: |
+          echo "Starting deployment..."
+          railway up --service backend
 
       - name: Health Check
         shell: bash
