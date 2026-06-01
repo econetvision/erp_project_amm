@@ -69,7 +69,7 @@ class EmployeeUpdate(BaseModel):
 
 class EmployeeResponse(BaseModel):
     id:                  int
-    name:                str
+    name:                Optional[str] = None
     gender:              Optional[str] = None
     date_of_birth:       Optional[date] = None
     blood_group:         Optional[str] = None
@@ -80,15 +80,15 @@ class EmployeeResponse(BaseModel):
     email:               Optional[str] = None
     phone_verified:      Optional[str] = None
     email_verified:      Optional[str] = None
-    address:             str
-    aadhar_number:       str
-    bank_account_number: str
+    address:             Optional[str] = None
+    aadhar_number:       Optional[str] = None
+    bank_account_number: Optional[str] = None
     ifsc_code:           Optional[str] = None
     bank_name:           Optional[str] = None
     kyc_status:          Optional[str] = None
     kyc_verified_name:   Optional[str] = None
-    hourly_rate:         Decimal
-    shift:               str
+    hourly_rate:         Optional[Decimal] = None
+    shift:               Optional[str] = None
     photo:               Optional[str] = None
     work_location_name:  Optional[str] = None
     work_latitude:       Optional[float] = None

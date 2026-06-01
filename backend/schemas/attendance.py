@@ -73,8 +73,8 @@ class DashboardOverviewResponse(BaseModel):
 
 class EmployeeStatEntry(BaseModel):
     employee_id:     int
-    name:            str
-    shift:           str
+    name:            Optional[str] = None
+    shift:           Optional[str] = None
     days_present:    int
     days_absent:     int
     attendance_rate: float
