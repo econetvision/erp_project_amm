@@ -5,3 +5,5 @@ mobile/app/build/
 mobile/.gradle/
 mobile/.idea/
 .env
+.vercel
+.env*

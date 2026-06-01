@@ -3,6 +3,7 @@ from models.user import User
 from models.company import Company
 from models.rbac import Permission, Role, RolePermission
 from auth.dependencies import hash_password
+from sqlalchemy.exc import IntegrityError
 
 
 DEFAULT_PERMISSIONS = [
@@ -48,25 +49,32 @@ def seed():
         # ── Seed default company ─────────────────────────────────────────
         default_company = db.query(Company).filter(Company.code == "DEFAULT").first()
         if not default_company:
-            default_company = Company(
-                name="Default Company",
-                code="DEFAULT",
-                country="India",
-                timezone="Asia/Kolkata",
-                currency="INR",
-                is_active=True,
-                features={"payroll": True, "vehicles": True, "attendance_face": True, "jobs": True},
-                payroll_config={"esi_rate": 0.75, "pf_rate": 12.0, "working_days": 26, "overtime_multiplier": 1.5},
-            )
-            db.add(default_company)
-            db.flush()
-            print(f"Default company created: {default_company.name}")
+            try:
+                default_company = Company(
+                    name="Default Company",
+                    code="DEFAULT",
+                    country="India",
+                    timezone="Asia/Kolkata",
+                    currency="INR",
+                    is_active=True,
+                    features={"payroll": True, "vehicles": True, "attendance_face": True, "jobs": True},
+                    payroll_config={"esi_rate": 0.75, "pf_rate": 12.0, "working_days": 26, "overtime_multiplier": 1.5},
+                )
+                db.add(default_company)
+                db.flush()
+                print(f"Default company created: {default_company.name}")
+            except IntegrityError:
+                db.rollback()
+                default_company = db.query(Company).filter(Company.code == "DEFAULT").first()
 
         # ── Seed permissions ─────────────────────────────────────────────
         for code, name, module in DEFAULT_PERMISSIONS:
             if not db.query(Permission).filter(Permission.code == code).first():
                 db.add(Permission(code=code, name=name, module=module))
-        db.flush()
+        try:
+            db.flush()
+        except IntegrityError:
+            db.rollback()
 
         # ── Seed system roles ────────────────────────────────────────────
         system_roles = {
@@ -81,7 +89,10 @@ def seed():
             ).first()
             if not existing:
                 db.add(Role(name=role_name, company_id=None, is_system=True, description=desc))
-        db.flush()
+        try:
+            db.flush()
+        except IntegrityError:
+            db.rollback()
 
         # ── Assign permissions to system roles ───────────────────────────
         admin_role = db.query(Role).filter(Role.name == "admin", Role.is_system == True).first()
@@ -91,7 +102,10 @@ def seed():
             for p in all_perms:
                 if p.id not in existing_admin_perms:
                     db.add(RolePermission(role_id=admin_role.id, permission_id=p.id))
-            db.flush()
+            try:
+                db.flush()
+            except IntegrityError:
+                db.rollback()
 
         supervisor_role = db.query(Role).filter(Role.name == "supervisor", Role.is_system == True).first()
         supervisor_perms = [
@@ -117,32 +131,44 @@ def seed():
                 if p and p.id not in existing_wkr_perms:
                     db.add(RolePermission(role_id=worker_role.id, permission_id=p.id))
 
-        db.flush()
+        try:
+            db.flush()
+        except IntegrityError:
+            db.rollback()
 
         # ── Seed master user ────────────────────────────────────────────
         if not db.query(User).filter(User.username == "master").first():
-            master = User(
-                username="master",
-                password_hash=hash_password("master123"),
-                role="master",
-                display_name="System Master",
-                company_id=None,
-            )
-            db.add(master)
-            print("Master user created: master / master123")
+            try:
+                master = User(
+                    username="master",
+                    password_hash=hash_password("master123"),
+                    role="master",
+                    display_name="System Master",
+                    company_id=None,
+                )
+                db.add(master)
+                db.flush()
+                print("Master user created: master / master123")
+            except IntegrityError:
+                db.rollback()
 
         # ── Seed admin user (assign to default company) ──────────────────
         admin = db.query(User).filter(User.username == "admin").first()
         if not admin:
-            admin = User(
-                username="admin",
-                password_hash=hash_password("admin123"),
-                role="admin",
-                company_id=default_company.id,
-            )
-            db.add(admin)
-            print("Admin user created: admin / admin123")
-        elif admin.company_id is None:
+            try:
+                admin = User(
+                    username="admin",
+                    password_hash=hash_password("admin123"),
+                    role="admin",
+                    company_id=default_company.id,
+                )
+                db.add(admin)
+                db.flush()
+                print("Admin user created: admin / admin123")
+            except IntegrityError:
+                db.rollback()
+                admin = db.query(User).filter(User.username == "admin").first()
+        if admin and admin.company_id is None:
             admin.company_id = default_company.id
             print(f"Admin user assigned to company: {default_company.name}")
 

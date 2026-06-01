@@ -28,23 +28,31 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
-      - name: Build frontend
+      - name: Pull Vercel environment
         working-directory: ./frontend
+        run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
         env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build with Vercel
+        working-directory: ./frontend
+        run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
           REACT_APP_GOOGLE_MAPS_API_KEY: ${{ secrets.REACT_APP_GOOGLE_MAPS_API_KEY }}
-        run: |
-          echo "Building frontend with API URL: $REACT_APP_API_URL"
-          npm run build
+          REACT_APP_VERSION: ${{ github.ref_name }}-${{ github.run_number }}
+          REACT_APP_BUILD_SHA: ${{ github.sha }}
+          REACT_APP_BUILD_TIME: ${{ github.event.head_commit.timestamp }}
 
       - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./frontend
-          vercel-args: '--prod'
+        working-directory: ./frontend
+        run: npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Deployment Summary
         run: |

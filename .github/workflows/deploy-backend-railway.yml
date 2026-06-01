@@ -6,6 +6,8 @@ on:
       - master
     paths:
       - 'backend/**'
+      - 'Procfile'
+      - 'nixpacks.toml'
       - '.github/workflows/deploy-backend-railway.yml'
   workflow_dispatch:
 
@@ -17,64 +19,70 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-          cache-dependency-path: backend/requirements.txt
-
-      - name: Install dependencies
-        working-directory: ./backend
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run linting (optional)
-        working-directory: ./backend
-        continue-on-error: true
-        run: |
-          echo "Skipping linting for now. Add flake8 or pylint if needed."
-
       - name: Install Railway CLI
+        shell: bash
         run: |
-          curl -fsSL https://railway.app/install.sh | sh
+          curl -fsSL https://railway.app/install.sh | bash
           echo "$HOME/.railway/bin" >> $GITHUB_PATH
 
-      - name: Deploy to Railway
-        working-directory: ./backend
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          echo "Deploying backend to Railway..."
-          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway up --service backend
+      - name: Verify Railway CLI Installation
+        shell: bash
+        run: railway --version
 
-      - name: Run Database Migrations
+      - name: Create Railway Config
+        shell: bash
+        run: |
+          echo '{"projectId": "${{ secrets.RAILWAY_PROJECT_ID }}"}' > railway.json
+          cat railway.json
+
+      - name: Deploy to Railway
+        shell: bash
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          APP_VERSION: ${{ github.ref_name }}-${{ github.run_number }}
+          BUILD_SHA: ${{ github.sha }}
+          BUILD_TIME: ${{ github.event.head_commit.timestamp }}
+        run: |
+          echo "Starting deployment to Railway..."
+          railway up --service erp_project_amm
+
+      - name: Health Check (with retry)
+        shell: bash
+        continue-on-error: true
+        run: |
+          echo "Waiting for deployment to be live..."
+          for i in 1 2 3 4 5; do
+            echo "Health check attempt $i/5..."
+            sleep 30
+            if curl -sf "https://${{ secrets.RAILWAY_BACKEND_URL }}/health"; then
+              echo ""
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying..."
+          done
+          echo "All health check attempts failed. Please verify manually at Railway dashboard."
+          exit 1
+
+      - name: Check Migration Status
+        shell: bash
+        continue-on-error: true
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          echo "Running database migrations..."
-          railway run --service backend python migrate.py upgrade
+          echo "Checking database migration status..."
+          railway run --service erp_project_amm -- bash -c "cd backend && python migrate.py current"
 
       - name: Deployment Summary
+        shell: bash
         run: |
-          echo "### ✅ Backend Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Backend Deployment Triggered" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** Production" >> $GITHUB_STEP_SUMMARY
           echo "**Platform:** Railway" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Services Deployed:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Backend API" >> $GITHUB_STEP_SUMMARY
-          echo "- Database Migrations" >> $GITHUB_STEP_SUMMARY
+          echo "**Backend URL:** https://${{ secrets.RAILWAY_BACKEND_URL }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "View logs at: https://railway.app/dashboard" >> $GITHUB_STEP_SUMMARY
-
-      - name: Health Check
-        continue-on-error: true
-        run: |
-          echo "Waiting for deployment to be live..."
-          sleep 30
-          curl -f ${{ secrets.RAILWAY_BACKEND_URL }}/health || echo "Health check failed, please verify manually"
+          echo "View deployment logs at: https://railway.app/dashboard" >> $GITHUB_STEP_SUMMARY

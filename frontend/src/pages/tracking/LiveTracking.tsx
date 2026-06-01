@@ -6,6 +6,7 @@ import AlertMessage from "../../components/AlertMessage";
 import type { VehicleLocation } from "../../types/vehicle";
 
 const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "";
+const LIBRARIES: ("places")[] = ["places"];
 
 const MAP_CONTAINER = { width: "100%", height: "600px" };
 const DEFAULT_CENTER = { lat: 20.5937, lng: 78.9629 }; // India center
@@ -15,7 +16,7 @@ const TYPE_ICON: Record<string, string> = {
 };
 
 export default function LiveTracking() {
-  const { isLoaded } = useJsApiLoader({ googleMapsApiKey: GOOGLE_MAPS_API_KEY });
+  const { isLoaded } = useJsApiLoader({ googleMapsApiKey: GOOGLE_MAPS_API_KEY, libraries: LIBRARIES });
 
   const [vehicles, setVehicles]   = useState<VehicleLocation[]>([]);
   const [selected, setSelected]   = useState<VehicleLocation | null>(null);

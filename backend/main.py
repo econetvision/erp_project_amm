@@ -50,7 +50,7 @@ logger.info("Running database seed...")
 seed()
 logger.info("Database seed completed")
 
-if os.getenv("SEED_TEST_DATA", "true").lower() in ("1", "true", "yes"):
+if os.getenv("SEED_TEST_DATA", "false").lower() in ("1", "true", "yes"):
     from seed_test_data import seed_test_data
     logger.info("Running test data seed...")
     try:
@@ -137,18 +137,59 @@ def start_scheduler():
     scheduler.start()
     logger.info("Background scheduler started successfully")
     logger.info(f"Application started - Version: {app.version}")
+    logger.info(f"Build SHA: {os.getenv('BUILD_SHA', 'dev')}")
 
 @app.on_event("shutdown")
 def stop_scheduler():
     logger.info("Shutting down background scheduler...")
-    scheduler.shutdown()
+    scheduler.shutdown(wait=False)
     logger.info("Background scheduler stopped")
+    # Close DB engine connections cleanly
+    engine.dispose()
+    logger.info("Database connections closed")
     logger.info("Application shutdown complete")
 
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    """Rich health endpoint with version, build, and migration info."""
+    from datetime import datetime as _dt
+    from sqlalchemy import text
+    from database import SessionLocal
+
+    # ── Backend version & build info ──
+    backend_version = os.getenv("APP_VERSION", app.version)
+    build_sha       = os.getenv("BUILD_SHA", "dev")
+    build_time      = os.getenv("BUILD_TIME", "unknown")
+
+    # ── Database connectivity & migration info ──
+    db_status      = "ok"
+    db_migration   = None
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        row = db.execute(
+            text("SELECT version_num FROM alembic_version LIMIT 1")
+        ).fetchone()
+        if row:
+            db_migration = row[0]
+        db.close()
+    except Exception as exc:
+        db_status = f"error: {exc}"
+
+    return {
+        "status": "ok",
+        "backend": {
+            "version": backend_version,
+            "build_sha": build_sha,
+            "build_time": build_time,
+        },
+        "database": {
+            "status": db_status,
+            "last_migration": db_migration,
+        },
+        "server_time": _dt.utcnow().isoformat() + "Z",
+    }
 
 # Serve uploaded photos
 _uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
