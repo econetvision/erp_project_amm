@@ -87,6 +87,19 @@ class AttendanceRepository {
         }
     }
 
+    suspend fun getMyLocations(): Result<List<MyWorkLocation>> {
+        return try {
+            val response = api.getMyLocations()
+            if (response.isSuccessful) {
+                Result.success(response.body() ?: emptyList())
+            } else {
+                Result.failure(Exception(response.errorBody()?.string() ?: "Failed to get assigned locations"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun getMonthlyReport(employeeId: Int, month: Int, year: Int): Result<MonthlyReport> {
         return try {
             val response = api.getMonthlyReport(employeeId, month, year)

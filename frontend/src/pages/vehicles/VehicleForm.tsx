@@ -16,12 +16,13 @@ export default function VehicleForm() {
   const [alert, setAlert] = useState<{ type: string; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm]  = useState({
-    reg_number: "", type: "truck", make: "", model: "", status: "available",
+    reg_number: "", type: "truck", make: "", model: "", status: "available", tracker_imei: "",
   });
 
   const { touch, validateAll, getFieldProps } = useFormValidation({
     reg_number: [required(), pattern(/^[A-Z]{2}\d{1,2}[A-Z]{0,3}\d{4}$/i, "Indian format: TN01AB1234")],
     type: [required()],
+    tracker_imei: [pattern(/^\d{14,20}$/, "IMEI must be 14-20 digits")],
   });
 
   useEffect(() => {
@@ -32,6 +33,7 @@ export default function VehicleForm() {
       make:       data.make || "",
       model:      data.model || "",
       status:     data.status,
+      tracker_imei: data.tracker_imei || "",
     })).catch((e: any) => setAlert({ type: "danger", message: e.message }));
   }, [id, isEdit]);
 
@@ -54,6 +56,7 @@ export default function VehicleForm() {
         type:       form.type,
         make:       form.make || null,
         model:      form.model || null,
+        tracker_imei: form.tracker_imei || null,
         ...(isEdit ? { status: form.status } : {}),
       };
       if (isEdit) {
@@ -90,6 +93,11 @@ export default function VehicleForm() {
 
         <ValidatedInput label="Model" name="model" value={form.model}
           onChange={handleChange} icon="📝" placeholder="e.g. Ace Gold" />
+
+        <ValidatedInput label="Tracker IMEI" name="tracker_imei" value={form.tracker_imei}
+          onChange={handleChange} onBlur={() => touch("tracker_imei", form.tracker_imei)}
+          validation={getFieldProps("tracker_imei")} icon="📡"
+          placeholder="e.g. 860123456789012" hint="Optional — IMEI of the installed hardware GPS tracker" />
 
         {isEdit && (
           <ValidatedInput label="Status" name="status" value={form.status}

@@ -15,6 +15,17 @@ const TYPE_ICON: Record<string, string> = {
   truck: "🚛", auto: "🛺", van: "🚐", bike: "🏍️", other: "🚗",
 };
 
+// Roughly 2x the expected 15-30s tracker cadence — past this, treat as stale/offline.
+const STALE_THRESHOLD_MS = 75000;
+
+function staleLabel(recordedAt: string | null): string | null {
+  if (!recordedAt) return null;
+  const ageMs = Date.now() - new Date(recordedAt).getTime();
+  if (ageMs < STALE_THRESHOLD_MS) return null;
+  const mins = Math.floor(ageMs / 60000);
+  return mins < 1 ? "Last seen <1 min ago" : `Last seen ${mins}m ago`;
+}
+
 export default function LiveTracking() {
   const { isLoaded } = useJsApiLoader({ googleMapsApiKey: GOOGLE_MAPS_API_KEY, libraries: LIBRARIES });
 
@@ -39,6 +50,21 @@ export default function LiveTracking() {
   // Subscribe to live WebSocket feeds for assigned vehicles
   useEffect(() => {
     load();
+  }, []);
+
+  // Polling fallback — refreshes from the DB every 25s regardless of WS state, so a
+  // dropped socket or a missed cross-process broadcast self-heals within one interval.
+  useEffect(() => {
+    const interval = setInterval(load, 25000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Re-render periodically so the staleness badge ("Last seen Nm ago") keeps ticking
+  // even when no new location update has arrived.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 15000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -110,6 +136,9 @@ export default function LiveTracking() {
                     {v.speed != null && (
                       <div style={{ fontSize: "0.7rem" }}>{v.speed} km/h</div>
                     )}
+                    {staleLabel(v.recorded_at) && (
+                      <div className="text-warning" style={{ fontSize: "0.7rem" }}>⚠️ {staleLabel(v.recorded_at)}</div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -129,19 +158,23 @@ export default function LiveTracking() {
             zoom={located.length > 0 ? 12 : 5}
             onLoad={onMapLoad}
           >
-            {located.map(v => (
-              <Marker
-                key={v.vehicle_id}
-                position={{ lat: v.latitude!, lng: v.longitude! }}
-                title={`${v.reg_number} — ${v.employee_name || "Unassigned"}`}
-                onClick={() => setSelected(v)}
-                label={{
-                  text: TYPE_ICON[v.type] || "🚗",
-                  fontSize: "20px",
-                  fontFamily: "Segoe UI Emoji, Apple Color Emoji, sans-serif",
-                }}
-              />
-            ))}
+            {located.map(v => {
+              const stale = staleLabel(v.recorded_at);
+              return (
+                <Marker
+                  key={v.vehicle_id}
+                  position={{ lat: v.latitude!, lng: v.longitude! }}
+                  title={`${v.reg_number} — ${v.employee_name || "Unassigned"}${stale ? ` (${stale})` : ""}`}
+                  onClick={() => setSelected(v)}
+                  opacity={stale ? 0.45 : 1}
+                  label={{
+                    text: TYPE_ICON[v.type] || "🚗",
+                    fontSize: "20px",
+                    fontFamily: "Segoe UI Emoji, Apple Color Emoji, sans-serif",
+                  }}
+                />
+              );
+            })}
 
             {selected?.latitude && (
               <InfoWindow
@@ -157,6 +190,9 @@ export default function LiveTracking() {
                     <div className="text-muted" style={{ fontSize: "0.75rem" }}>
                       {new Date(selected.recorded_at).toLocaleTimeString()}
                     </div>
+                  )}
+                  {staleLabel(selected.recorded_at) && (
+                    <div className="text-warning" style={{ fontSize: "0.75rem" }}>⚠️ {staleLabel(selected.recorded_at)}</div>
                   )}
                 </div>
               </InfoWindow>

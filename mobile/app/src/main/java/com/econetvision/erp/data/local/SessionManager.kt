@@ -39,6 +39,8 @@ class SessionManager(context: Context) {
 
     fun isLoggedIn(): Boolean = getToken() != null
 
+    fun canManage(): Boolean = getRole() in setOf("master", "admin", "supervisor")
+
     fun clear() {
         prefs.edit().clear().apply()
     }

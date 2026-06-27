@@ -11,7 +11,7 @@ export interface WorkLocation {
   pincode: string | null;
   latitude: number;
   longitude: number;
-  allowed_radius_km: number;
+  allowed_radius_m: number;
   work_type: string | null;
   supervisor_id: number | null;
   is_active: boolean;
@@ -30,7 +30,7 @@ export interface WorkLocationCreate {
   pincode?: string;
   latitude: number;
   longitude: number;
-  allowed_radius_km?: number;
+  allowed_radius_m?: number;
   work_type?: string;
   supervisor_id?: number;
   is_active?: boolean;
@@ -45,7 +45,7 @@ export interface WorkLocationUpdate {
   pincode?: string;
   latitude?: number;
   longitude?: number;
-  allowed_radius_km?: number;
+  allowed_radius_m?: number;
   work_type?: string;
   supervisor_id?: number;
   is_active?: boolean;

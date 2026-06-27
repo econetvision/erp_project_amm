@@ -17,6 +17,7 @@ from auth.dependencies import (
     hash_password, verify_password, create_access_token,
     require_admin, get_current_user, require_any,
 )
+from services.face_service import identify_employee
 
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "photos", "users")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -33,6 +34,31 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == payload.username).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password")
+    token = create_access_token({"sub": str(user.id), "role": user.role, "company_id": user.company_id})
+    return TokenResponse(
+        access_token=token,
+        role=user.role,
+        username=user.username,
+        company_id=user.company_id,
+        employee_id=user.id,
+        email=user.email,
+        display_name=user.display_name,
+        lock_timeout=user.lock_timeout,
+        has_pin=bool(user.pin_hash),
+        theme_preference=user.theme_preference,
+    )
+
+
+class FaceLoginRequest(BaseModel):
+    image: str  # base64-encoded image
+
+
+@router.post("/face-login", response_model=TokenResponse)
+def face_login(payload: FaceLoginRequest, db: Session = Depends(get_db)):
+    candidates = db.query(User).filter(User.face_encoding.isnot(None), User.is_active.is_(True)).all()
+    user = identify_employee(payload.image, candidates)
+    if not user:
+        raise HTTPException(status_code=401, detail="Face not recognized. Please log in with your username and password.")
     token = create_access_token({"sub": str(user.id), "role": user.role, "company_id": user.company_id})
     return TokenResponse(
         access_token=token,

@@ -14,6 +14,9 @@ class LoginViewModel : ViewModel() {
     private val _loginResult = MutableLiveData<Result<TokenResponse>>()
     val loginResult: LiveData<Result<TokenResponse>> = _loginResult
 
+    private val _faceLoginResult = MutableLiveData<Result<TokenResponse>>()
+    val faceLoginResult: LiveData<Result<TokenResponse>> = _faceLoginResult
+
     private val _isLoading = MutableLiveData(false)
     val isLoading: LiveData<Boolean> = _isLoading
 
@@ -22,6 +25,15 @@ class LoginViewModel : ViewModel() {
         viewModelScope.launch {
             val result = repository.login(username, password)
             _loginResult.value = result
+            _isLoading.value = false
+        }
+    }
+
+    fun faceLogin(image: String) {
+        _isLoading.value = true
+        viewModelScope.launch {
+            val result = repository.faceLogin(image)
+            _faceLoginResult.value = result
             _isLoading.value = false
         }
     }

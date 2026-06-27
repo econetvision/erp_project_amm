@@ -44,7 +44,7 @@ class User(Base):
     work_location_name  = Column(String(255), nullable=True)
     work_latitude       = Column(Float, nullable=True)
     work_longitude      = Column(Float, nullable=True)
-    attendance_radius_km = Column(Float, nullable=True, default=10.0)
+    attendance_radius_m = Column(Float, nullable=True, default=50.0)
     phone_verified      = Column(String(1), nullable=True, default="N")
     email_verified      = Column(String(1), nullable=True, default="N")
 

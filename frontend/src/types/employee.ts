@@ -24,7 +24,7 @@ export interface Employee {
   work_location_name: string | null;
   work_latitude: number | null;
   work_longitude: number | null;
-  attendance_radius_km: number | null;
+  attendance_radius_m: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -48,7 +48,7 @@ export interface EmployeeCreate {
   work_location_name?: string;
   work_latitude?: number;
   work_longitude?: number;
-  attendance_radius_km?: number;
+  attendance_radius_m?: number;
 }
 
 export interface EmployeeUpdate {
@@ -70,7 +70,7 @@ export interface EmployeeUpdate {
   work_location_name?: string;
   work_latitude?: number;
   work_longitude?: number;
-  attendance_radius_km?: number;
+  attendance_radius_m?: number;
 }
 
 export interface PaginatedResponse<T> {

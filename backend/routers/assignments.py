@@ -1,14 +1,34 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
+from typing import Optional
 from database import get_db
 from models.vehicle import Vehicle
 from models.vehicle_assignment import VehicleAssignment
 from models.user import User
-from schemas.vehicle_assignment import AssignRequest, AssignmentResponse
-from auth.dependencies import require_admin_or_supervisor
+from schemas.vehicle_assignment import AssignRequest, AssignmentResponse, MyAssignmentResponse
+from auth.dependencies import require_admin_or_supervisor, get_current_user
 
 router = APIRouter()
+
+
+@router.get("/my", response_model=Optional[MyAssignmentResponse])
+def my_assignment(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Return the calling user's active vehicle assignment, if any. Used by the
+    mobile app to decide whether to offer vehicle trip tracking."""
+    active = (
+        db.query(VehicleAssignment)
+        .filter(VehicleAssignment.employee_id == current_user.id, VehicleAssignment.released_at.is_(None))
+        .first()
+    )
+    if not active or not active.vehicle:
+        return None
+    return MyAssignmentResponse(
+        vehicle_id=active.vehicle_id,
+        reg_number=active.vehicle.reg_number,
+        type=active.vehicle.type,
+        assigned_at=active.assigned_at,
+    )
 
 
 def _enrich(a: VehicleAssignment) -> AssignmentResponse:

@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS users (
     work_location_name  VARCHAR(255),
     work_latitude       DOUBLE PRECISION,
     work_longitude      DOUBLE PRECISION,
-    attendance_radius_km DOUBLE PRECISION DEFAULT 10.0,
+    attendance_radius_m DOUBLE PRECISION DEFAULT 50.0,
     phone_verified      VARCHAR(1)     DEFAULT 'N',
     email_verified      VARCHAR(1)     DEFAULT 'N',
     created_at          TIMESTAMP      NOT NULL DEFAULT NOW(),
@@ -127,6 +127,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
     make         VARCHAR(100),
     model        VARCHAR(100),
     status       VARCHAR(20)    NOT NULL DEFAULT 'available' CHECK (status IN ('available','assigned','maintenance')),
+    tracker_imei VARCHAR(20)    UNIQUE,
     created_at   TIMESTAMP      NOT NULL DEFAULT NOW(),
     updated_at   TIMESTAMP      NOT NULL DEFAULT NOW()
 );
@@ -159,6 +160,7 @@ CREATE TABLE IF NOT EXISTS vehicle_locations (
 
 CREATE INDEX IF NOT EXISTS idx_vl_vehicle     ON vehicle_locations(vehicle_id);
 CREATE INDEX IF NOT EXISTS idx_vl_recorded_at ON vehicle_locations(recorded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_vl_vehicle_recorded ON vehicle_locations(vehicle_id, recorded_at DESC);
 
 -- ── Job Routines ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS job_routines (
@@ -302,7 +304,7 @@ CREATE TABLE IF NOT EXISTS work_locations (
     pincode           VARCHAR(10),
     latitude          DOUBLE PRECISION NOT NULL,
     longitude         DOUBLE PRECISION NOT NULL,
-    allowed_radius_km DOUBLE PRECISION NOT NULL DEFAULT 10.0,
+    allowed_radius_m  DOUBLE PRECISION NOT NULL DEFAULT 50.0,
     work_type         VARCHAR(50),
     supervisor_id     INTEGER          REFERENCES users(id) ON DELETE SET NULL,
     is_active         BOOLEAN          NOT NULL DEFAULT TRUE,

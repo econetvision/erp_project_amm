@@ -103,13 +103,13 @@ export default function VehicleList() {
         <table className="table table-hover table-bordered align-middle">
           <thead className="table-dark">
             <tr>
-              <th>#</th><th>Reg Number</th><th>Type</th><th>Make / Model</th><th>Status</th>
+              <th>#</th><th>Reg Number</th><th>Type</th><th>Make / Model</th><th>Status</th><th>Tracker</th>
               {auth?.role === "admin" && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {pageItems.length === 0 && (
-              <tr><td colSpan={6} className="text-center text-muted">No vehicles found.</td></tr>
+              <tr><td colSpan={7} className="text-center text-muted">No vehicles found.</td></tr>
             )}
             {pageItems.map(v => (
               <tr key={v.id}>
@@ -124,6 +124,11 @@ export default function VehicleList() {
                   <span className={`badge bg-${STATUS_BADGE[v.status] || "secondary"}`}>
                     {v.status}
                   </span>
+                </td>
+                <td>
+                  {v.tracker_imei
+                    ? <span className="badge bg-info text-dark" title={v.tracker_imei}>📡 Linked</span>
+                    : <span className="text-muted small">—</span>}
                 </td>
                 {auth?.role === "admin" && (
                   <td>

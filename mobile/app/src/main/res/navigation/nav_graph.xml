@@ -27,5 +27,36 @@
         android:id="@+id/settingsFragment"
         android:name="com.econetvision.erp.ui.settings.SettingsFragment"
         android:label="Settings"
-        tools:layout="@layout/fragment_settings" />
+        tools:layout="@layout/fragment_settings">
+
+        <action
+            android:id="@+id/action_settingsFragment_to_employeesFragment"
+            app:destination="@id/employeesFragment" />
+
+        <action
+            android:id="@+id/action_settingsFragment_to_workLocationsFragment"
+            app:destination="@id/workLocationsFragment" />
+
+        <action
+            android:id="@+id/action_settingsFragment_to_usersFragment"
+            app:destination="@id/usersFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/employeesFragment"
+        android:name="com.econetvision.erp.ui.employees.EmployeesFragment"
+        android:label="Employees"
+        tools:layout="@layout/fragment_employees" />
+
+    <fragment
+        android:id="@+id/workLocationsFragment"
+        android:name="com.econetvision.erp.ui.locations.WorkLocationsFragment"
+        android:label="Work Locations"
+        tools:layout="@layout/fragment_work_locations" />
+
+    <fragment
+        android:id="@+id/usersFragment"
+        android:name="com.econetvision.erp.ui.users.UsersFragment"
+        android:label="Users"
+        tools:layout="@layout/fragment_users" />
 </navigation>

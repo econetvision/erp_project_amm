@@ -21,3 +21,10 @@ class AssignmentResponse(BaseModel):
     reg_number:    Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+
+class MyAssignmentResponse(BaseModel):
+    vehicle_id:  int
+    reg_number:  str
+    type:        str
+    assigned_at: datetime

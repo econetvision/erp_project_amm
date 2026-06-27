@@ -22,7 +22,7 @@ const WORK_TYPES = [
 
 const EMPTY_FORM: WorkLocationCreate = {
   location_name: "", location_code: "", address: "", city: "", state: "", pincode: "",
-  latitude: 0, longitude: 0, allowed_radius_km: 10, work_type: undefined, is_active: true,
+  latitude: 0, longitude: 0, allowed_radius_m: 50, work_type: undefined, is_active: true,
 };
 
 export default function WorkLocations() {
@@ -109,7 +109,7 @@ export default function WorkLocations() {
       pincode: loc.pincode || "",
       latitude: loc.latitude,
       longitude: loc.longitude,
-      allowed_radius_km: loc.allowed_radius_km,
+      allowed_radius_m: loc.allowed_radius_m,
       work_type: loc.work_type || undefined,
       is_active: loc.is_active,
     });
@@ -307,8 +307,8 @@ export default function WorkLocations() {
                   <input className="form-control form-control-sm" type="number" step="any" name="longitude" value={form.longitude} onChange={handleChange} />
                 </div>
                 <div className="col-md-4">
-                  <label className="form-label fw-semibold small">Radius (km)</label>
-                  <input className="form-control form-control-sm" type="number" step="0.1" min="0.1" max="100" name="allowed_radius_km" value={form.allowed_radius_km} onChange={handleChange} />
+                  <label className="form-label fw-semibold small">Radius (m)</label>
+                  <input className="form-control form-control-sm" type="number" step="1" min="1" max="5000" name="allowed_radius_m" value={form.allowed_radius_m} onChange={handleChange} />
                 </div>
               </div>
               <div className="d-flex gap-2 align-items-center mt-3">
@@ -395,7 +395,7 @@ export default function WorkLocations() {
                     <td><span className="badge bg-secondary">{loc.location_code || "—"}</span></td>
                     <td>{[loc.city, loc.state].filter(Boolean).join(", ") || "—"}</td>
                     <td>{loc.work_type || "—"}</td>
-                    <td>{loc.allowed_radius_km} km</td>
+                    <td>{loc.allowed_radius_m} m</td>
                     <td>{loc.employee_count}</td>
                     <td><span className={`badge bg-${loc.is_active ? "success" : "warning"}`}>{loc.is_active ? "Active" : "Inactive"}</span></td>
                     <td className="text-end">
@@ -471,7 +471,7 @@ export default function WorkLocations() {
                   <Circle
                     key={`circle-${loc.id}`}
                     center={{ lat: loc.latitude, lng: loc.longitude }}
-                    radius={loc.allowed_radius_km * 1000}
+                    radius={loc.allowed_radius_m}
                     options={{
                       fillColor: loc.is_active ? "#4ea8e8" : "#999",
                       fillOpacity: 0.12,
@@ -489,7 +489,7 @@ export default function WorkLocations() {
                       <strong>{selectedLoc.location_name}</strong>
                       {selectedLoc.location_code && <span className="ms-1 text-muted">({selectedLoc.location_code})</span>}
                       {selectedLoc.city && <div className="text-muted small">{selectedLoc.city}, {selectedLoc.state}</div>}
-                      <div className="small mt-1">📐 Radius: {selectedLoc.allowed_radius_km} km</div>
+                      <div className="small mt-1">📐 Radius: {selectedLoc.allowed_radius_m} m</div>
                       <div className="small">👥 Employees: {selectedLoc.employee_count}</div>
                       {selectedLoc.work_type && <div className="small">🏷️ Type: {selectedLoc.work_type}</div>}
                       <div className="mt-2 d-flex gap-1">
@@ -507,7 +507,7 @@ export default function WorkLocations() {
                     />
                     <Circle
                       center={{ lat: form.latitude, lng: form.longitude }}
-                      radius={(form.allowed_radius_km || 10) * 1000}
+                      radius={form.allowed_radius_m || 50}
                       options={{ fillColor: "#28a745", fillOpacity: 0.15, strokeColor: "#28a745", strokeWeight: 2 }}
                     />
                   </>
@@ -581,8 +581,8 @@ export default function WorkLocations() {
                     <input className="form-control form-control-sm bg-light" type="number" step="any" name="longitude" value={form.longitude} readOnly disabled />
                   </div>
                   <div className="col-4">
-                    <label className="form-label fw-semibold small">Radius (km)</label>
-                    <input className="form-control form-control-sm" type="number" step="0.1" min="0.1" max="100" name="allowed_radius_km" value={form.allowed_radius_km} onChange={handleChange} />
+                    <label className="form-label fw-semibold small">Radius (m)</label>
+                    <input className="form-control form-control-sm" type="number" step="1" min="1" max="5000" name="allowed_radius_m" value={form.allowed_radius_m} onChange={handleChange} />
                   </div>
                 </div>
                 {form.latitude === 0 && form.longitude === 0 && (
@@ -665,7 +665,7 @@ export default function WorkLocations() {
                         {!loc.is_active && <span className="badge bg-warning ms-1">Inactive</span>}
                         <div className="small text-muted">{[loc.city, loc.state].filter(Boolean).join(", ") || "No address"}</div>
                         <div className="small">
-                          <span className="me-2">📐 {loc.allowed_radius_km} km</span>
+                          <span className="me-2">📐 {loc.allowed_radius_m} m</span>
                           <span>👥 {loc.employee_count}</span>
                           {loc.work_type && <span className="ms-2 badge bg-light text-dark">{loc.work_type}</span>}
                         </div>

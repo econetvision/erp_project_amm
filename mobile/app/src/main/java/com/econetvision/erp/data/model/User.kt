@@ -7,6 +7,10 @@ data class LoginRequest(
     val password: String
 )
 
+data class FaceLoginRequest(
+    val image: String
+)
+
 data class TokenResponse(
     @SerializedName("access_token") val accessToken: String,
     @SerializedName("token_type") val tokenType: String,

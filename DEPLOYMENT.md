@@ -81,7 +81,7 @@ From Vercel dashboard:
 3. In service settings:
    - **Root Directory**: Leave empty (we'll use Dockerfile path)
    - **Dockerfile Path**: `backend/Dockerfile`
-   - **Start Command**: `cd backend && python migrate.py upgrade && uvicorn main:app --host 0.0.0.0 --port ${PORT:-8088} --workers 2 --log-level info`
+   - **Start Command**: leave empty — the Dockerfile's `ENTRYPOINT` (`backend/entrypoint.sh`) handles migrations-with-retry and starts uvicorn. It defaults to a single worker (`WORKERS=1`) because the live fleet-tracking WebSocket broadcast cache is in-memory and per-process; running more than 1 worker means some viewers silently stop receiving live updates. Only raise `WORKERS` if you've separately solved that (e.g. moved broadcast state to Redis pub/sub).
 
 ### Step 4: Set Environment Variables in Railway
 
@@ -109,6 +109,37 @@ KYC_API_SECRET=
 1. Railway will automatically deploy on push to master
 2. Get your backend URL from Railway (e.g., `https://your-backend.railway.app`)
 3. Update this URL in Vercel's `REACT_APP_API_URL`
+
+---
+
+## Fleet Tracking Gateway (Railway)
+
+Hardware GPS trackers (GT06-protocol devices) don't speak HTTP — they dial out
+to a fixed `IP:port` and stream a binary TCP protocol. The gateway in
+[gateway/](../gateway/) is a separate always-on service that translates that
+protocol into calls against the main backend's `POST /api/tracking/push`.
+
+### Step 1: Create a new Railway service
+
+1. In the same Railway project as the backend, click **"New"** → **"GitHub Repo"** (same repo)
+2. **Dockerfile Path**: `gateway/Dockerfile`
+3. Enable Railway's **TCP Proxy** for this service (Settings → Networking) — this gives you a public `host:port` to configure into each physical tracker device at install time (via the vendor's config tool or an SMS command, per device)
+
+### Step 2: Environment variables
+
+```bash
+BACKEND_URL=https://your-backend.railway.app
+TRACKING_GATEWAY_KEY=a-long-random-shared-secret   # must match the backend's TRACKING_GATEWAY_KEY exactly
+LISTEN_PORT=5023
+```
+
+Set the same `TRACKING_GATEWAY_KEY` value on the **backend** service's environment variables too — it's how the gateway authenticates its location pushes without a per-user JWT.
+
+### Step 3: Register hardware
+
+For each vehicle with a tracker installed, set its IMEI via the admin UI (Vehicles → Edit → Tracker IMEI) or `PATCH /api/vehicles/{id}`. The gateway refreshes its IMEI→vehicle_id cache from `GET /api/vehicles/imei-map` every 5 minutes by default.
+
+See [gateway/README.md](../gateway/README.md) for protocol notes and local testing.
 
 ---
 
@@ -205,6 +236,11 @@ TWILIO_VERIFY_SERVICE_SID=
 KYC_PROVIDER=manual
 KYC_API_KEY=
 KYC_API_SECRET=
+
+# Fleet tracking gateway (Optional — only if hardware GPS trackers are in use)
+TRACKING_GATEWAY_KEY=
+WORKERS=1
+LOCATION_RETENTION_DAYS=90
 ```
 
 ---
@@ -296,7 +332,7 @@ railway run --service backend alembic current
 - View runtime logs: Railway dashboard → Service → Logs tab
 
 **High memory usage**
-- Reduce uvicorn workers in start command (default: 2)
+- Workers default to 1 (`WORKERS` env var) — only raise this if the in-memory tracking WebSocket broadcast gap (see Step 3) has been addressed separately
 - Check for memory leaks in scheduled jobs
 - Monitor Railway metrics dashboard
 

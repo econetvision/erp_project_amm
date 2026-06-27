@@ -24,7 +24,7 @@ class EmployeeBase(BaseModel):
     work_location_name:  Optional[str] = Field(None, max_length=255)
     work_latitude:       Optional[float] = None
     work_longitude:      Optional[float] = None
-    attendance_radius_km: Optional[float] = Field(10.0, ge=0.1, le=100)
+    attendance_radius_m: Optional[float] = Field(50.0, ge=1, le=5000)
 
     @field_validator("aadhar_number")
     @classmethod
@@ -64,7 +64,7 @@ class EmployeeUpdate(BaseModel):
     work_location_name:  Optional[str] = Field(None, max_length=255)
     work_latitude:       Optional[float] = None
     work_longitude:      Optional[float] = None
-    attendance_radius_km: Optional[float] = Field(None, ge=0.1, le=100)
+    attendance_radius_m: Optional[float] = Field(None, ge=1, le=5000)
 
 
 class EmployeeResponse(BaseModel):
@@ -93,7 +93,7 @@ class EmployeeResponse(BaseModel):
     work_location_name:  Optional[str] = None
     work_latitude:       Optional[float] = None
     work_longitude:      Optional[float] = None
-    attendance_radius_km: Optional[float] = None
+    attendance_radius_m: Optional[float] = None
     created_at:          datetime
     updated_at:          datetime
 

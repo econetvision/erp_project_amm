@@ -19,4 +19,4 @@ export const sendEmailOtp    = (id: number | string): Promise<AxiosResponse<{ de
 export const verifyEmail     = (id: number | string, code: string): Promise<AxiosResponse<Employee>> => api.post(`/api/employees/${id}/verify-email`, { code });
 
 // Work location assignment
-export const assignWorkLocation = (id: number | string, data: { work_location_name: string; work_latitude: number; work_longitude: number; attendance_radius_km?: number }): Promise<AxiosResponse<Employee>> => api.put(`/api/employees/${id}/work-location`, data);
+export const assignWorkLocation = (id: number | string, data: { work_location_name: string; work_latitude: number; work_longitude: number; attendance_radius_m?: number }): Promise<AxiosResponse<Employee>> => api.put(`/api/employees/${id}/work-location`, data);

@@ -10,6 +10,9 @@ interface ApiService {
     @POST("/api/auth/login")
     suspend fun login(@Body request: LoginRequest): Response<TokenResponse>
 
+    @POST("/api/auth/face-login")
+    suspend fun faceLogin(@Body request: FaceLoginRequest): Response<TokenResponse>
+
     @GET("/api/auth/me")
     suspend fun getMe(): Response<User>
 
@@ -18,6 +21,23 @@ interface ApiService {
 
     @PUT("/api/auth/me/password")
     suspend fun changePassword(@Body request: PasswordChangeRequest): Response<Map<String, String>>
+
+    // Admin Users
+    @GET("/api/auth/users")
+    suspend fun getUsers(
+        @Query("page") page: Int = 1,
+        @Query("per_page") perPage: Int = 50,
+        @Query("q") query: String? = null
+    ): Response<PaginatedUsers>
+
+    @POST("/api/auth/users")
+    suspend fun createUser(@Body request: AdminUserCreate): Response<AdminUser>
+
+    @PUT("/api/auth/users/{id}")
+    suspend fun updateUser(@Path("id") id: Int, @Body request: AdminUserUpdate): Response<AdminUser>
+
+    @DELETE("/api/auth/users/{id}")
+    suspend fun deleteUser(@Path("id") id: Int): Response<Unit>
 
     // Employees
     @GET("/api/employees")
@@ -29,6 +49,16 @@ interface ApiService {
 
     @GET("/api/employees/{id}")
     suspend fun getEmployee(@Path("id") id: Int): Response<Employee>
+
+    // Work Locations
+    @GET("/api/locations")
+    suspend fun getWorkLocations(
+        @Query("q") query: String? = null,
+        @Query("active_only") activeOnly: Boolean = false
+    ): Response<List<WorkLocation>>
+
+    @GET("/api/locations/my")
+    suspend fun getMyLocations(): Response<List<MyWorkLocation>>
 
     // Attendance
     @POST("/api/attendance/clock-in")
@@ -69,4 +99,11 @@ interface ApiService {
     // Holidays
     @GET("/api/holidays")
     suspend fun getHolidays(@Query("year") year: Int? = null): Response<List<Holiday>>
+
+    // Vehicle tracking (backup path — hardware GPS trackers are primary)
+    @GET("/api/assignments/my")
+    suspend fun getMyAssignment(): Response<MyAssignment?>
+
+    @POST("/api/tracking/push")
+    suspend fun pushLocation(@Body data: LocationPushRequest): Response<Map<String, Any>>
 }

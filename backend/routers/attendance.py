@@ -50,8 +50,8 @@ def validate_geofence(emp: User, latitude: float | None, longitude: float | None
             for a in assignments:
                 loc = db.query(WorkLocation).filter(WorkLocation.id == a.location_id).first()
                 if loc and loc.is_active:
-                    distance = haversine_km(loc.latitude, loc.longitude, latitude, longitude)
-                    if distance <= loc.allowed_radius_km:
+                    distance_m = haversine_km(loc.latitude, loc.longitude, latitude, longitude) * 1000
+                    if distance_m <= loc.allowed_radius_m:
                         return  # Within at least one assigned location
             # Not within any assigned location
             loc_names = []
@@ -69,12 +69,12 @@ def validate_geofence(emp: User, latitude: float | None, longitude: float | None
         return  # No work location configured — skip validation
     if latitude is None or longitude is None:
         raise HTTPException(status_code=400, detail="Location is required. Please enable GPS and try again.")
-    distance = haversine_km(emp.work_latitude, emp.work_longitude, latitude, longitude)
-    radius = emp.attendance_radius_km or 10.0
-    if distance > radius:
+    distance_m = haversine_km(emp.work_latitude, emp.work_longitude, latitude, longitude) * 1000
+    radius_m = emp.attendance_radius_m or 50.0
+    if distance_m > radius_m:
         raise HTTPException(
             status_code=403,
-            detail=f"You are {distance:.1f} km away from your work location ({emp.work_location_name or 'assigned site'}). Must be within {radius:.1f} km."
+            detail=f"You are {distance_m:.0f} m away from your work location ({emp.work_location_name or 'assigned site'}). Must be within {radius_m:.0f} m."
         )
 
 

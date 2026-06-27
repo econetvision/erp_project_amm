@@ -19,6 +19,19 @@ class AuthRepository {
         }
     }
 
+    suspend fun faceLogin(image: String): Result<TokenResponse> {
+        return try {
+            val response = api.faceLogin(FaceLoginRequest(image))
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception(response.errorBody()?.string() ?: "Face login failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun updateProfile(displayName: String?, email: String?, phone: String?): Result<User> {
         return try {
             val response = api.updateProfile(UserUpdate(displayName, email, phone))

@@ -2,9 +2,11 @@ package com.econetvision.erp.ui.attendance
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.location.Location
+import android.os.Build
 import android.os.Bundle
 import android.util.Base64
 import android.view.LayoutInflater
@@ -15,8 +17,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import com.econetvision.erp.R
 import com.econetvision.erp.data.local.SessionManager
+import com.econetvision.erp.data.model.MyAssignment
+import com.econetvision.erp.data.model.MyWorkLocation
 import com.econetvision.erp.databinding.FragmentAttendanceBinding
+import com.econetvision.erp.service.VehicleTrackingService
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -31,6 +37,24 @@ class AttendanceFragment : Fragment() {
     private var pendingAction: String? = null // "clock_in", "clock_out", "face_scan"
     private var capturedImage: String? = null
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private var lastKnownLocation: Location? = null
+    private var currentAssignment: MyAssignment? = null
+    private var isTrackingTrip = false
+
+    private val trackingPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val backgroundGranted = permissions[Manifest.permission.ACCESS_BACKGROUND_LOCATION] != false
+        if (backgroundGranted) {
+            startVehicleTracking()
+        } else {
+            Toast.makeText(
+                requireContext(),
+                "Background location permission is required for trip tracking",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -76,8 +100,11 @@ class AttendanceFragment : Fragment() {
         if (empId != -1) {
             viewModel.getTodayStatus(empId)
         }
+        viewModel.loadMyLocations()
+        viewModel.loadMyAssignment()
 
         observeViewModel()
+        refreshWorkLocationStatus()
 
         binding.btnClockIn.setOnClickListener {
             pendingAction = "clock_in"
@@ -94,7 +121,125 @@ class AttendanceFragment : Fragment() {
             checkPermissionsAndCapture()
         }
 
+        binding.btnRefreshLocation.setOnClickListener {
+            refreshWorkLocationStatus()
+        }
+
+        binding.btnToggleTracking.setOnClickListener {
+            if (isTrackingTrip) stopVehicleTracking() else requestTrackingPermissionsAndStart()
+        }
+
         return binding.root
+    }
+
+    private fun requestTrackingPermissionsAndStart() {
+        val fineGranted = ContextCompat.checkSelfPermission(
+            requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!fineGranted) {
+            Toast.makeText(requireContext(), "Location permission is required to start tracking", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val permissionsNeeded = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            permissionsNeeded.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        if (permissionsNeeded.isEmpty()) {
+            startVehicleTracking()
+        } else {
+            trackingPermissionLauncher.launch(permissionsNeeded.toTypedArray())
+        }
+    }
+
+    private fun startVehicleTracking() {
+        val assignment = currentAssignment ?: return
+        val intent = Intent(requireContext(), VehicleTrackingService::class.java).apply {
+            putExtra(VehicleTrackingService.EXTRA_VEHICLE_ID, assignment.vehicleId)
+            putExtra(VehicleTrackingService.EXTRA_REG_NUMBER, assignment.regNumber)
+        }
+        ContextCompat.startForegroundService(requireContext(), intent)
+        isTrackingTrip = true
+        binding.btnToggleTracking.text = "Stop Trip Tracking"
+    }
+
+    private fun stopVehicleTracking() {
+        val intent = Intent(requireContext(), VehicleTrackingService::class.java).apply {
+            action = VehicleTrackingService.ACTION_STOP
+        }
+        requireContext().startService(intent)
+        isTrackingTrip = false
+        binding.btnToggleTracking.text = "Start Trip Tracking"
+    }
+
+    private fun hasLocationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+            requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun fetchCurrentLocation(onResult: (Location?) -> Unit) {
+        if (!hasLocationPermission()) {
+            onResult(null)
+            return
+        }
+        val cts = CancellationTokenSource()
+        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.token)
+            .addOnSuccessListener { location: Location? -> onResult(location) }
+            .addOnFailureListener { onResult(null) }
+    }
+
+    private fun refreshWorkLocationStatus() {
+        fetchCurrentLocation { location ->
+            lastKnownLocation = location
+            if (location != null) {
+                viewModel.updateCurrentDistance(location.latitude, location.longitude)
+            }
+        }
+    }
+
+    private fun renderWorkLocationCard(locations: List<MyWorkLocation>) {
+        if (locations.isEmpty()) {
+            binding.cardWorkLocation.visibility = View.GONE
+            return
+        }
+        binding.cardWorkLocation.visibility = View.VISIBLE
+
+        val status = viewModel.currentDistanceStatus.value
+        if (status == null) {
+            val fallback = locations.firstOrNull { it.isPrimary } ?: locations.first()
+            binding.tvWorkLocationName.text = "📍 ${fallback.locationName}"
+            binding.tvWorkLocationStatus.text = if (lastKnownLocation == null) {
+                "Locating…"
+            } else {
+                "Distance unavailable"
+            }
+            binding.tvWorkLocationStatus.setTextColor(
+                ContextCompat.getColor(requireContext(), R.color.warning)
+            )
+            return
+        }
+
+        val (location, distance) = status
+        binding.tvWorkLocationName.text = "📍 ${location.locationName}"
+        if (distance <= location.allowedRadiusM) {
+            binding.tvWorkLocationStatus.text = "✅ Within range (${distance.toInt()} m)"
+            binding.tvWorkLocationStatus.setTextColor(
+                ContextCompat.getColor(requireContext(), R.color.success)
+            )
+        } else {
+            binding.tvWorkLocationStatus.text =
+                "⚠️ ${distance.toInt()} m away — must be within ${location.allowedRadiusM.toInt()} m"
+            binding.tvWorkLocationStatus.setTextColor(
+                ContextCompat.getColor(requireContext(), R.color.danger)
+            )
+        }
     }
 
     private fun checkPermissionsAndCapture() {
@@ -118,18 +263,10 @@ class AttendanceFragment : Fragment() {
         takePictureLauncher.launch(null)
     }
 
-    @SuppressLint("MissingPermission")
     private fun fetchLocationAndSubmit() {
         val image = capturedImage ?: return
 
-        val hasLocationPermission = ContextCompat.checkSelfPermission(
-            requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
-            requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-
-        if (!hasLocationPermission) {
-            // Submit without location
+        if (!hasLocationPermission()) {
             submitAttendance(image, null, null)
             return
         }
@@ -137,23 +274,19 @@ class AttendanceFragment : Fragment() {
         binding.tvLocationStatus.visibility = View.VISIBLE
         binding.tvLocationStatus.text = "Fetching location…"
 
-        val cts = CancellationTokenSource()
-        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.token)
-            .addOnSuccessListener { location: Location? ->
-                if (location != null) {
-                    binding.tvLocationStatus.text = String.format(
-                        "Location: %.6f, %.6f", location.latitude, location.longitude
-                    )
-                    submitAttendance(image, location.latitude, location.longitude)
-                } else {
-                    binding.tvLocationStatus.text = "Location unavailable"
-                    submitAttendance(image, null, null)
-                }
-            }
-            .addOnFailureListener {
-                binding.tvLocationStatus.text = "Location failed"
+        fetchCurrentLocation { location ->
+            lastKnownLocation = location
+            if (location != null) {
+                binding.tvLocationStatus.text = String.format(
+                    "Location: %.6f, %.6f", location.latitude, location.longitude
+                )
+                viewModel.updateCurrentDistance(location.latitude, location.longitude)
+                submitAttendance(image, location.latitude, location.longitude)
+            } else {
+                binding.tvLocationStatus.text = "Location unavailable"
                 submitAttendance(image, null, null)
             }
+        }
     }
 
     private fun submitAttendance(image: String, latitude: Double?, longitude: Double?) {
@@ -187,6 +320,24 @@ class AttendanceFragment : Fragment() {
     }
 
     private fun observeViewModel() {
+        viewModel.myLocations.observe(viewLifecycleOwner) { locations ->
+            renderWorkLocationCard(locations)
+        }
+
+        viewModel.currentDistanceStatus.observe(viewLifecycleOwner) {
+            viewModel.myLocations.value?.let { renderWorkLocationCard(it) }
+        }
+
+        viewModel.myAssignment.observe(viewLifecycleOwner) { assignment ->
+            currentAssignment = assignment
+            if (assignment == null) {
+                binding.cardVehicleTrip.visibility = View.GONE
+            } else {
+                binding.cardVehicleTrip.visibility = View.VISIBLE
+                binding.tvVehicleReg.text = "🚛 Vehicle: ${assignment.regNumber}"
+            }
+        }
+
         viewModel.attendanceStatus.observe(viewLifecycleOwner) { attendance ->
             if (attendance == null) {
                 binding.tvStatus.text = "Status: Not Clocked In"

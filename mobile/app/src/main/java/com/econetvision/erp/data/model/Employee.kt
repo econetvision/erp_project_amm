@@ -23,7 +23,7 @@ data class Employee(
     @SerializedName("work_location_name") val workLocationName: String?,
     @SerializedName("work_latitude") val workLatitude: Double?,
     @SerializedName("work_longitude") val workLongitude: Double?,
-    @SerializedName("attendance_radius_km") val attendanceRadiusKm: Double?,
+    @SerializedName("attendance_radius_m") val attendanceRadiusM: Double?,
     @SerializedName("created_at") val createdAt: String,
     @SerializedName("updated_at") val updatedAt: String
 )

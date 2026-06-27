@@ -36,6 +36,6 @@ class Employee(Base):
     work_location_name  = Column(String(255), nullable=True)
     work_latitude       = Column(Float, nullable=True)
     work_longitude      = Column(Float, nullable=True)
-    attendance_radius_km = Column(Float, nullable=True, default=10.0)
+    attendance_radius_m = Column(Float, nullable=True, default=50.0)
     created_at          = Column(DateTime(timezone=True), server_default=func.now())
     updated_at          = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

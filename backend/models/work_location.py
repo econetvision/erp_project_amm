@@ -17,7 +17,7 @@ class WorkLocation(Base):
     pincode           = Column(String(10), nullable=True)
     latitude          = Column(Float, nullable=False)
     longitude         = Column(Float, nullable=False)
-    allowed_radius_km = Column(Float, nullable=False, default=10.0)
+    allowed_radius_m  = Column(Float, nullable=False, default=50.0)
     work_type         = Column(String(50), nullable=True)       # dump_yard | office | site | depot
     supervisor_id     = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     is_active         = Column(Boolean, nullable=False, default=True)

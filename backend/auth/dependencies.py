@@ -33,7 +33,7 @@ def create_access_token(data: dict) -> str:
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+def _user_from_token(token: str, db: Session) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid or expired token",
@@ -51,6 +51,47 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if not user:
         raise credentials_exception
     return user
+
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+    return _user_from_token(token, db)
+
+
+def decode_ws_token(token: str, db: Session) -> Optional[User]:
+    """Decode a JWT passed as a WebSocket query param. Returns None instead of raising
+    since a failed WS auth should close the socket, not bubble an HTTP exception."""
+    try:
+        return _user_from_token(token, db)
+    except HTTPException:
+        return None
+
+
+class ServiceIdentity:
+    """Synthetic identity for trusted internal callers (e.g. the tracking gateway)
+    that authenticate via a shared key instead of a per-user JWT."""
+    id = None
+    role = "service"
+    company_id = None
+
+
+TRACKING_GATEWAY_KEY = os.getenv("TRACKING_GATEWAY_KEY")
+
+
+def get_current_user_or_service(request: Request, db: Session = Depends(get_db)):
+    """Accepts either a trusted internal service (X-Internal-Key header matching
+    TRACKING_GATEWAY_KEY) or a normal per-user JWT. Used by endpoints that the
+    tracking gateway calls on behalf of hardware devices that have no user account."""
+    internal_key = request.headers.get("x-internal-key")
+    if TRACKING_GATEWAY_KEY and internal_key == TRACKING_GATEWAY_KEY:
+        return ServiceIdentity()
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.lower().startswith("bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return _user_from_token(auth_header[7:], db)
 
 
 # ── Role guards ────────────────────────────────────────────────────────────

@@ -11,7 +11,9 @@ export function openTrackingSocket(vehicleId: number | string, onMessage: (updat
   const base = (process.env.REACT_APP_API_URL || "http://localhost:8088")
     .replace(/^http/, "ws")
     .replace(/\/$/, "");
-  const ws = new WebSocket(`${base}/api/tracking/ws/${vehicleId}`);
+  const stored = localStorage.getItem("erp_auth");
+  const token = stored ? (JSON.parse(stored) as { access_token?: string }).access_token : undefined;
+  const ws = new WebSocket(`${base}/api/tracking/ws/${vehicleId}?token=${encodeURIComponent(token || "")}`);
   ws.onmessage = (e: MessageEvent) => {
     try { onMessage(JSON.parse(e.data)); } catch (_) {}
   };

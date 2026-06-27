@@ -128,8 +128,21 @@ def run_scheduled_jobs():
     finally:
         db.close()
 
+def run_tracking_retention():
+    """Daily purge of old vehicle_locations rows — the table grows unbounded otherwise."""
+    from database import SessionLocal
+    from services.tracking_retention_service import purge_old_vehicle_locations
+    db = SessionLocal()
+    try:
+        purge_old_vehicle_locations(db)
+    except Exception as e:
+        logger.error(f"Error in tracking retention job: {str(e)}", exc_info=True)
+    finally:
+        db.close()
+
 scheduler = BackgroundScheduler()
 scheduler.add_job(run_scheduled_jobs, CronTrigger(minute="*"), id="job_checker", replace_existing=True)
+scheduler.add_job(run_tracking_retention, CronTrigger(hour=2, minute=0), id="tracking_retention", replace_existing=True)
 
 @app.on_event("startup")
 def start_scheduler():

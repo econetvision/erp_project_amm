@@ -8,11 +8,42 @@ from models.user import User
 from schemas.work_location import (
     WorkLocationCreate, WorkLocationUpdate, WorkLocationResponse,
     EmployeeLocationAssignmentCreate, EmployeeLocationAssignmentResponse,
-    BulkAssignRequest,
+    BulkAssignRequest, MyWorkLocationResponse,
 )
 from auth.dependencies import require_admin_or_supervisor, require_admin, get_current_user
 
 router = APIRouter()
+
+
+# ── My assigned location(s) ───────────────────────────────────────────────────
+
+@router.get("/my", response_model=list[MyWorkLocationResponse])
+def my_locations(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Return the work location(s) assigned to the current user, for showing geofence status on attendance."""
+    assignments = (
+        db.query(EmployeeLocationAssignment)
+        .filter(EmployeeLocationAssignment.employee_id == current_user.id)
+        .all()
+    )
+    results = []
+    for a in assignments:
+        loc = db.query(WorkLocation).filter(WorkLocation.id == a.location_id, WorkLocation.is_active == True).first()
+        if loc:
+            results.append(MyWorkLocationResponse(
+                location_name=loc.location_name, address=loc.address, city=loc.city,
+                latitude=loc.latitude, longitude=loc.longitude,
+                allowed_radius_m=loc.allowed_radius_m, is_primary=a.is_primary,
+            ))
+    if results:
+        return results
+
+    if current_user.work_latitude is not None and current_user.work_longitude is not None:
+        return [MyWorkLocationResponse(
+            location_name=current_user.work_location_name or "Assigned Site",
+            latitude=current_user.work_latitude, longitude=current_user.work_longitude,
+            allowed_radius_m=current_user.attendance_radius_m or 50.0, is_primary=True,
+        )]
+    return []
 
 
 # ── Stats endpoint ────────────────────────────────────────────────────────────
@@ -207,7 +238,7 @@ def assign_employee(
         emp.work_location_name = loc.location_name
         emp.work_latitude = loc.latitude
         emp.work_longitude = loc.longitude
-        emp.attendance_radius_km = loc.allowed_radius_km
+        emp.attendance_radius_m = loc.allowed_radius_m
 
     db.commit()
     db.refresh(assignment)
@@ -260,7 +291,7 @@ def assign_bulk(
             emp.work_location_name = loc.location_name
             emp.work_latitude = loc.latitude
             emp.work_longitude = loc.longitude
-            emp.attendance_radius_km = loc.allowed_radius_km
+            emp.attendance_radius_m = loc.allowed_radius_m
         assigned += 1
 
     db.commit()

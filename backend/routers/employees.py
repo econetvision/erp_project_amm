@@ -268,7 +268,7 @@ class WorkLocationAssignment(BaseModel):
     work_location_name: str
     work_latitude: float
     work_longitude: float
-    attendance_radius_km: float = 10.0
+    attendance_radius_m: float = 50.0
 
 
 @router.put("/{employee_id}/work-location", response_model=EmployeeResponse)
@@ -280,7 +280,7 @@ def assign_work_location(employee_id: int, payload: WorkLocationAssignment, db: 
     emp.work_location_name = payload.work_location_name
     emp.work_latitude = payload.work_latitude
     emp.work_longitude = payload.work_longitude
-    emp.attendance_radius_km = payload.attendance_radius_km
+    emp.attendance_radius_m = payload.attendance_radius_m
     db.commit()
     db.refresh(emp)
     return emp

@@ -5,6 +5,7 @@ export interface Vehicle {
   make: string | null;
   model: string | null;
   status: string;
+  tracker_imei: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -14,6 +15,7 @@ export interface VehicleCreate {
   type: string;
   make?: string | null;
   model?: string | null;
+  tracker_imei?: string | null;
 }
 
 export interface VehicleAssignment {

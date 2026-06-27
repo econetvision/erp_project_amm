@@ -10,7 +10,10 @@ from models.vehicle_assignment import VehicleAssignment
 from models.vehicle_location import VehicleLocation
 from models.user import User
 from schemas.vehicle_location import LocationPush, LocationResponse, LatestLocationResponse
-from auth.dependencies import require_admin_or_supervisor, get_current_user
+from auth.dependencies import (
+    require_admin_or_supervisor, get_current_user, get_current_user_or_service,
+    decode_ws_token, ServiceIdentity,
+)
 
 router = APIRouter()
 
@@ -20,12 +23,33 @@ _viewers: Dict[int, set] = {}
 _latest: Dict[int, dict] = {}
 
 
+def _assert_can_push(vehicle_id: int, current, db: Session) -> None:
+    """Raise 403 unless current is a trusted service, admin/supervisor/master,
+    or a worker with an active assignment to this vehicle."""
+    if isinstance(current, ServiceIdentity):
+        return
+    if current.role in ("admin", "supervisor", "master"):
+        return
+    active = (
+        db.query(VehicleAssignment)
+        .filter(
+            VehicleAssignment.vehicle_id == vehicle_id,
+            VehicleAssignment.employee_id == current.id,
+            VehicleAssignment.released_at.is_(None),
+        )
+        .first()
+    )
+    if not active:
+        raise HTTPException(status_code=403, detail="You are not assigned to this vehicle")
+
+
 # ── REST: push location (for devices that can't hold WebSocket) ──────────────
 @router.post("/push", response_model=LocationResponse, status_code=201)
-def push_location(payload: LocationPush, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def push_location(payload: LocationPush, db: Session = Depends(get_db), current=Depends(get_current_user_or_service)):
     vehicle = db.query(Vehicle).filter(Vehicle.id == payload.vehicle_id).first()
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
+    _assert_can_push(payload.vehicle_id, current, db)
 
     loc = VehicleLocation(
         vehicle_id=payload.vehicle_id,
@@ -125,18 +149,53 @@ def location_history(
 # ── WebSocket: driver sends location; admin viewers receive broadcasts ────────
 @router.websocket("/ws/{vehicle_id}")
 async def vehicle_ws(vehicle_id: int, websocket: WebSocket):
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=4401)
+        return
+
+    db = SessionLocal()
+    try:
+        user = decode_ws_token(token, db)
+        if user is None:
+            await websocket.close(code=4401)
+            return
+
+        is_viewer = user.role in ("admin", "supervisor", "master")
+        can_push = is_viewer
+        if not is_viewer:
+            active = (
+                db.query(VehicleAssignment)
+                .filter(
+                    VehicleAssignment.vehicle_id == vehicle_id,
+                    VehicleAssignment.employee_id == user.id,
+                    VehicleAssignment.released_at.is_(None),
+                )
+                .first()
+            )
+            can_push = active is not None
+    finally:
+        db.close()
+
+    if not can_push:
+        await websocket.close(code=4403)
+        return
+
     await websocket.accept()
 
-    # Register viewer
-    _viewers.setdefault(vehicle_id, set()).add(websocket)
-
-    # Send the cached latest location immediately on connect
-    if vehicle_id in _latest:
-        await websocket.send_text(json.dumps(_latest[vehicle_id]))
+    # Only viewers (admin/supervisor/master) are registered for broadcasts —
+    # drivers push location but don't need the stream echoed back to them.
+    if is_viewer:
+        _viewers.setdefault(vehicle_id, set()).add(websocket)
+        if vehicle_id in _latest:
+            await websocket.send_text(json.dumps(_latest[vehicle_id]))
 
     try:
         while True:
             raw = await websocket.receive_text()
+            if is_viewer:
+                continue  # viewer sockets are receive-only
+
             try:
                 data = json.loads(raw)
                 lat  = float(data["latitude"])
@@ -147,12 +206,12 @@ async def vehicle_ws(vehicle_id: int, websocket: WebSocket):
                 continue
 
             # Persist asynchronously
-            db = SessionLocal()
+            write_db = SessionLocal()
             try:
                 loc = VehicleLocation(vehicle_id=vehicle_id, latitude=lat, longitude=lng, speed=spd)
-                db.add(loc)
-                db.commit()
-                db.refresh(loc)
+                write_db.add(loc)
+                write_db.commit()
+                write_db.refresh(loc)
                 update = {
                     "vehicle_id": vehicle_id,
                     "latitude":   loc.latitude,
@@ -161,13 +220,14 @@ async def vehicle_ws(vehicle_id: int, websocket: WebSocket):
                     "recorded_at": loc.recorded_at.isoformat(),
                 }
             finally:
-                db.close()
+                write_db.close()
 
             _latest[vehicle_id] = update
             await _broadcast(vehicle_id, update)
 
     except WebSocketDisconnect:
-        _viewers.get(vehicle_id, set()).discard(websocket)
+        if is_viewer:
+            _viewers.get(vehicle_id, set()).discard(websocket)
 
 
 async def _broadcast(vehicle_id: int, data: dict):

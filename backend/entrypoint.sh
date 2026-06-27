@@ -37,5 +37,5 @@ echo "[app] Starting uvicorn on port ${PORT:-8088}..."
 exec uvicorn main:app \
     --host 0.0.0.0 \
     --port "${PORT:-8088}" \
-    --workers "${WORKERS:-2}" \
+    --workers "${WORKERS:-1}" \
     --timeout-graceful-shutdown 30

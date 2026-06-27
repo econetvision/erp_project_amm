@@ -8,9 +8,12 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
+import com.econetvision.erp.R
 import com.econetvision.erp.data.local.SessionManager
 import com.econetvision.erp.databinding.FragmentSettingsBinding
 import com.econetvision.erp.ui.auth.LoginActivity
+import com.econetvision.erp.util.BiometricCredentialStore
 
 class SettingsFragment : Fragment() {
     private var _binding: FragmentSettingsBinding? = null
@@ -68,8 +71,23 @@ class SettingsFragment : Fragment() {
 
         binding.btnLogout.setOnClickListener {
             session.clear()
+            BiometricCredentialStore.clearCredentials(requireContext())
             startActivity(Intent(requireContext(), LoginActivity::class.java))
             requireActivity().finish()
+        }
+
+        binding.cardManagement.visibility = if (session.canManage()) View.VISIBLE else View.GONE
+
+        binding.btnManageEmployees.setOnClickListener {
+            findNavController().navigate(R.id.action_settingsFragment_to_employeesFragment)
+        }
+
+        binding.btnManageLocations.setOnClickListener {
+            findNavController().navigate(R.id.action_settingsFragment_to_workLocationsFragment)
+        }
+
+        binding.btnManageUsers.setOnClickListener {
+            findNavController().navigate(R.id.action_settingsFragment_to_usersFragment)
         }
     }
 

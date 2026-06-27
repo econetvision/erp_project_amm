@@ -4,15 +4,29 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.location.Location
 import com.econetvision.erp.data.model.Attendance
 import com.econetvision.erp.data.model.FaceScanResponse
+import com.econetvision.erp.data.model.MyAssignment
+import com.econetvision.erp.data.model.MyWorkLocation
 import com.econetvision.erp.data.repository.AttendanceRepository
+import com.econetvision.erp.data.repository.TrackingRepository
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 class AttendanceViewModel : ViewModel() {
     private val repository = AttendanceRepository()
+    private val trackingRepository = TrackingRepository()
+
+    private val _myAssignment = MutableLiveData<MyAssignment?>()
+    val myAssignment: LiveData<MyAssignment?> = _myAssignment
+
+    fun loadMyAssignment() {
+        viewModelScope.launch {
+            _myAssignment.value = trackingRepository.getMyAssignment().getOrNull()
+        }
+    }
 
     private val _attendanceStatus = MutableLiveData<Attendance?>()
     val attendanceStatus: LiveData<Attendance?> = _attendanceStatus
@@ -25,6 +39,38 @@ class AttendanceViewModel : ViewModel() {
 
     private val _isLoading = MutableLiveData(false)
     val isLoading: LiveData<Boolean> = _isLoading
+
+    private val _myLocations = MutableLiveData<List<MyWorkLocation>>()
+    val myLocations: LiveData<List<MyWorkLocation>> = _myLocations
+
+    private val _currentDistanceStatus = MutableLiveData<Pair<MyWorkLocation, Double>?>()
+    val currentDistanceStatus: LiveData<Pair<MyWorkLocation, Double>?> = _currentDistanceStatus
+
+    fun loadMyLocations() {
+        viewModelScope.launch {
+            val result = repository.getMyLocations()
+            _myLocations.value = result.getOrNull() ?: emptyList()
+        }
+    }
+
+    fun updateCurrentDistance(currentLat: Double, currentLng: Double) {
+        val locations = _myLocations.value
+        if (locations.isNullOrEmpty()) {
+            _currentDistanceStatus.value = null
+            return
+        }
+        var nearest: MyWorkLocation? = null
+        var nearestDistance = Float.MAX_VALUE
+        val results = FloatArray(2)
+        for (loc in locations) {
+            Location.distanceBetween(currentLat, currentLng, loc.latitude, loc.longitude, results)
+            if (results[0] < nearestDistance) {
+                nearestDistance = results[0]
+                nearest = loc
+            }
+        }
+        _currentDistanceStatus.value = nearest?.let { it to nearestDistance.toDouble() }
+    }
 
     fun getTodayStatus(employeeId: Int) {
         _isLoading.value = true
