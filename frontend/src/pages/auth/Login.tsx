@@ -65,15 +65,6 @@ export default function Login() {
               {loading ? "Signing in…" : "Sign In"}
             </button>
           </form>
-
-          {/* Role hint */}
-          <div className="mt-4 pt-3 border-top">
-            <p className="text-muted small text-center mb-2">Default credentials</p>
-            <div className="d-flex justify-content-center gap-3 small text-muted">
-              <span><strong>admin</strong> / admin123</span>
-              <span><strong>supervisor</strong> / admin123</span>
-            </div>
-          </div>
         </div>
       </div>
     </div>
