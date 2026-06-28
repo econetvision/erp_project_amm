@@ -65,33 +65,11 @@ jobs:
         working-directory: ./mobile
         run: ./gradlew assembleRelease --no-daemon
 
-      - name: Sign APK
-        if: ${{ env.KEYSTORE_BASE64 != '' }}
+      - name: Rename APK
         working-directory: ./mobile
-        env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > keystore.jks
-          $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
-            --ks keystore.jks \
-            --ks-pass pass:$KEYSTORE_PASSWORD \
-            --ks-key-alias $KEY_ALIAS \
-            --key-pass pass:$KEY_PASSWORD \
-            --out app/build/outputs/apk/release/erp-v${{ github.event.inputs.version }}-signed.apk \
-            app/build/outputs/apk/release/app-release-unsigned.apk
-          rm keystore.jks
-
-      - name: Rename unsigned APK
-        if: ${{ env.KEYSTORE_BASE64 == '' }}
-        working-directory: ./mobile
-        env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           mv app/build/outputs/apk/release/app-release-unsigned.apk \
-             app/build/outputs/apk/release/erp-v${{ github.event.inputs.version }}-unsigned.apk
+             app/build/outputs/apk/release/erp-v${{ github.event.inputs.version }}.apk
 
       - name: List APK files
         working-directory: ./mobile
