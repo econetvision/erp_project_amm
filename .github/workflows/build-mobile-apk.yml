@@ -40,6 +40,15 @@ jobs:
         working-directory: ./mobile
         run: chmod +x gradlew
 
+      - name: Validate version_code is an integer
+        run: |
+          VERSION_CODE="${{ github.event.inputs.version_code }}"
+          if ! [[ "$VERSION_CODE" =~ ^[0-9]+$ ]]; then
+            echo "::error::version_code must be a positive integer (e.g., 1, 2, 3), got: $VERSION_CODE"
+            exit 1
+          fi
+          echo "Version code validated: $VERSION_CODE"
+
       - name: Update version in build.gradle.kts
         working-directory: ./mobile
         run: |
