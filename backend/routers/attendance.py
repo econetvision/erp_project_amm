@@ -9,6 +9,7 @@ from models.holiday import PublicHoliday
 from models.user import User
 from schemas.attendance import (
     AttendanceClockIn, AttendanceClockOut, AttendanceUpdate,
+    AttendanceManualClockIn, AttendanceManualClockOut,
     AttendanceResponse, MonthlyAttendanceSummary,
     DailyOverviewEntry, DashboardOverviewResponse,
     EmployeeStatEntry, DailyEmployeeStatus,
@@ -233,6 +234,61 @@ def clock_in(payload: AttendanceClockIn, db: Session = Depends(get_db), current:
     return record
 
 
+@router.post("/clock-in/manual", response_model=AttendanceResponse, status_code=201)
+def clock_in_manual(payload: AttendanceManualClockIn, db: Session = Depends(get_db), current: User = Depends(require_any)):
+    """Clock in without face verification. Geofence is still enforced; workers may only
+    clock in for themselves."""
+    if current.role == "worker" and current.id != payload.employee_id:
+        raise HTTPException(status_code=403, detail="Workers can only clock in for themselves")
+
+    emp = db.query(User).filter(User.id == payload.employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    validate_geofence(emp, payload.latitude, payload.longitude, db)
+
+    existing = db.query(Attendance).filter(
+        Attendance.employee_id == payload.employee_id,
+        Attendance.date == payload.date
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Employee already clocked in for this date")
+    record = Attendance(
+        employee_id=payload.employee_id,
+        date=payload.date,
+        entry_time=payload.entry_time,
+        clock_in_latitude=payload.latitude,
+        clock_in_longitude=payload.longitude,
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+@router.patch("/{attendance_id}/clock-out/manual", response_model=AttendanceResponse)
+def clock_out_manual(attendance_id: int, payload: AttendanceManualClockOut, db: Session = Depends(get_db), current: User = Depends(require_any)):
+    """Clock out without face verification."""
+    record = db.query(Attendance).filter(Attendance.id == attendance_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Attendance record not found")
+    if record.exit_time:
+        raise HTTPException(status_code=400, detail="Already clocked out")
+    if current.role == "worker" and current.id != record.employee_id:
+        raise HTTPException(status_code=403, detail="Workers can only clock out for themselves")
+
+    emp = db.query(User).filter(User.id == record.employee_id).first()
+    validate_geofence(emp, payload.latitude, payload.longitude, db)
+
+    record.exit_time    = payload.exit_time
+    record.clock_out_latitude  = payload.latitude
+    record.clock_out_longitude = payload.longitude
+    record.hours_worked = calculate_hours_worked(record.entry_time, payload.exit_time, emp.shift if emp else None)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
 @router.patch("/{attendance_id}/clock-out", response_model=AttendanceResponse)
 def clock_out(attendance_id: int, payload: AttendanceClockOut, db: Session = Depends(get_db), current: User = Depends(require_any)):
     record = db.query(Attendance).filter(Attendance.id == attendance_id).first()
@@ -285,7 +341,7 @@ def get_monthly_report(
     )
     return MonthlyAttendanceSummary(
         employee_id=employee_id,
-        employee_name=emp.name,
+        employee_name=emp.name or emp.display_name or emp.username,
         month=month,
         year=year,
         total_days=len(records),
