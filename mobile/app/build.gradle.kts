@@ -13,11 +13,18 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
-        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8088\"")
+        // Default (used by debug): local backend via the emulator host loopback.
+        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8088/\"")
     }
 
     buildTypes {
+        debug {
+            // Production backend on Railway.
+            buildConfigField("String", "API_BASE_URL", "\"https://erpprojectamm-production-595f.up.railway.app/\"")
+        }
         release {
+            // Production backend on Railway.
+            buildConfigField("String", "API_BASE_URL", "\"https://erpprojectamm-production-595f.up.railway.app/\"")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
