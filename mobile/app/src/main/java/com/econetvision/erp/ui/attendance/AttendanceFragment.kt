@@ -34,7 +34,8 @@ class AttendanceFragment : Fragment() {
     private val binding get() = _binding!!
     private lateinit var viewModel: AttendanceViewModel
     private var currentAttendanceId: Int? = null
-    private var pendingAction: String? = null // "clock_in", "clock_out", "face_scan"
+    private var canClockOut = false
+    private var pendingAction: String? = null // "clock_in", "clock_out", "face_scan", "clock_in_manual", "clock_out_manual"
     private var capturedImage: String? = null
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var lastKnownLocation: Location? = null
@@ -71,6 +72,13 @@ class AttendanceFragment : Fragment() {
         if (!locationGranted) {
             Toast.makeText(requireContext(), "Location permission denied — attendance will be recorded without location", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private val manualLocationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        // Proceed regardless: submit with location if granted, otherwise without.
+        doFetchLocationAndSubmitManual()
     }
 
     private val takePictureLauncher = registerForActivityResult(
@@ -119,6 +127,20 @@ class AttendanceFragment : Fragment() {
         binding.btnFaceScan.setOnClickListener {
             pendingAction = "face_scan"
             checkPermissionsAndCapture()
+        }
+
+        binding.btnManual.setOnClickListener {
+            when {
+                currentAttendanceId == null -> {
+                    pendingAction = "clock_in_manual"
+                    fetchLocationAndSubmitManual()
+                }
+                canClockOut -> {
+                    pendingAction = "clock_out_manual"
+                    fetchLocationAndSubmitManual()
+                }
+                else -> Toast.makeText(requireContext(), "Already clocked out today", Toast.LENGTH_SHORT).show()
+            }
         }
 
         binding.btnRefreshLocation.setOnClickListener {
@@ -289,6 +311,51 @@ class AttendanceFragment : Fragment() {
         }
     }
 
+    private fun fetchLocationAndSubmitManual() {
+        if (hasLocationPermission()) {
+            doFetchLocationAndSubmitManual()
+        } else {
+            manualLocationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
+    private fun doFetchLocationAndSubmitManual() {
+        if (!hasLocationPermission()) {
+            submitManual(null, null)
+            return
+        }
+        binding.tvLocationStatus.visibility = View.VISIBLE
+        binding.tvLocationStatus.text = "Fetching location…"
+        fetchCurrentLocation { location ->
+            lastKnownLocation = location
+            if (location != null) {
+                binding.tvLocationStatus.text = String.format(
+                    "Location: %.6f, %.6f", location.latitude, location.longitude
+                )
+                viewModel.updateCurrentDistance(location.latitude, location.longitude)
+                submitManual(location.latitude, location.longitude)
+            } else {
+                binding.tvLocationStatus.text = "Location unavailable"
+                submitManual(null, null)
+            }
+        }
+    }
+
+    private fun submitManual(latitude: Double?, longitude: Double?) {
+        val session = SessionManager(requireContext())
+        val empId = session.getEmployeeId()
+        when (pendingAction) {
+            "clock_in_manual" -> if (empId != -1) viewModel.clockInManual(empId, latitude, longitude)
+            "clock_out_manual" -> currentAttendanceId?.let { id -> viewModel.clockOutManual(id, latitude, longitude) }
+        }
+        pendingAction = null
+    }
+
     private fun submitAttendance(image: String, latitude: Double?, longitude: Double?) {
         val session = SessionManager(requireContext())
         val empId = session.getEmployeeId()
@@ -347,16 +414,19 @@ class AttendanceFragment : Fragment() {
                 binding.tvLogDetails.text = "No records yet today."
                 binding.tvLocationStatus.visibility = View.GONE
                 currentAttendanceId = null
+                canClockOut = false
             } else {
                 currentAttendanceId = attendance.id
                 if (attendance.exitTime == null) {
                     binding.tvStatus.text = "Status: Clocked In"
                     binding.btnClockIn.visibility = View.GONE
                     binding.btnClockOut.visibility = View.VISIBLE
+                    canClockOut = true
                 } else {
                     binding.tvStatus.text = "Status: Clocked Out"
                     binding.btnClockIn.visibility = View.GONE
                     binding.btnClockOut.visibility = View.GONE
+                    canClockOut = false
                 }
                 binding.tvLastEntry.text = "Entry: ${attendance.entryTime}"
 
@@ -396,6 +466,7 @@ class AttendanceFragment : Fragment() {
             binding.btnClockIn.isEnabled = !isLoading
             binding.btnClockOut.isEnabled = !isLoading
             binding.btnFaceScan.isEnabled = !isLoading
+            binding.btnManual.isEnabled = !isLoading
         }
     }
 

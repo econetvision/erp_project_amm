@@ -31,6 +31,20 @@ data class ClockOutRequest(
     val longitude: Double? = null
 )
 
+data class ManualClockInRequest(
+    @SerializedName("employee_id") val employeeId: Int,
+    val date: String,
+    @SerializedName("entry_time") val entryTime: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null
+)
+
+data class ManualClockOutRequest(
+    @SerializedName("exit_time") val exitTime: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null
+)
+
 data class FaceScanRequest(
     val image: String,
     val latitude: Double? = null,

@@ -11,8 +11,15 @@ import kotlinx.coroutines.launch
 class NotificationsViewModel : ViewModel() {
     private val repository = NotificationRepository()
 
+    // Full list fetched from the server; the displayed list is filtered from this.
+    private val _allNotifications = MutableLiveData<List<Notification>>(emptyList())
+
     private val _notifications = MutableLiveData<List<Notification>>()
     val notifications: LiveData<List<Notification>> = _notifications
+
+    // false = Active (unread), true = Archive (read/completed)
+    private val _showArchive = MutableLiveData(false)
+    val showArchive: LiveData<Boolean> = _showArchive
 
     private val _unreadCount = MutableLiveData(0)
     val unreadCount: LiveData<Int> = _unreadCount
@@ -23,13 +30,26 @@ class NotificationsViewModel : ViewModel() {
     private val _error = MutableLiveData<String?>()
     val error: LiveData<String?> = _error
 
+    fun setArchiveMode(archive: Boolean) {
+        _showArchive.value = archive
+        applyFilter()
+    }
+
+    private fun applyFilter() {
+        val all = _allNotifications.value ?: emptyList()
+        val archive = _showArchive.value ?: false
+        // Active shows unread; Archive shows read (marked-as-read) notifications.
+        _notifications.value = all.filter { if (archive) it.isRead else !it.isRead }
+    }
+
     fun loadNotifications() {
         _isLoading.value = true
         _error.value = null
         viewModelScope.launch {
             val result = repository.getNotifications()
             if (result.isSuccess) {
-                _notifications.value = result.getOrNull() ?: emptyList()
+                _allNotifications.value = result.getOrNull() ?: emptyList()
+                applyFilter()
             } else {
                 _error.value = result.exceptionOrNull()?.message
             }
@@ -48,10 +68,11 @@ class NotificationsViewModel : ViewModel() {
         viewModelScope.launch {
             val result = repository.markAsRead(notificationId)
             if (result.isSuccess) {
-                // Update local list
-                _notifications.value = _notifications.value?.map { n ->
+                // Mark in the full list, then re-filter so it leaves Active and enters Archive.
+                _allNotifications.value = _allNotifications.value?.map { n ->
                     if (n.id == notificationId) n.copy(isRead = true) else n
                 }
+                applyFilter()
                 loadUnreadCount()
             }
         }
@@ -61,7 +82,9 @@ class NotificationsViewModel : ViewModel() {
         viewModelScope.launch {
             val result = repository.markAllAsRead()
             if (result.isSuccess) {
-                _notifications.value = _notifications.value?.map { it.copy(isRead = true) }
+                // All move to Archive.
+                _allNotifications.value = _allNotifications.value?.map { it.copy(isRead = true) }
+                applyFilter()
                 _unreadCount.value = 0
             }
         }
