@@ -18,6 +18,7 @@ from auth.dependencies import (
     require_admin, get_current_user, require_any,
 )
 from services.face_service import identify_employee
+from services.license_service import validate_company_license, enforce_seat_limit
 
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "photos", "users")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -34,6 +35,9 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == payload.username).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password")
+    # Validate the company license for every role below master in the hierarchy.
+    if user.role != "master" and user.company_id is not None:
+        validate_company_license(db, user.company_id)
     token = create_access_token({"sub": str(user.id), "role": user.role, "company_id": user.company_id})
     return TokenResponse(
         access_token=token,
@@ -59,6 +63,8 @@ def face_login(payload: FaceLoginRequest, db: Session = Depends(get_db)):
     user = identify_employee(payload.image, candidates)
     if not user:
         raise HTTPException(status_code=401, detail="Face not recognized. Please log in with your username and password.")
+    if user.role != "master" and user.company_id is not None:
+        validate_company_license(db, user.company_id)
     token = create_access_token({"sub": str(user.id), "role": user.role, "company_id": user.company_id})
     return TokenResponse(
         access_token=token,
@@ -168,6 +174,9 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db), _: User = De
     # Only master can create master users
     if payload.role == "master" and _.role != "master":
         raise HTTPException(status_code=403, detail="Only master users can create master accounts")
+    # Enforce the company seat limit when adding a seat-consuming (non-master) user.
+    if payload.role != "master" and payload.company_id is not None:
+        enforce_seat_limit(db, payload.company_id)
     user = User(
         username=payload.username,
         password_hash=hash_password(payload.password),

@@ -1,12 +1,13 @@
 import os
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from database import engine, Base
 from routers import employees, attendance, payslips, auth, holidays, vehicles, assignments, tracking, jobs, notifications, payroll, locations
 from routers import companies, rbac, master as master_router, integrations as integrations_router
-from routers import payslip_templates
+from routers import payslip_templates, licenses
+from auth.dependencies import require_valid_license
 from logging_config import setup_logging, get_logger
 
 # Setup logging before anything else
@@ -26,6 +27,7 @@ import models.company           # noqa: F401
 import models.rbac              # noqa: F401
 import models.integration       # noqa: F401
 import models.payslip_template  # noqa: F401
+import models.license            # noqa: F401
 
 # ── Run DB migrations on startup ──────────────────────────────────────────────
 from alembic.config import Config as AlembicConfig
@@ -77,23 +79,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Per-request license enforcement (master bypasses inside the dependency). Applied to
+# business routers below. NOT applied to auth (login/me must surface the error), master
+# (license admin), licenses (admins read /my to see why they're blocked), or tracking
+# (service-identity / gateway traffic).
+_licensed = [Depends(require_valid_license)]
+
 app.include_router(auth.router,        prefix="/api/auth",        tags=["Auth"])
-app.include_router(employees.router,   prefix="/api/employees",   tags=["Employees"])
-app.include_router(attendance.router,  prefix="/api/attendance",  tags=["Attendance"])
-app.include_router(payslips.router,    prefix="/api/payslips",    tags=["Payslips"])
-app.include_router(holidays.router,    prefix="/api/holidays",    tags=["Holidays"])
-app.include_router(vehicles.router,    prefix="/api/vehicles",    tags=["Vehicles"])
-app.include_router(assignments.router, prefix="/api/assignments",  tags=["Assignments"])
+app.include_router(employees.router,   prefix="/api/employees",   tags=["Employees"], dependencies=_licensed)
+app.include_router(attendance.router,  prefix="/api/attendance",  tags=["Attendance"], dependencies=_licensed)
+app.include_router(payslips.router,    prefix="/api/payslips",    tags=["Payslips"], dependencies=_licensed)
+app.include_router(holidays.router,    prefix="/api/holidays",    tags=["Holidays"], dependencies=_licensed)
+app.include_router(vehicles.router,    prefix="/api/vehicles",    tags=["Vehicles"], dependencies=_licensed)
+app.include_router(assignments.router, prefix="/api/assignments",  tags=["Assignments"], dependencies=_licensed)
 app.include_router(tracking.router,    prefix="/api/tracking",    tags=["Tracking"])
-app.include_router(jobs.router,        prefix="/api/jobs",        tags=["Jobs"])
-app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
-app.include_router(payroll.router, prefix="/api/payroll", tags=["Payroll"])
-app.include_router(locations.router, prefix="/api/locations", tags=["Work Locations"])
-app.include_router(companies.router, prefix="/api/companies", tags=["Companies"])
-app.include_router(rbac.router, prefix="/api/rbac", tags=["RBAC"])
+app.include_router(jobs.router,        prefix="/api/jobs",        tags=["Jobs"], dependencies=_licensed)
+app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"], dependencies=_licensed)
+app.include_router(payroll.router, prefix="/api/payroll", tags=["Payroll"], dependencies=_licensed)
+app.include_router(locations.router, prefix="/api/locations", tags=["Work Locations"], dependencies=_licensed)
+app.include_router(companies.router, prefix="/api/companies", tags=["Companies"], dependencies=_licensed)
+app.include_router(rbac.router, prefix="/api/rbac", tags=["RBAC"], dependencies=_licensed)
 app.include_router(master_router.router, prefix="/api/master", tags=["Master"])
-app.include_router(integrations_router.router, prefix="/api/integrations", tags=["Integrations"])
-app.include_router(payslip_templates.router, prefix="/api/payslip-templates", tags=["Payslip Templates"])
+app.include_router(integrations_router.router, prefix="/api/integrations", tags=["Integrations"], dependencies=_licensed)
+app.include_router(payslip_templates.router, prefix="/api/payslip-templates", tags=["Payslip Templates"], dependencies=_licensed)
+app.include_router(licenses.router, prefix="/api/licenses", tags=["Licenses"])
 
 
 # ── Scheduled Job Runner ──────────────────────────────────────────────────────

@@ -8,3 +8,4 @@ from models.integration import (
     ProviderLog, WebhookLog, ProviderUsage,
 )
 from models.payslip_template import PayslipTemplate
+from models.license import CompanyLicense

@@ -132,6 +132,19 @@ def require_role(*allowed_roles: str):
     return _dependency
 
 
+def require_valid_license(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
+    """Per-request guard: validates the caller's company license. Master bypasses.
+    Raises 403 with a specific reason (missing / suspended / expired)."""
+    if current_user.role == "master":
+        return current_user
+    if current_user.company_id is None:
+        raise HTTPException(status_code=403, detail="User is not assigned to a licensed company")
+    # Lazy import to avoid a model/service import cycle (mirrors require_permission below).
+    from services.license_service import validate_company_license
+    validate_company_license(db, current_user.company_id)
+    return current_user
+
+
 def require_permission(*permission_codes: str):
     """Factory for permission-based access control dependency."""
     def _dependency(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
