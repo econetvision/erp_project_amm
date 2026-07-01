@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: build-dev-apk-${{ github.ref }}
@@ -70,6 +70,35 @@ jobs:
           path: mobile/app/build/outputs/apk/debug/erp-dev-*.apk
           retention-days: 14
 
+      - name: Publish APK to android/development
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          mkdir -p android/development
+          # Overwrite the single "latest" APK so the repo keeps just one dev build.
+          cp mobile/app/build/outputs/apk/debug/erp-dev-*.apk android/development/erp-dev-latest.apk
+          cat > android/development/BUILD_INFO.txt <<EOF
+          Latest development APK
+          ----------------------
+          Commit:    ${{ github.sha }}
+          Short SHA: ${SHORT_SHA}
+          Branch:    ${{ github.ref_name }}
+          Built at:  $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          Run:       ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EOF
+
+      - name: Commit APK back to the repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android/development/erp-dev-latest.apk android/development/BUILD_INFO.txt
+          if git diff --cached --quiet; then
+            echo "No APK changes to commit."
+            exit 0
+          fi
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          git commit -m "chore(mobile): publish dev APK for ${SHORT_SHA} [skip ci]"
+          git push origin HEAD:${{ github.ref_name }}
+
       - name: Build Summary
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
@@ -78,3 +107,4 @@ jobs:
           echo "**Type:** debug (installable, debug-signed)" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${SHORT_SHA}" >> $GITHUB_STEP_SUMMARY
           echo "**Artifact:** \`erp-dev-apk\` (download from the run's Artifacts section)" >> $GITHUB_STEP_SUMMARY
+          echo "**Repo copy:** [android/development/erp-dev-latest.apk](../../android/development/erp-dev-latest.apk)" >> $GITHUB_STEP_SUMMARY
