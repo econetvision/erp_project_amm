@@ -78,10 +78,28 @@ In CI, `LICENSE_KEY` and `LICENSE_SERVER_URL` are GitHub Actions secrets that th
 ## Key Features
 
 - Employee & user management with RBAC (master/admin/supervisor/worker)
+- **Employee onboarding**: Admin creates employees with username/password; employees can immediately login to the mobile app
+- **Employee code format**: `COMPANY-SITE-ID` (e.g., `ECONE-HQ-001`) — auto-generated, admin-editable
 - Attendance: manual clock-in/out, face-scan auto clock-in/out, fingerprint and face login on mobile
 - Geofenced check-in — work locations have a configurable radius (meters, default 50); the Android app shows a Google Maps view of the live position, geofence radius, and recorded clock-in/out pins
 - Payslips, payroll runs, and templated PDF generation
 - Vehicle fleet assignment and live GPS tracking, fed by hardware GPS trackers (via `gateway/`) with the Android app as a backup location source
 - Holidays, notifications, multi-company/multi-tenant support
 
-For architecture conventions and contributor guidance, see [AGENTS.md](AGENTS.md). For the Android app, see [mobile/README.md](mobile/README.md).
+## Mobile App
+
+The Android app allows workers and supervisors to:
+- Login with admin-provided credentials
+- Clock in/out with face recognition and GPS verification
+- View attendance history and work location on map
+
+### Latest Release
+
+| Version | Download | Changes |
+|---------|----------|---------|
+| **v1.1.0** | [GitHub Release](https://github.com/econetvision/erp_project_amm/releases/tag/mobile-v1.1.0) | Fixed authentication for clock-in/out, improved session management |
+| v1.0.0 | [GitHub Release](https://github.com/econetvision/erp_project_amm/releases/tag/mobile-v1.0.0) | Initial release |
+
+To install: Download the APK, enable "Install from unknown sources" on your Android device, and open the APK file.
+
+For architecture conventions and contributor guidance, see [AGENTS.md](AGENTS.md). For the Android app details, see [mobile/README.md](mobile/README.md).
