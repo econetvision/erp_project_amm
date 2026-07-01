@@ -13,9 +13,27 @@ val localProps = Properties().apply {
 }
 val mapsApiKey: String = localProps.getProperty("MAPS_API_KEY") ?: ""
 
+// Release signing config. In CI these come from environment variables that the
+// workflow populates from GitHub secrets (see .github/workflows/build-mobile-apk.yml).
+// When they're absent (e.g. a local `assembleRelease`), the release build falls back
+// to an unsigned APK so it still compiles.
+val releaseKeystoreFile: String? = System.getenv("KEYSTORE_FILE")
+val hasReleaseSigning: Boolean = releaseKeystoreFile != null && file(releaseKeystoreFile).exists()
+
 android {
     namespace = "com.econetvision.erp"
     compileSdk = 34
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseKeystoreFile!!)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
 
     defaultConfig {
         applicationId = "com.econetvision.erp"
@@ -38,6 +56,9 @@ android {
             buildConfigField("String", "API_BASE_URL", "\"https://erpprojectamm-production-595f.up.railway.app/\"")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

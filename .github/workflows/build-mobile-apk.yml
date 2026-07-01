@@ -1,4 +1,17 @@
-name: Build Mobile APK
+name: Build Release APK
+
+# Release builds: a signed, shippable release APK plus an optional GitHub Release.
+# Trigger manually (with an explicit version) or by pushing a version tag like v1.2.0.
+#
+# Required repository secrets:
+#   MAPS_API_KEY      - Google Maps SDK for Android key
+#   KEYSTORE_BASE64   - base64 of the release keystore (.jks/.keystore)
+#   KEYSTORE_PASSWORD - keystore (store) password
+#   KEY_ALIAS         - signing key alias
+#   KEY_PASSWORD      - signing key password
+#
+# Create the base64 secret from a keystore with:
+#   base64 -w0 release.keystore   (Linux)  /  base64 -i release.keystore (macOS)
 
 on:
   workflow_dispatch:
@@ -14,15 +27,22 @@ on:
       api_base_url:
         description: 'API Base URL'
         required: true
-        default: 'https://erpprojectamm-production-595f.up.railway.app'
+        default: 'https://erpprojectamm-production-595f.up.railway.app/'
       create_release:
         description: 'Create GitHub Release'
         required: true
         type: boolean
         default: true
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
+
+concurrency:
+  group: build-release-apk-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -32,6 +52,34 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Determine build metadata
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            # Tag push: derive version from the tag (strip leading "v"), use the
+            # run number as the version code and always publish a release.
+            VERSION="${GITHUB_REF_NAME#v}"
+            VERSION_CODE="${{ github.run_number }}"
+            API_BASE_URL="https://erpprojectamm-production-595f.up.railway.app/"
+            CREATE_RELEASE="true"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+            VERSION_CODE="${{ github.event.inputs.version_code }}"
+            API_BASE_URL="${{ github.event.inputs.api_base_url }}"
+            CREATE_RELEASE="${{ github.event.inputs.create_release }}"
+          fi
+          if ! [[ "$VERSION_CODE" =~ ^[0-9]+$ ]]; then
+            echo "::error::version_code must be a positive integer, got: $VERSION_CODE"
+            exit 1
+          fi
+          {
+            echo "version=$VERSION"
+            echo "version_code=$VERSION_CODE"
+            echo "api_base_url=$API_BASE_URL"
+            echo "create_release=$CREATE_RELEASE"
+          } >> "$GITHUB_OUTPUT"
+          echo "Building version $VERSION (code $VERSION_CODE)"
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -39,64 +87,81 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Configure local.properties
+        working-directory: ./mobile
+        env:
+          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+        run: |
+          # Overwrite the committed local.properties: drop the developer's local
+          # sdk.dir (Gradle uses ANDROID_SDK_ROOT/ANDROID_HOME on the runner) and
+          # inject the Maps key from the secret.
+          echo "MAPS_API_KEY=${MAPS_API_KEY}" > local.properties
+
+      - name: Decode signing keystore
+        working-directory: ./mobile
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::KEYSTORE_BASE64 secret is not set. A signed release build requires it."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
+          echo "Keystore decoded ($(stat -c%s release.keystore) bytes)"
+
       - name: Grant execute permission for gradlew
         working-directory: ./mobile
         run: chmod +x gradlew
 
-      - name: Validate version_code is an integer
-        run: |
-          VERSION_CODE="${{ github.event.inputs.version_code }}"
-          if ! [[ "$VERSION_CODE" =~ ^[0-9]+$ ]]; then
-            echo "::error::version_code must be a positive integer (e.g., 1, 2, 3), got: $VERSION_CODE"
-            exit 1
-          fi
-          echo "Version code validated: $VERSION_CODE"
-
       - name: Update version in build.gradle.kts
         working-directory: ./mobile
         run: |
-          sed -i 's/versionCode = [0-9]*/versionCode = ${{ github.event.inputs.version_code }}/' app/build.gradle.kts
-          sed -i 's/versionName = "[^"]*"/versionName = "${{ github.event.inputs.version }}"/' app/build.gradle.kts
-          sed -i 's|buildConfigField("String", "API_BASE_URL", "[^"]*")|buildConfigField("String", "API_BASE_URL", "\"${{ github.event.inputs.api_base_url }}\"")|' app/build.gradle.kts
+          sed -i 's/versionCode = [0-9]*/versionCode = ${{ steps.meta.outputs.version_code }}/' app/build.gradle.kts
+          sed -i 's/versionName = "[^"]*"/versionName = "${{ steps.meta.outputs.version }}"/' app/build.gradle.kts
+          sed -i 's|buildConfigField("String", "API_BASE_URL", "[^"]*")|buildConfigField("String", "API_BASE_URL", "\"${{ steps.meta.outputs.api_base_url }}\"")|' app/build.gradle.kts
           echo "Updated build.gradle.kts:"
-          cat app/build.gradle.kts | grep -E "(versionCode|versionName|API_BASE_URL)"
+          grep -E "(versionCode|versionName|API_BASE_URL)" app/build.gradle.kts
 
       - name: Build Release APK
         working-directory: ./mobile
+        env:
+          KEYSTORE_FILE: release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease --no-daemon
 
       - name: Rename APK
         working-directory: ./mobile
         run: |
-          mv app/build/outputs/apk/release/app-release-unsigned.apk \
-             app/build/outputs/apk/release/erp-v${{ github.event.inputs.version }}.apk
-
-      - name: List APK files
-        working-directory: ./mobile
-        run: |
-          echo "APK files generated:"
+          SRC=$(ls app/build/outputs/apk/release/app-release*.apk | head -n1)
+          echo "Built: $SRC"
+          mv "$SRC" "app/build/outputs/apk/release/erp-v${{ steps.meta.outputs.version }}.apk"
           ls -la app/build/outputs/apk/release/
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: erp-mobile-v${{ github.event.inputs.version }}
-          path: mobile/app/build/outputs/apk/release/*.apk
+          name: erp-mobile-v${{ steps.meta.outputs.version }}
+          path: mobile/app/build/outputs/apk/release/erp-v*.apk
           retention-days: 30
 
       - name: Create GitHub Release
-        if: ${{ github.event.inputs.create_release == 'true' }}
+        if: ${{ steps.meta.outputs.create_release == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: mobile-v${{ github.event.inputs.version }}
-          name: ERP Mobile v${{ github.event.inputs.version }}
+          tag_name: ${{ github.event_name == 'push' && github.ref_name || format('mobile-v{0}', steps.meta.outputs.version) }}
+          name: ERP Mobile v${{ steps.meta.outputs.version }}
           body: |
-            ## ERP Mobile App v${{ github.event.inputs.version }}
+            ## ERP Mobile App v${{ steps.meta.outputs.version }}
 
             ### Release Info
-            - **Version Name:** ${{ github.event.inputs.version }}
-            - **Version Code:** ${{ github.event.inputs.version_code }}
-            - **API URL:** ${{ github.event.inputs.api_base_url }}
+            - **Version Name:** ${{ steps.meta.outputs.version }}
+            - **Version Code:** ${{ steps.meta.outputs.version_code }}
+            - **API URL:** ${{ steps.meta.outputs.api_base_url }}
             - **Build:** ${{ github.run_number }}
             - **Commit:** ${{ github.sha }}
 
@@ -107,7 +172,7 @@ jobs:
 
             ### Changes
             See commit history for changes since last release.
-          files: mobile/app/build/outputs/apk/release/*.apk
+          files: mobile/app/build/outputs/apk/release/erp-v*.apk
           draft: false
           prerelease: false
         env:
@@ -115,12 +180,13 @@ jobs:
 
       - name: Build Summary
         run: |
-          echo "### Mobile APK Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "### Release APK Build Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ github.event.inputs.version }} (code: ${{ github.event.inputs.version_code }})" >> $GITHUB_STEP_SUMMARY
-          echo "**API URL:** ${{ github.event.inputs.api_base_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.meta.outputs.version }} (code: ${{ steps.meta.outputs.version_code }})" >> $GITHUB_STEP_SUMMARY
+          echo "**API URL:** ${{ steps.meta.outputs.api_base_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Signed:** yes" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ github.event.inputs.create_release }}" == "true" ]; then
-            echo "**Release:** [mobile-v${{ github.event.inputs.version }}](https://github.com/${{ github.repository }}/releases/tag/mobile-v${{ github.event.inputs.version }})" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.meta.outputs.create_release }}" == "true" ]; then
+            TAG="${{ github.event_name == 'push' && github.ref_name || format('mobile-v{0}', steps.meta.outputs.version) }}"
+            echo "**Release:** [$TAG](https://github.com/${{ github.repository }}/releases/tag/$TAG)" >> $GITHUB_STEP_SUMMARY
           fi
