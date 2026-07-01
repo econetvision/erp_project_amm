@@ -111,4 +111,7 @@ dependencies {
 
     // Biometric
     implementation("androidx.biometric:biometric:1.1.0")
+
+    // EXIF for image rotation
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
 }

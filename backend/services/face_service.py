@@ -44,7 +44,14 @@ def get_face_encoding(b64_image: str) -> list[float]:
     """Return a 128-d face encoding from a base64 image. Raises if no face found."""
     try:
         img = decode_image(b64_image)
-        encodings = face_recognition.face_encodings(img)
+        # First try with default HOG model (faster)
+        face_locations = face_recognition.face_locations(img, model="hog")
+        if not face_locations:
+            # Fallback: try CNN model (more robust for low-res images)
+            face_locations = face_recognition.face_locations(img, model="cnn")
+        if not face_locations:
+            raise HTTPException(status_code=400, detail="No face detected in the image. Please try again with better lighting.")
+        encodings = face_recognition.face_encodings(img, face_locations)
     except HTTPException:
         raise
     except Exception as e:
@@ -69,7 +76,13 @@ def verify_employee_face(b64_image: str, employee) -> None:
         )
     try:
         img = decode_image(b64_image)
-        unknown_encodings = face_recognition.face_encodings(img)
+        # Try HOG first (faster), then CNN (more robust for low-res)
+        face_locations = face_recognition.face_locations(img, model="hog")
+        if not face_locations:
+            face_locations = face_recognition.face_locations(img, model="cnn")
+        if not face_locations:
+            raise HTTPException(status_code=400, detail="No face detected in the image. Please try again with better lighting and ensure your face is clearly visible.")
+        unknown_encodings = face_recognition.face_encodings(img, face_locations)
     except HTTPException:
         raise
     except Exception as e:
@@ -92,7 +105,13 @@ def identify_employee(b64_image: str, employees: list) -> object | None:
     """
     try:
         img = decode_image(b64_image)
-        unknown_encodings = face_recognition.face_encodings(img)
+        # Try HOG first (faster), then CNN (more robust for low-res)
+        face_locations = face_recognition.face_locations(img, model="hog")
+        if not face_locations:
+            face_locations = face_recognition.face_locations(img, model="cnn")
+        if not face_locations:
+            return None
+        unknown_encodings = face_recognition.face_encodings(img, face_locations)
     except HTTPException:
         raise
     except Exception as e:
