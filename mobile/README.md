@@ -9,7 +9,11 @@ Native Kotlin Android app for the ERP system.
 3. Configure the API base URL in `app/build.gradle.kts` → `buildConfigField`
    - Default: `http://10.0.2.2:8088` (emulator → host machine)
    - For physical device: use your machine's local IP (e.g., `http://192.168.1.x:8088`)
-4. Run on emulator or device (min API 26 / Android 8.0)
+4. Add a Google Maps API key for the attendance map:
+   - In Google Cloud Console, enable **Maps SDK for Android** and create an API key
+   - Add it to `mobile/local.properties` as `MAPS_API_KEY=your_key_here` (this file is git-ignored)
+   - Without a key the screen still works, but the map area renders blank
+5. Run on emulator or device (min API 26 / Android 8.0)
 
 ## Architecture
 
@@ -32,6 +36,7 @@ Native Kotlin Android app for the ERP system.
 - ✅ Dashboard with monthly attendance overview
 - ✅ Upcoming holidays display on dashboard
 - ✅ Attendance screen shows the employee's assigned work location and live in/out-of-geofence status before clocking in
+- ✅ Attendance map (Google Maps) — shows the assigned work location(s) with their geofence radius circle, the device's live position, and pins for the recorded clock-in (green) / clock-out (red) locations
 - ✅ Vehicle trip tracking (backup path) — if the logged-in user has an active vehicle assignment, a "Start Trip Tracking" card on the Attendance screen runs a foreground service pushing GPS location every ~20s to the same fleet-tracking pipeline. This is a fallback only; hardware GPS trackers (via the `gateway/` service) are the primary tracking source
 - ✅ Attendance clock-in/out with face photo capture
 - ✅ Face scan auto clock-in/out (identify employee by face)

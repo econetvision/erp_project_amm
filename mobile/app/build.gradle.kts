@@ -1,7 +1,17 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+// Read the Google Maps API key from local.properties (never committed to VCS).
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) FileInputStream(f).use { load(it) }
+}
+val mapsApiKey: String = localProps.getProperty("MAPS_API_KEY") ?: ""
 
 android {
     namespace = "com.econetvision.erp"
@@ -70,6 +80,9 @@ dependencies {
 
     // Location
     implementation("com.google.android.gms:play-services-location:21.1.0")
+
+    // Maps
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
 
     // SwipeRefreshLayout
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
