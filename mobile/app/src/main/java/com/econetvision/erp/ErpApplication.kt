@@ -3,7 +3,7 @@ package com.econetvision.erp
 import android.app.Application
 import com.econetvision.erp.data.api.AuthInterceptor
 import com.econetvision.erp.data.api.RetrofitClient
-import com.econetvision.erp.util.SessionManager
+import com.econetvision.erp.data.local.SessionManager
 
 class ErpApplication : Application() {
 
