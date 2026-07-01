@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Default company logo">
+  <rect width="256" height="256" fill="#f1f3f5"/>
+  <rect x="72" y="64" width="112" height="128" rx="6" fill="#868e96"/>
+  <g fill="#f1f3f5">
+    <rect x="90" y="84" width="20" height="20"/>
+    <rect x="122" y="84" width="20" height="20"/>
+    <rect x="154" y="84" width="12" height="20"/>
+    <rect x="90" y="116" width="20" height="20"/>
+    <rect x="122" y="116" width="20" height="20"/>
+    <rect x="154" y="116" width="12" height="20"/>
+    <rect x="112" y="152" width="32" height="40"/>
+  </g>
+</svg>

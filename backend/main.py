@@ -2,7 +2,7 @@ import os
 import logging
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from services import storage
 from database import engine, Base
 from routers import employees, attendance, payslips, auth, holidays, vehicles, assignments, tracking, jobs, notifications, payroll, locations
 from routers import companies, rbac, master as master_router, integrations as integrations_router
@@ -214,7 +214,10 @@ def health_check():
         "server_time": _dt.utcnow().isoformat() + "Z",
     }
 
-# Serve uploaded photos
-_uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
-os.makedirs(_uploads_dir, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=_uploads_dir), name="uploads")
+# Serve uploaded photos/logos through the storage service (local disk or S3).
+# When a file is missing (e.g. Railway's ephemeral filesystem wiped the uploads
+# dir on redeploy), it falls back to a route-appropriate default image instead of
+# returning a broken 404.
+@app.get("/uploads/{file_path:path}")
+def serve_upload(file_path: str):
+    return storage.serve(file_path)

@@ -19,9 +19,7 @@ from auth.dependencies import (
 )
 from services.face_service import identify_employee
 from services.license_service import validate_company_license, enforce_seat_limit
-
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "photos", "users")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+from services import storage
 
 router = APIRouter()
 
@@ -127,10 +125,7 @@ def upload_user_photo(
     if len(img_bytes) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Image must be under 5 MB")
     filename = f"{current_user.id}_{uuid.uuid4().hex[:8]}.jpg"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-    with open(filepath, "wb") as f:
-        f.write(img_bytes)
-    current_user.photo_path = f"/uploads/photos/users/{filename}"
+    current_user.photo_path = storage.save_image("users", filename, img_bytes, "image/jpeg")
     db.commit()
     db.refresh(current_user)
     return current_user

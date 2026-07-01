@@ -40,6 +40,23 @@ class Settings(BaseSettings):
     tracking_gateway_key: str = ""
     location_retention_days: int = 90
 
+    # ─── File storage (photos / logos) ───────────────────────────────────────
+    # "local"  → write to `upload_root`. Point that at a mounted Railway volume
+    #            for persistence across redeploys.
+    # "s3"     → store in an S3-compatible bucket (AWS S3, Cloudflare R2, MinIO…).
+    storage_backend: str = "local"
+    # Empty → defaults to <backend>/uploads. Set e.g. /data/uploads for a volume.
+    upload_root: str = ""
+    # S3 / R2 config (only used when storage_backend == "s3").
+    s3_bucket: str = ""
+    s3_endpoint_url: str = ""          # e.g. https://<acct>.r2.cloudflarestorage.com
+    s3_region: str = "auto"
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+    # If set, DB stores absolute public URLs (bucket must be public/CDN-fronted).
+    # Leave empty to stream objects through the app's /uploads route instead.
+    s3_public_base_url: str = ""
+
     # ─── KYC provider ────────────────────────────────────────────────────────
     kyc_provider: str = "manual"
     kyc_api_key: str = ""

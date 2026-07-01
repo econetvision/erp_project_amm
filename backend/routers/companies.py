@@ -11,9 +11,7 @@ from models.user import User
 from models.user import User
 from schemas.company import CompanyCreate, CompanyUpdate, CompanyResponse, CompanyStats
 from auth.dependencies import require_master, require_admin, get_current_user
-
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "photos", "companies")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+from services import storage
 
 router = APIRouter()
 
@@ -171,10 +169,7 @@ def upload_company_logo(
     if len(img_bytes) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Image must be under 5 MB")
     filename = f"company_{company_id}_{uuid.uuid4().hex[:8]}.png"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-    with open(filepath, "wb") as f:
-        f.write(img_bytes)
-    company.logo_path = f"/uploads/photos/companies/{filename}"
+    company.logo_path = storage.save_image("companies", filename, img_bytes, "image/png")
     db.commit()
     db.refresh(company)
     return company

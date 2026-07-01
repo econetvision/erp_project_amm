@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Default employee photo">
+  <rect width="256" height="256" fill="#e7f1ff"/>
+  <circle cx="128" cy="100" r="44" fill="#6ea8fe"/>
+  <path d="M56 208c0-40 32-64 72-64s72 24 72 64z" fill="#6ea8fe"/>
+</svg>

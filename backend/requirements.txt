@@ -18,3 +18,4 @@ apscheduler==3.10.4
 alembic==1.15.2
 twilio==9.0.5
 cryptography==44.0.0
+boto3==1.35.99  # S3-compatible object storage (used only when STORAGE_BACKEND=s3)

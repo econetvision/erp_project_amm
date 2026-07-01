@@ -14,14 +14,12 @@ from schemas.employee import (
     EmployeeCreateResponse, WorkLocationUpdateSchema, EmployeeCodeUpdateSchema
 )
 from services.face_service import get_face_encoding
+from services import storage
 from auth.dependencies import require_admin_or_supervisor, require_admin, get_current_user
 from config.settings import settings
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "photos", "employees")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 router = APIRouter()
 
@@ -318,10 +316,7 @@ def register_face(employee_id: int, payload: FaceRegisterRequest, db: Session = 
     if len(img_bytes) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Image must be under 5 MB")
     filename = f"{employee_id}_{uuid.uuid4().hex[:8]}.jpg"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-    with open(filepath, "wb") as f:
-        f.write(img_bytes)
-    emp.photo = f"/uploads/photos/employees/{filename}"
+    emp.photo = storage.save_image("employees", filename, img_bytes, "image/jpeg")
 
     # Mark onboarding as complete once face is registered
     emp.onboarding_complete = True
