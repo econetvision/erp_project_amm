@@ -10,6 +10,7 @@ from schemas.license import LicenseCreate, LicenseUpdate, LicenseResponse
 from services.license_service import (
     evaluate_license, count_active_seats, send_license_activated_email,
 )
+from services.license_service import evaluate_license, count_active_seats
 from auth.dependencies import require_master, require_admin
 
 router = APIRouter()

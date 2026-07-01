@@ -5,7 +5,7 @@ import MultiStepForm from "../../components/MultiStepForm";
 import ValidatedInput from "../../components/ValidatedInput";
 import { useFormValidation, required, pattern, minLength, minValue } from "../../hooks/useFormValidation";
 
-const EMPTY = { name: "", address: "", aadhar_number: "", bank_account_number: "", ifsc_code: "", hourly_rate: "", shift: "SHIFT_A", gender: "", date_of_birth: "", blood_group: "", marital_status: "", emergency_contact: "", emergency_name: "" };
+const EMPTY = { employee_code: "", name: "", address: "", aadhar_number: "", bank_account_number: "", ifsc_code: "", hourly_rate: "", shift: "SHIFT_A", gender: "", date_of_birth: "", blood_group: "", marital_status: "", emergency_contact: "", emergency_name: "" };
 const STEPS = [
   { title: "Personal Info", icon: "👤" },
   { title: "Bank Details", icon: "🏦" },
@@ -126,7 +126,11 @@ export default function EmployeeForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!validateAll(form)) return;
+    if (!validateAll(form)) {
+      setAlert({ type: "warning", message: "Please fill in all required fields: Name, Address, Aadhar Number, Bank Account, and Hourly Rate." });
+      setStep(0);
+      return;
+    }
     setLoading(true);
     try {
       const payload = { ...form, hourly_rate: parseFloat(form.hourly_rate) };
@@ -202,8 +206,11 @@ export default function EmployeeForm() {
     <div className="row justify-content-center">
       <div className="col-md-8">
         <div className="card shadow-sm mb-4">
-          <div className="card-header bg-primary text-white">
+          <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h5 className="mb-0">{isEdit ? "Edit Employee" : "Add New Employee"}</h5>
+            {isEdit && form.employee_code && (
+              <span className="badge bg-white text-primary fs-6 fw-bold">{form.employee_code}</span>
+            )}
           </div>
           <div className="card-body">
             <AlertMessage {...alert} onClose={() => setAlert({ type: "", message: "" })} />

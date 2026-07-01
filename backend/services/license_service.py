@@ -17,6 +17,7 @@ from models.license import CompanyLicense
 from services.email_service import send_email
 
 logger = logging.getLogger(__name__)
+from models.license import CompanyLicense
 
 # Reasons returned by evaluate_license / raised by validate_company_license
 NO_LICENSE   = "No license issued for this company"
