@@ -5,6 +5,7 @@ Revises: 0020_add_employee_code
 Create Date: 2026-07-01
 """
 from alembic import op
+from sqlalchemy import text
 import random
 import re
 
@@ -25,7 +26,7 @@ def upgrade():
     conn = op.get_bind()
 
     # Fetch employees that have no code yet
-    employees = conn.execute(
+    employees = conn.execute(text(
         """
         SELECT u.id, c.name AS company_name
         FROM users u
@@ -34,7 +35,7 @@ def upgrade():
           AND (u.employee_code IS NULL OR u.employee_code = '')
         ORDER BY u.id
         """
-    ).fetchall()
+    )).fetchall()
 
     used_codes: set[str] = set()
 
@@ -45,14 +46,14 @@ def upgrade():
             code = f"{prefix}-{random.randint(10000, 99999)}"
             if code not in used_codes:
                 existing = conn.execute(
-                    "SELECT id FROM users WHERE employee_code = :code",
+                    text("SELECT id FROM users WHERE employee_code = :code"),
                     {"code": code},
                 ).fetchone()
                 if not existing:
                     used_codes.add(code)
                     break
         conn.execute(
-            "UPDATE users SET employee_code = :code WHERE id = :id",
+            text("UPDATE users SET employee_code = :code WHERE id = :id"),
             {"code": code, "id": emp_id},
         )
 
