@@ -42,10 +42,17 @@ class EmployeeBase(BaseModel):
 
 
 class EmployeeCreate(EmployeeBase):
-    username: Optional[str] = None  # Auto-generated if not provided
-    password: Optional[str] = None  # Auto-generated if not provided
+    username: str = Field(..., min_length=3, max_length=50)  # Admin must provide
+    password: str = Field(..., min_length=6, max_length=100)  # Admin must provide
     role: Optional[Literal["worker", "supervisor"]] = "worker"
     company_id: Optional[int] = None
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, v: str) -> str:
+        if not re.fullmatch(r"[a-zA-Z0-9_]+", v):
+            raise ValueError("Username can only contain letters, numbers, and underscores")
+        return v.lower()
 
 
 class EmployeeUpdate(BaseModel):
@@ -71,10 +78,10 @@ class EmployeeUpdate(BaseModel):
 
 
 class EmployeeCreateResponse(BaseModel):
-    """Response for employee creation - includes generated credentials"""
+    """Response for employee creation"""
     id:                  int
+    employee_code:       str
     username:            str
-    generated_password:  str  # Only returned on creation
     role:                str
     company_id:          Optional[int] = None
     name:                Optional[str] = None
@@ -129,3 +136,15 @@ class WorkLocationUpdateSchema(BaseModel):
     work_latitude:       Optional[float] = None
     work_longitude:      Optional[float] = None
     attendance_radius_m: Optional[float] = Field(None, ge=1, le=5000)
+
+
+class EmployeeCodeUpdateSchema(BaseModel):
+    """Schema for admin to update employee code - format: COMPANY-SITE-ID"""
+    employee_code: str = Field(..., min_length=3, max_length=50)
+
+    @field_validator("employee_code")
+    @classmethod
+    def validate_employee_code(cls, v: str) -> str:
+        if not re.fullmatch(r"[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+", v.upper()):
+            raise ValueError("Employee code must be in format: COMPANY-SITE-ID (e.g., ABC-HQ-001)")
+        return v.upper()

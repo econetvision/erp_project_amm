@@ -11,7 +11,7 @@ from database import get_db
 from models.user import User
 from schemas.employee import (
     EmployeeCreate, EmployeeUpdate, EmployeeResponse,
-    EmployeeCreateResponse, WorkLocationUpdateSchema
+    EmployeeCreateResponse, WorkLocationUpdateSchema, EmployeeCodeUpdateSchema
 )
 from services.face_service import get_face_encoding
 from auth.dependencies import require_admin_or_supervisor, require_admin, get_current_user
@@ -26,19 +26,46 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 router = APIRouter()
 
 
-def _generate_employee_code(db: Session, company_id: int | None) -> str:
-    prefix = "EMP"
+def _generate_employee_code(db: Session, company_id: int | None, work_location_name: str | None = None) -> str:
+    """Generate employee code in format: COMPANY-SITE-ID
+
+    Example: ABC-HQ-001, XYZ-PLANT1-042
+    """
+    # Get company prefix (first 3-5 letters of company name)
+    company_prefix = "EMP"
     if company_id:
         from models.company import Company
         company = db.query(Company).filter(Company.id == company_id).first()
         if company:
             letters = re.sub(r"[^A-Za-z]", "", company.name).upper()
-            prefix = letters[:5] or "EMP"
-    for _ in range(20):
-        code = f"{prefix}-{random.randint(10000, 99999)}"
-        if not db.query(User).filter(User.employee_code == code).first():
-            return code
-    return f"{prefix}-{uuid.uuid4().hex[:6].upper()}"
+            company_prefix = letters[:5] or "EMP"
+
+    # Get site prefix (first 3-5 letters of work location, or "HQ" if not set)
+    site_prefix = "HQ"
+    if work_location_name:
+        site_letters = re.sub(r"[^A-Za-z0-9]", "", work_location_name).upper()
+        site_prefix = site_letters[:5] or "HQ"
+
+    # Find the next available ID for this company-site combination
+    prefix = f"{company_prefix}-{site_prefix}"
+    existing_codes = db.query(User.employee_code).filter(
+        User.employee_code.like(f"{prefix}-%")
+    ).all()
+
+    # Extract existing IDs and find max
+    max_id = 0
+    for (code,) in existing_codes:
+        if code:
+            parts = code.split("-")
+            if len(parts) >= 3:
+                try:
+                    num = int(parts[-1])
+                    max_id = max(max_id, num)
+                except ValueError:
+                    pass
+
+    next_id = max_id + 1
+    return f"{prefix}-{next_id:03d}"
 
 
 class FaceRegisterRequest(BaseModel):
@@ -89,39 +116,45 @@ def list_employees(
 
 @router.post("", status_code=201)
 def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db), current_user: User = Depends(require_admin_or_supervisor)):
-    """Create a new employee with auto-generated login credentials.
+    """Create a new employee with admin-defined login credentials.
 
-    Returns the generated username and password so admin can share with the employee.
-    The employee can then login via the mobile app or web portal.
+    Admin must provide username and password for the employee.
+    Employee ID is auto-generated in format: COMPANY-SITE-ID
     """
     if not payload.name or not payload.name.strip():
         raise HTTPException(status_code=422, detail="Employee name is required")
+
+    # Check Aadhar uniqueness
     existing = db.query(User).filter(User.aadhar_number == payload.aadhar_number).first()
     if existing:
         raise HTTPException(status_code=400, detail="Aadhar number already registered")
 
     data = payload.model_dump()
 
-    # Auto-generate username and password for new employee user
-    username = data.pop("username", None) or f"emp_{data['aadhar_number']}"
-    password = data.pop("password", None) or data["aadhar_number"][-4:] + "1234"
+    # Admin-defined username and password (required)
+    username = data.pop("username")
+    password = data.pop("password")
     role = data.pop("role", None) or "worker"
     company_id = data.pop("company_id", None) or current_user.company_id
+
+    # Check username uniqueness
+    if db.query(User).filter(User.username == username).first():
+        raise HTTPException(status_code=400, detail="Username already exists. Please choose a different username.")
 
     # Supervisors can only create workers
     if current_user.role == "supervisor" and role != "worker":
         raise HTTPException(status_code=403, detail="Supervisors can only create workers")
 
-    # Check username uniqueness
-    if db.query(User).filter(User.username == username).first():
-        username = f"emp_{uuid.uuid4().hex[:8]}"
+    # Generate employee code in format: COMPANY-SITE-ID
+    work_location = data.get("work_location_name")
+    employee_code = _generate_employee_code(db, company_id, work_location)
 
     emp = User(
         username=username,
         password_hash=pwd_context.hash(password),
         role=role,
         company_id=company_id,
-        employee_code=_generate_employee_code(db, company_id),
+        employee_code=employee_code,
         onboarding_complete=False,
         **data,
     )
@@ -129,18 +162,16 @@ def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db), curr
     db.commit()
     db.refresh(emp)
 
-    # Return response with generated credentials
     return {
         "id": emp.id,
-        "username": username,
-        "generated_password": password,  # Only shown on creation!
+        "employee_code": emp.employee_code,
+        "username": emp.username,
         "role": emp.role,
         "company_id": emp.company_id,
         "name": emp.name,
         "aadhar_number": emp.aadhar_number,
         "onboarding_complete": emp.onboarding_complete,
         "created_at": emp.created_at,
-        "message": f"Employee created successfully. Login credentials: Username: {username}, Password: {password}"
     }
 
 
@@ -215,6 +246,35 @@ def update_employee_work_location(
 
     for key, value in payload.model_dump(exclude_none=True).items():
         setattr(emp, key, value)
+    db.commit()
+    db.refresh(emp)
+    return emp
+
+
+@router.patch("/{employee_id}/employee-code", response_model=EmployeeResponse)
+def update_employee_code(
+    employee_id: int,
+    payload: EmployeeCodeUpdateSchema,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    """Update employee code - Admin only.
+
+    Employee code format: COMPANY-SITE-ID (e.g., ABC-HQ-001)
+    """
+    emp = db.query(User).filter(User.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    # Check if the new code is already in use
+    existing = db.query(User).filter(
+        User.employee_code == payload.employee_code,
+        User.id != employee_id
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Employee code already in use")
+
+    emp.employee_code = payload.employee_code
     db.commit()
     db.refresh(emp)
     return emp

@@ -5,9 +5,9 @@ import MultiStepForm from "../../components/MultiStepForm";
 import ValidatedInput from "../../components/ValidatedInput";
 import { useFormValidation, required, pattern, minLength, minValue } from "../../hooks/useFormValidation";
 
-const EMPTY = { employee_code: "", name: "", address: "", aadhar_number: "", bank_account_number: "", ifsc_code: "", hourly_rate: "", shift: "SHIFT_A", gender: "", date_of_birth: "", blood_group: "", marital_status: "", emergency_contact: "", emergency_name: "" };
+const EMPTY = { employee_code: "", name: "", address: "", aadhar_number: "", bank_account_number: "", ifsc_code: "", hourly_rate: "", shift: "SHIFT_A", gender: "", date_of_birth: "", blood_group: "", marital_status: "", emergency_contact: "", emergency_name: "", username: "", password: "", work_location_name: "" };
 const STEPS = [
-  { title: "Personal Info", icon: "👤" },
+  { title: "Login & Personal", icon: "👤" },
   { title: "Bank Details", icon: "🏦" },
   { title: "Employment", icon: "💼" },
   { title: "Face Registration", icon: "📸" },
@@ -38,11 +38,13 @@ export default function EmployeeForm() {
   const [kycStatus, setKycStatus] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
 
-  // Credentials state (shown after employee creation)
-  const [credentials, setCredentials] = useState<{username: string; password: string} | null>(null);
+  // Employee code (shown after creation)
+  const [createdEmployeeCode, setCreatedEmployeeCode] = useState<string | null>(null);
 
-  // Form validation
+  // Form validation - username/password only required for new employees
   const { touch, validateAll, getFieldProps, reset } = useFormValidation({
+    username: isEdit ? [] : [required(), minLength(3, "Username must be at least 3 characters"), pattern(/^[a-zA-Z0-9_]+$/, "Only letters, numbers, and underscores allowed")],
+    password: isEdit ? [] : [required(), minLength(6, "Password must be at least 6 characters")],
     name: [required(), minLength(2, "Name must be at least 2 characters")],
     address: [required(), minLength(5, "Address too short")],
     aadhar_number: [required(), pattern(/^\d{12}$/, "Must be exactly 12 digits")],
@@ -130,7 +132,7 @@ export default function EmployeeForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!validateAll(form)) {
-      setAlert({ type: "warning", message: "Please fill in all required fields: Name, Address, Aadhar Number, Bank Account, and Hourly Rate." });
+      setAlert({ type: "warning", message: "Please fill in all required fields including Username and Password." });
       setStep(0);
       return;
     }
@@ -144,18 +146,11 @@ export default function EmployeeForm() {
       } else {
         const res = await createEmployee(payload);
         setSavedId(res.data.id);
-        // Store the generated credentials to display to the admin
-        if (res.data.username && res.data.generated_password) {
-          setCredentials({
-            username: res.data.username,
-            password: res.data.generated_password
-          });
-        }
+        setCreatedEmployeeCode(res.data.employee_code);
         setAlert({
           type: "success",
-          message: `Employee created successfully!`
+          message: `Employee created successfully! Employee ID: ${res.data.employee_code}`
         });
-        setForm(EMPTY);
         setStep(3);
       }
     } catch (e: any) {
@@ -231,9 +226,35 @@ export default function EmployeeForm() {
               onStepClick={i => { if (i < step || (i === 3 && savedId)) setStep(i); }}>
               <form onSubmit={handleSubmit}>
 
-                {/* Step 0: Personal Info */}
+                {/* Step 0: Login & Personal Info */}
                 {step === 0 && (
                   <div>
+                    {/* Login Credentials - Only for new employees */}
+                    {!isEdit && (
+                      <div className="card bg-light mb-4">
+                        <div className="card-body">
+                          <h6 className="card-title fw-bold mb-3">Login Credentials</h6>
+                          <p className="text-muted small mb-3">
+                            Set the username and password for this employee to login to the mobile app.
+                          </p>
+                          <div className="row g-3">
+                            <div className="col-md-6">
+                              <ValidatedInput label="Username" name="username" value={form.username}
+                                onChange={handleChange} onBlur={() => touch("username", form.username)}
+                                validation={getFieldProps("username")} icon="👤" required
+                                hint="Letters, numbers, underscores only" />
+                            </div>
+                            <div className="col-md-6">
+                              <ValidatedInput label="Password" name="password" value={form.password}
+                                onChange={handleChange} onBlur={() => touch("password", form.password)}
+                                validation={getFieldProps("password")} type="password" icon="🔒" required
+                                hint="Minimum 6 characters" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <ValidatedInput label="Full Name" name="name" value={form.name}
                       onChange={handleChange} onBlur={() => touch("name", form.name)}
                       validation={getFieldProps("name")} icon="👤" required />
@@ -300,10 +321,19 @@ export default function EmployeeForm() {
                       </div>
                     </div>
 
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold">Work Location / Site</label>
+                      <input className="form-control" name="work_location_name" value={form.work_location_name}
+                        onChange={handleChange} placeholder="e.g. Headquarters, Plant A, Site 1" />
+                      <small className="form-text text-muted">
+                        Used to generate Employee ID (e.g., COMPANY-SITE-001)
+                      </small>
+                    </div>
+
                     <div className="d-flex justify-content-between mt-3">
                       <button type="button" className="btn btn-secondary" onClick={() => navigate("/employees")}>Cancel</button>
                       <button type="button" className="btn btn-primary"
-                        disabled={!form.name || !form.address || !form.aadhar_number}
+                        disabled={!form.name || !form.address || !form.aadhar_number || (!isEdit && (!form.username || !form.password))}
                         onClick={() => setStep(1)}>Next →</button>
                     </div>
                   </div>
@@ -393,23 +423,22 @@ export default function EmployeeForm() {
                       </div>
                     ) : (
                       <>
-                        {/* Show generated credentials */}
-                        {credentials && (
-                          <div className="alert alert-info text-start mb-4">
-                            <h6 className="alert-heading fw-bold">Employee Login Credentials</h6>
-                            <p className="mb-2">Share these credentials with the employee so they can login to the mobile app:</p>
-                            <div className="bg-light p-3 rounded border">
+                        {/* Show employee code after creation */}
+                        {createdEmployeeCode && (
+                          <div className="alert alert-success text-start mb-4">
+                            <h6 className="alert-heading fw-bold">Employee Created Successfully!</h6>
+                            <div className="bg-light p-3 rounded border mt-2">
                               <div className="mb-2">
-                                <strong>Username:</strong>{" "}
-                                <code className="user-select-all">{credentials.username}</code>
+                                <strong>Employee ID:</strong>{" "}
+                                <code className="user-select-all fs-5">{createdEmployeeCode}</code>
                               </div>
                               <div>
-                                <strong>Password:</strong>{" "}
-                                <code className="user-select-all">{credentials.password}</code>
+                                <strong>Username:</strong>{" "}
+                                <code className="user-select-all">{form.username}</code>
                               </div>
                             </div>
                             <small className="text-muted d-block mt-2">
-                              Note: The employee should change their password after first login.
+                              Share the username and password you set with the employee for mobile app login.
                             </small>
                           </div>
                         )}
