@@ -49,7 +49,7 @@ export default function Navbar() {
               <div className="erp-topbar__user-info">
                 <span className="erp-topbar__user-name">{auth.display_name || auth.username}</span>
                 <span className={`badge bg-${ROLE_BADGE[auth.role]} erp-topbar__role-badge`}>
-                  {auth.role.charAt(0).toUpperCase() + auth.role.slice(1)}
+                  {(auth.role || '').charAt(0).toUpperCase() + (auth.role || '').slice(1)}
                 </span>
               </div>
             </div>

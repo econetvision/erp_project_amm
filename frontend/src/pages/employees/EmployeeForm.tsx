@@ -126,7 +126,11 @@ export default function EmployeeForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!validateAll(form)) return;
+    if (!validateAll(form)) {
+      setAlert({ type: "warning", message: "Please fill in all required fields: Name, Address, Aadhar Number, Bank Account, and Hourly Rate." });
+      setStep(0);
+      return;
+    }
     setLoading(true);
     try {
       const payload = { ...form, hourly_rate: parseFloat(form.hourly_rate) };

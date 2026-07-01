@@ -65,6 +65,8 @@ def list_employees(
 
 @router.post("", response_model=EmployeeResponse, status_code=201)
 def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+    if not payload.name or not payload.name.strip():
+        raise HTTPException(status_code=422, detail="Employee name is required")
     existing = db.query(User).filter(User.aadhar_number == payload.aadhar_number).first()
     if existing:
         raise HTTPException(status_code=400, detail="Aadhar number already registered")
@@ -98,6 +100,8 @@ def get_employee(employee_id: int, db: Session = Depends(get_db), _: User = Depe
 
 @router.put("/{employee_id}", response_model=EmployeeResponse)
 def update_employee(employee_id: int, payload: EmployeeCreate, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+    if not payload.name or not payload.name.strip():
+        raise HTTPException(status_code=422, detail="Employee name is required")
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")

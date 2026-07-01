@@ -111,7 +111,7 @@ export default function EmployeeList() {
                       ) : (
                         <div style={{ width: 42, height: 42, borderRadius: "50%", background: "#e9ecef", border: "2px solid #dee2e6",
                           display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: "#adb5bd", fontWeight: 600 }}>
-                          {emp.name.charAt(0).toUpperCase()}
+                          {(emp.name || '?').charAt(0).toUpperCase()}
                         </div>
                       )}
                     </td>
