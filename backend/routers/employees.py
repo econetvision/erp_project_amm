@@ -9,9 +9,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from database import get_db
 from models.user import User
-from schemas.employee import EmployeeCreate, EmployeeUpdate, EmployeeResponse
+from schemas.employee import (
+    EmployeeCreate, EmployeeUpdate, EmployeeResponse,
+    EmployeeCreateResponse, WorkLocationUpdateSchema
+)
 from services.face_service import get_face_encoding
-from auth.dependencies import require_admin_or_supervisor
+from auth.dependencies import require_admin_or_supervisor, require_admin, get_current_user
 from config.settings import settings
 from passlib.context import CryptContext
 
@@ -49,10 +52,13 @@ def list_employees(
     search: str = Query("", alias="q"),
     all: bool = Query(False),
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin_or_supervisor),
+    current_user: User = Depends(require_admin_or_supervisor),
 ):
-    # Only list users that have employee data (aadhar set or role is worker/supervisor)
-    q = db.query(User).filter(User.role.in_(["worker", "supervisor"]))
+    # Supervisors can only see workers, admins/masters can see both workers and supervisors
+    if current_user.role == "supervisor":
+        q = db.query(User).filter(User.role == "worker")
+    else:
+        q = db.query(User).filter(User.role.in_(["worker", "supervisor"]))
     if search:
         q = q.filter(
             or_(
@@ -81,50 +87,90 @@ def list_employees(
     }
 
 
-@router.post("", response_model=EmployeeResponse, status_code=201)
-def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+@router.post("", status_code=201)
+def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db), current_user: User = Depends(require_admin_or_supervisor)):
+    """Create a new employee with auto-generated login credentials.
+
+    Returns the generated username and password so admin can share with the employee.
+    The employee can then login via the mobile app or web portal.
+    """
     if not payload.name or not payload.name.strip():
         raise HTTPException(status_code=422, detail="Employee name is required")
     existing = db.query(User).filter(User.aadhar_number == payload.aadhar_number).first()
     if existing:
         raise HTTPException(status_code=400, detail="Aadhar number already registered")
+
     data = payload.model_dump()
+
     # Auto-generate username and password for new employee user
     username = data.pop("username", None) or f"emp_{data['aadhar_number']}"
     password = data.pop("password", None) or data["aadhar_number"][-4:] + "1234"
     role = data.pop("role", None) or "worker"
+    company_id = data.pop("company_id", None) or current_user.company_id
+
+    # Supervisors can only create workers
+    if current_user.role == "supervisor" and role != "worker":
+        raise HTTPException(status_code=403, detail="Supervisors can only create workers")
+
     # Check username uniqueness
     if db.query(User).filter(User.username == username).first():
         username = f"emp_{uuid.uuid4().hex[:8]}"
+
     emp = User(
         username=username,
         password_hash=pwd_context.hash(password),
         role=role,
-        employee_code=_generate_employee_code(db, _.company_id),
+        company_id=company_id,
+        employee_code=_generate_employee_code(db, company_id),
+        onboarding_complete=False,
         **data,
     )
     db.add(emp)
     db.commit()
     db.refresh(emp)
-    return emp
+
+    # Return response with generated credentials
+    return {
+        "id": emp.id,
+        "username": username,
+        "generated_password": password,  # Only shown on creation!
+        "role": emp.role,
+        "company_id": emp.company_id,
+        "name": emp.name,
+        "aadhar_number": emp.aadhar_number,
+        "onboarding_complete": emp.onboarding_complete,
+        "created_at": emp.created_at,
+        "message": f"Employee created successfully. Login credentials: Username: {username}, Password: {password}"
+    }
 
 
 @router.get("/{employee_id}", response_model=EmployeeResponse)
-def get_employee(employee_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def get_employee(employee_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_admin_or_supervisor)):
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+
+    # Supervisors can only view workers (not other supervisors)
+    if current_user.role == "supervisor" and emp.role != "worker":
+        raise HTTPException(status_code=403, detail="Supervisors can only view workers")
+
     return emp
 
 
 @router.put("/{employee_id}", response_model=EmployeeResponse)
-def update_employee(employee_id: int, payload: EmployeeCreate, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def update_employee(employee_id: int, payload: EmployeeCreate, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
+    """Full update of employee - Admin only.
+
+    Supervisors should use PATCH /employees/{id}/work-location for work location updates.
+    """
     if not payload.name or not payload.name.strip():
         raise HTTPException(status_code=422, detail="Employee name is required")
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
-    for key, value in payload.model_dump().items():
+
+    data = payload.model_dump(exclude={"username", "password", "role", "company_id"})
+    for key, value in data.items():
         setattr(emp, key, value)
     db.commit()
     db.refresh(emp)
@@ -132,10 +178,41 @@ def update_employee(employee_id: int, payload: EmployeeCreate, db: Session = Dep
 
 
 @router.patch("/{employee_id}", response_model=EmployeeResponse)
-def partial_update_employee(employee_id: int, payload: EmployeeUpdate, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def partial_update_employee(employee_id: int, payload: EmployeeUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
+    """Partial update of employee - Admin only.
+
+    Supervisors should use PATCH /employees/{id}/work-location for work location updates.
+    """
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+
+    for key, value in payload.model_dump(exclude_none=True).items():
+        setattr(emp, key, value)
+    db.commit()
+    db.refresh(emp)
+    return emp
+
+
+@router.patch("/{employee_id}/work-location", response_model=EmployeeResponse)
+def update_employee_work_location(
+    employee_id: int,
+    payload: WorkLocationUpdateSchema,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin_or_supervisor)
+):
+    """Update employee work location - Available to Admin and Supervisor.
+
+    Supervisors can only update work location for workers, not other supervisors.
+    """
+    emp = db.query(User).filter(User.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    # Supervisors can only edit workers
+    if current_user.role == "supervisor" and emp.role != "worker":
+        raise HTTPException(status_code=403, detail="Supervisors can only edit work location for workers")
+
     for key, value in payload.model_dump(exclude_none=True).items():
         setattr(emp, key, value)
     db.commit()
@@ -144,19 +221,32 @@ def partial_update_employee(employee_id: int, payload: EmployeeUpdate, db: Sessi
 
 
 @router.delete("/{employee_id}", status_code=204)
-def delete_employee(employee_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def delete_employee(employee_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
+    """Delete employee - Admin only."""
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    if emp.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
     db.delete(emp)
     db.commit()
 
 
 @router.post("/{employee_id}/face", response_model=EmployeeResponse)
-def register_face(employee_id: int, payload: FaceRegisterRequest, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def register_face(employee_id: int, payload: FaceRegisterRequest, db: Session = Depends(get_db), current_user: User = Depends(require_admin_or_supervisor)):
+    """Register employee face for biometric attendance.
+
+    This is a critical step in employee onboarding. Once face is registered,
+    the employee can use face scan for attendance and login.
+    """
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+
+    # Supervisors can only register faces for workers
+    if current_user.role == "supervisor" and emp.role != "worker":
+        raise HTTPException(status_code=403, detail="Supervisors can only register faces for workers")
+
     emp.face_encoding = get_face_encoding(payload.image)
     # Save photo as file instead of base64
     try:
@@ -173,6 +263,10 @@ def register_face(employee_id: int, payload: FaceRegisterRequest, db: Session = 
     with open(filepath, "wb") as f:
         f.write(img_bytes)
     emp.photo = f"/uploads/photos/employees/{filename}"
+
+    # Mark onboarding as complete once face is registered
+    emp.onboarding_complete = True
+
     db.commit()
     db.refresh(emp)
     return emp

@@ -38,6 +38,9 @@ export default function EmployeeForm() {
   const [kycStatus, setKycStatus] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
 
+  // Credentials state (shown after employee creation)
+  const [credentials, setCredentials] = useState<{username: string; password: string} | null>(null);
+
   // Form validation
   const { touch, validateAll, getFieldProps, reset } = useFormValidation({
     name: [required(), minLength(2, "Name must be at least 2 characters")],
@@ -141,7 +144,17 @@ export default function EmployeeForm() {
       } else {
         const res = await createEmployee(payload);
         setSavedId(res.data.id);
-        setAlert({ type: "success", message: `Employee created (ID: ${res.data.id}). Now register their face below.` });
+        // Store the generated credentials to display to the admin
+        if (res.data.username && res.data.generated_password) {
+          setCredentials({
+            username: res.data.username,
+            password: res.data.generated_password
+          });
+        }
+        setAlert({
+          type: "success",
+          message: `Employee created successfully!`
+        });
         setForm(EMPTY);
         setStep(3);
       }
@@ -380,6 +393,27 @@ export default function EmployeeForm() {
                       </div>
                     ) : (
                       <>
+                        {/* Show generated credentials */}
+                        {credentials && (
+                          <div className="alert alert-info text-start mb-4">
+                            <h6 className="alert-heading fw-bold">Employee Login Credentials</h6>
+                            <p className="mb-2">Share these credentials with the employee so they can login to the mobile app:</p>
+                            <div className="bg-light p-3 rounded border">
+                              <div className="mb-2">
+                                <strong>Username:</strong>{" "}
+                                <code className="user-select-all">{credentials.username}</code>
+                              </div>
+                              <div>
+                                <strong>Password:</strong>{" "}
+                                <code className="user-select-all">{credentials.password}</code>
+                              </div>
+                            </div>
+                            <small className="text-muted d-block mt-2">
+                              Note: The employee should change their password after first login.
+                            </small>
+                          </div>
+                        )}
+
                         <p className="text-muted">Capture a clear front-facing photo for face recognition clock in/out.</p>
 
                         <div style={{ display: camOpen ? "block" : "none" }} className="mb-3">

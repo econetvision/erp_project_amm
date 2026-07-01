@@ -11,8 +11,10 @@ DEFAULT_PERMISSIONS = [
     ("attendance.create", "Mark Attendance", "attendance"),
     ("attendance.manage", "Manage Attendance", "attendance"),
     ("employees.view", "View Employees", "employees"),
+    ("employees.view_workers", "View Workers Only", "employees"),  # For supervisors
     ("employees.create", "Create Employees", "employees"),
     ("employees.edit", "Edit Employees", "employees"),
+    ("employees.edit_location", "Edit Work Location", "employees"),  # For supervisors
     ("employees.delete", "Delete Employees", "employees"),
     ("users.view", "View Users", "users"),
     ("users.create", "Create Users", "users"),
@@ -108,11 +110,18 @@ def seed():
                 db.rollback()
 
         supervisor_role = db.query(Role).filter(Role.name == "supervisor", Role.is_system == True).first()
+        # Supervisors have limited permissions:
+        # - Can view workers (not other supervisors)
+        # - Can create workers
+        # - Can only edit work location (not full employee details)
+        # - Can manage attendance for their workers
         supervisor_perms = [
             "attendance.view", "attendance.create", "attendance.manage",
-            "employees.view", "employees.create", "employees.edit",
-            "vehicles.view", "tracking.view", "tracking.assign",
-            "jobs.view", "jobs.assign", "locations.view",
+            "employees.view_workers",  # Can only view workers, not supervisors
+            "employees.create",        # Can create new workers
+            "employees.edit_location", # Can only edit work location
+            "vehicles.view", "tracking.view",
+            "jobs.view", "locations.view",
             "holidays.view", "notifications.view", "reports.view",
         ]
         if supervisor_role:

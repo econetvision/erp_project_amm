@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS users (
     attendance_radius_m DOUBLE PRECISION DEFAULT 50.0,
     phone_verified      VARCHAR(1)     DEFAULT 'N',
     email_verified      VARCHAR(1)     DEFAULT 'N',
+    onboarding_complete BOOLEAN        DEFAULT FALSE,
     created_at          TIMESTAMP      NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMP      NOT NULL DEFAULT NOW()
 );

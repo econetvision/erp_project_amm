@@ -106,17 +106,17 @@ export default function EmployeeList() {
                   <tr key={emp.id}>
                     <td>
                       {emp.photo ? (
-                        <img src={emp.photo} alt={emp.name}
+                        <img src={emp.photo} alt={emp.name || "Employee"}
                           style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%", border: "2px solid #dee2e6" }} />
                       ) : (
                         <div style={{ width: 42, height: 42, borderRadius: "50%", background: "#e9ecef", border: "2px solid #dee2e6",
                           display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: "#adb5bd", fontWeight: 600 }}>
-                          {(emp.name || '?').charAt(0).toUpperCase()}
+                          {(emp.name || "?").charAt(0).toUpperCase()}
                         </div>
                       )}
                     </td>
                     <td><code className="text-primary fw-semibold">{emp.employee_code || `#${emp.id}`}</code></td>
-                    <td className="fw-semibold">{emp.name}</td>
+                    <td className="fw-semibold">{emp.name || "—"}</td>
                     <td className="text-capitalize">{emp.gender || "—"}</td>
                     <td><code>{maskAadhar(emp.aadhar_number)}</code></td>
                     <td>₹{parseFloat(String(emp.hourly_rate)).toFixed(2)}</td>

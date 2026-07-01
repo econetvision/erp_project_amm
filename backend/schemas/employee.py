@@ -42,7 +42,10 @@ class EmployeeBase(BaseModel):
 
 
 class EmployeeCreate(EmployeeBase):
-    pass
+    username: Optional[str] = None  # Auto-generated if not provided
+    password: Optional[str] = None  # Auto-generated if not provided
+    role: Optional[Literal["worker", "supervisor"]] = "worker"
+    company_id: Optional[int] = None
 
 
 class EmployeeUpdate(BaseModel):
@@ -67,9 +70,27 @@ class EmployeeUpdate(BaseModel):
     attendance_radius_m: Optional[float] = Field(None, ge=1, le=5000)
 
 
+class EmployeeCreateResponse(BaseModel):
+    """Response for employee creation - includes generated credentials"""
+    id:                  int
+    username:            str
+    generated_password:  str  # Only returned on creation
+    role:                str
+    company_id:          Optional[int] = None
+    name:                Optional[str] = None
+    aadhar_number:       Optional[str] = None
+    onboarding_complete: bool = False
+    created_at:          datetime
+
+    model_config = {"from_attributes": True}
+
+
 class EmployeeResponse(BaseModel):
     id:                  int
     employee_code:       Optional[str] = None
+    username:            Optional[str] = None
+    role:                Optional[str] = None
+    company_id:          Optional[int] = None
     name:                Optional[str] = None
     gender:              Optional[str] = None
     date_of_birth:       Optional[date] = None
@@ -95,7 +116,16 @@ class EmployeeResponse(BaseModel):
     work_latitude:       Optional[float] = None
     work_longitude:      Optional[float] = None
     attendance_radius_m: Optional[float] = None
+    onboarding_complete: Optional[bool] = False
     created_at:          datetime
     updated_at:          datetime
 
     model_config = {"from_attributes": True}
+
+
+class WorkLocationUpdateSchema(BaseModel):
+    """Schema for supervisor to update only work location"""
+    work_location_name:  Optional[str] = Field(None, max_length=255)
+    work_latitude:       Optional[float] = None
+    work_longitude:      Optional[float] = None
+    attendance_radius_m: Optional[float] = Field(None, ge=1, le=5000)

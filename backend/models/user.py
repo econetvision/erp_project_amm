@@ -48,6 +48,7 @@ class User(Base):
     attendance_radius_m = Column(Float, nullable=True, default=50.0)
     phone_verified      = Column(String(1), nullable=True, default="N")
     email_verified      = Column(String(1), nullable=True, default="N")
+    onboarding_complete = Column(Boolean, nullable=True, default=False)
 
     created_at    = Column(DateTime(timezone=True), server_default=func.now())
     updated_at    = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
