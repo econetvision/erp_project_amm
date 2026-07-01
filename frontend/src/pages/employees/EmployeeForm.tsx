@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";import { useNavigate, useParams } from "react-router-dom";
 import { createEmployee, getEmployee, updateEmployee, registerFace, lookupIfsc, verifyBank } from "../../api/employeeApi";
+import { getAllLocations } from "../../api/locationApi";
 import AlertMessage from "../../components/AlertMessage";
 import MultiStepForm from "../../components/MultiStepForm";
 import ValidatedInput from "../../components/ValidatedInput";
+import { useAuth } from "../../context/AuthContext";
 import { useFormValidation, required, pattern, minLength, minValue } from "../../hooks/useFormValidation";
 
 const EMPTY = { employee_code: "", name: "", address: "", aadhar_number: "", bank_account_number: "", ifsc_code: "", hourly_rate: "", shift: "SHIFT_A", gender: "", date_of_birth: "", blood_group: "", marital_status: "", emergency_contact: "", emergency_name: "", username: "", password: "", work_location_name: "" };
@@ -17,6 +19,10 @@ export default function EmployeeForm() {
   const { id }                = useParams();
   const isEdit                = Boolean(id);
   const navigate              = useNavigate();
+  const { auth }              = useAuth();
+  // Only Admin/Supervisor (and Master) may set/change an employee's work location.
+  const canEditWorkLocation   = ["master", "admin", "supervisor"].includes(auth?.role || "");
+  const [locations, setLocations] = useState<{ id: number; location_name: string }[]>([]);
   const [form, setForm]       = useState(EMPTY);
   const [alert, setAlert]     = useState({ type: "", message: "" });
   const [loading, setLoading] = useState(false);
@@ -51,7 +57,11 @@ export default function EmployeeForm() {
     bank_account_number: [required(), pattern(/^\d{8,18}$/, "Must be 8-18 digits")],
     hourly_rate: [required(), minValue(0, "Rate cannot be negative")],
     ifsc_code: [pattern(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC format (e.g. SBIN0001234)")],
+    emergency_contact: [pattern(/^\+?\d[\d\s-]{7,14}\d$/, "Enter a valid phone number (digits only, 9-15 digits)")],
   });
+
+  // Today (YYYY-MM-DD) — used to prevent selecting a future Date of Birth.
+  const today = new Date().toISOString().slice(0, 10);
 
   // Attach stream after video element mounts
   useEffect(() => {
@@ -86,6 +96,14 @@ export default function EmployeeForm() {
         .catch((e: any) => setAlert({ type: "danger", message: e.message }));
     }
   }, [id, isEdit]);
+
+  // Load the company's work locations for the Work Location / Site dropdown.
+  useEffect(() => {
+    if (!canEditWorkLocation) return;
+    getAllLocations({ active_only: true })
+      .then((res) => setLocations(res.data.map((l) => ({ id: l.id, location_name: l.location_name }))))
+      .catch(() => {/* non-fatal: dropdown just stays empty */});
+  }, [canEditWorkLocation]);
 
   // Stop camera on unmount
   useEffect(() => {
@@ -272,7 +290,7 @@ export default function EmployeeForm() {
                       <div className="col-md-4">
                         <label className="form-label fw-semibold">Date of Birth</label>
                         <input type="date" className="form-control" name="date_of_birth"
-                          value={form.date_of_birth} onChange={handleChange} />
+                          value={form.date_of_birth} onChange={handleChange} max={today} />
                       </div>
                       <div className="col-md-4">
                         <label className="form-label fw-semibold">Blood Group</label>
@@ -316,17 +334,33 @@ export default function EmployeeForm() {
                       </div>
                       <div className="col-md-6">
                         <label className="form-label fw-semibold">Emergency Contact Phone</label>
-                        <input className="form-control" name="emergency_contact" value={form.emergency_contact}
-                          onChange={handleChange} placeholder="+91 9876543210" maxLength={20} />
+                        <input className={`form-control ${getFieldProps("emergency_contact").className || ""}`}
+                          name="emergency_contact" value={form.emergency_contact}
+                          onChange={handleChange} onBlur={() => touch("emergency_contact", form.emergency_contact)}
+                          type="tel" inputMode="tel" placeholder="+91 9876543210" maxLength={20} />
+                        {getFieldProps("emergency_contact").error &&
+                          <div className="invalid-feedback d-block">{getFieldProps("emergency_contact").error}</div>}
                       </div>
                     </div>
 
                     <div className="mb-3">
                       <label className="form-label fw-semibold">Work Location / Site</label>
-                      <input className="form-control" name="work_location_name" value={form.work_location_name}
-                        onChange={handleChange} placeholder="e.g. Headquarters, Plant A, Site 1" />
+                      <select className="form-select" name="work_location_name" value={form.work_location_name}
+                        onChange={handleChange} disabled={!canEditWorkLocation}>
+                        <option value="">— Select a work location —</option>
+                        {/* Keep an existing value selectable even if it's no longer in the active list. */}
+                        {form.work_location_name &&
+                          !locations.some((l) => l.location_name === form.work_location_name) && (
+                            <option value={form.work_location_name}>{form.work_location_name} (current)</option>
+                          )}
+                        {locations.map((l) => (
+                          <option key={l.id} value={l.location_name}>{l.location_name}</option>
+                        ))}
+                      </select>
                       <small className="form-text text-muted">
-                        Used to generate Employee ID (e.g., COMPANY-SITE-001)
+                        {canEditWorkLocation
+                          ? "Used to generate Employee ID (e.g., COMPANY-SITE-001). Add sites under Attendance → Work Locations."
+                          : "Only an Admin or Supervisor can change the work location."}
                       </small>
                     </div>
 

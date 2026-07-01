@@ -19,6 +19,8 @@ export default function EmployeeList() {
   const [alert, setAlert]         = useState({ type: "", message: "" });
   const [deleteId, setDeleteId]   = useState<number | null>(null);
   const navigate                  = useNavigate();
+  // Photos are stored as backend-relative paths (/uploads/...); prefix with the API origin.
+  const apiBase = process.env.REACT_APP_API_URL || "http://localhost:8088";
 
   const fetchEmployees = useCallback(async () => {
     try {
@@ -106,7 +108,7 @@ export default function EmployeeList() {
                   <tr key={emp.id}>
                     <td>
                       {emp.photo ? (
-                        <img src={emp.photo} alt={emp.name || "Employee"}
+                        <img src={emp.photo.startsWith("http") ? emp.photo : `${apiBase}${emp.photo}`} alt={emp.name || "Employee"}
                           style={{ width: 42, height: 42, objectFit: "cover", borderRadius: "50%", border: "2px solid #dee2e6" }} />
                       ) : (
                         <div style={{ width: 42, height: 42, borderRadius: "50%", background: "#e9ecef", border: "2px solid #dee2e6",

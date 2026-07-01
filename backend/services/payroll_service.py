@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import extract
 from fastapi import HTTPException
 from models.user import User
+from models.company import Company
 from models.salary_structure import SalaryStructure, SalaryComponent, EmployeeSalary
 from models.advance import Advance
 from models.payroll_run import PayrollRun, PayrollItem
@@ -13,6 +14,26 @@ from config.shifts import SHIFTS, WORKING_DAYS_PER_MONTH
 
 
 OVERTIME_MULTIPLIER = Decimal("1.5")
+# Statutory defaults (percent of gross) — used when a company hasn't overridden them.
+DEFAULT_ESI_RATE = Decimal("0.75")
+DEFAULT_PF_RATE = Decimal("12.0")
+
+
+def resolve_payroll_config(db: Session, company_id: int | None) -> dict:
+    """Resolve a company's payroll settings (esi_rate, pf_rate, working_days,
+    overtime_multiplier) as set by admin/master in Company Settings, falling back
+    to system defaults so existing behaviour is preserved when unset."""
+    cfg = {}
+    if company_id:
+        company = db.query(Company).filter(Company.id == company_id).first()
+        if company and company.payroll_config:
+            cfg = company.payroll_config
+    return {
+        "esi_rate": Decimal(str(cfg.get("esi_rate", DEFAULT_ESI_RATE))),
+        "pf_rate": Decimal(str(cfg.get("pf_rate", DEFAULT_PF_RATE))),
+        "working_days": Decimal(str(cfg.get("working_days", WORKING_DAYS_PER_MONTH))),
+        "overtime_multiplier": Decimal(str(cfg.get("overtime_multiplier", OVERTIME_MULTIPLIER))),
+    }
 
 
 def create_payroll_run(db: Session, month: int, year: int, user_id: int) -> PayrollRun:
@@ -67,6 +88,10 @@ def _calculate_employee_payroll(
         .first()
     )
 
+    # Company-configured payroll rates (admin/master set these in Company Settings).
+    pcfg = resolve_payroll_config(db, emp.company_id)
+    working_days = pcfg["working_days"]
+
     days_worked = get_monthly_days(db, emp.id, month, year)
     total_hours = get_monthly_hours(db, emp.id, month, year)
     overtime_hrs = Decimal("0")
@@ -101,7 +126,7 @@ def _calculate_employee_payroll(
         ) if structure else []
 
         # Pro-rate basic based on days worked
-        daily_basic = (basic_pay / Decimal(str(WORKING_DAYS_PER_MONTH))).quantize(
+        daily_basic = (basic_pay / working_days).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
         prorated_basic = (daily_basic * Decimal(str(days_worked))).quantize(
@@ -116,7 +141,7 @@ def _calculate_employee_payroll(
             if comp.calculation_type == "fixed":
                 val = comp.amount_or_percentage
                 # Pro-rate fixed amounts
-                val = (val * Decimal(str(days_worked)) / Decimal(str(WORKING_DAYS_PER_MONTH))).quantize(
+                val = (val * Decimal(str(days_worked)) / working_days).quantize(
                     Decimal("0.01"), rounding=ROUND_HALF_UP
                 )
             elif comp.calculation_type == "percentage_of_basic":
@@ -148,19 +173,19 @@ def _calculate_employee_payroll(
         # Fallback: legacy hourly-rate based calculation
         hourly_rate = Decimal(str(emp.hourly_rate))
         daily_rate = (hourly_rate * effective_hours).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        basic_pay = daily_rate * Decimal(str(WORKING_DAYS_PER_MONTH))
+        basic_pay = daily_rate * working_days
         prorated_basic = (daily_rate * Decimal(str(days_worked))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         gross = prorated_basic
 
         earnings = {}
         deductions = {
-            "ESI": float((gross * Decimal("0.0075")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
-            "PF": float((gross * Decimal("0.12")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
+            "ESI": float((gross * pcfg["esi_rate"] / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
+            "PF": float((gross * pcfg["pf_rate"] / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
         }
         total_ded = sum(Decimal(str(v)) for v in deductions.values())
 
     # Overtime pay
-    ot_rate = (Decimal(str(emp.hourly_rate)) * OVERTIME_MULTIPLIER).quantize(
+    ot_rate = (Decimal(str(emp.hourly_rate)) * pcfg["overtime_multiplier"]).quantize(
         Decimal("0.01"), rounding=ROUND_HALF_UP
     )
     overtime_pay = (ot_rate * overtime_hrs).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)

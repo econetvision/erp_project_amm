@@ -1,19 +1,35 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AlertMessage from "../../components/AlertMessage";
+import { useAuth } from "../../context/AuthContext";
+import { getCompany } from "../../api/companyApi";
 
 const SHIFTS = [
   { key: "SHIFT_A", label: "Shift A", time: "6:30 AM – 2:00 PM", break: "10:30 AM (20 min)" },
   { key: "SHIFT_B", label: "Shift B", time: "9:00 AM – 5:00 PM", break: "1:30 PM (20 min)" },
 ];
 
-const DEDUCTIONS = [
-  { name: "ESI", rate: "0.75%", basis: "Gross Salary", mandatory: true },
-  { name: "PF", rate: "12%", basis: "Basic Salary", mandatory: true },
-  { name: "Professional Tax", rate: "₹200", basis: "Fixed", mandatory: true },
-];
+// System defaults — used when the company hasn't overridden them in Company Settings.
+const DEFAULTS = { esi_rate: 0.75, pf_rate: 12.0, working_days: 26, overtime_multiplier: 1.5 };
 
 export default function PayrollSettings() {
+  const { auth } = useAuth();
   const [alert, setAlert] = useState({ type: "", message: "" });
+  const [cfg, setCfg] = useState(DEFAULTS);
+
+  // Load the company's configured payroll rates so this page reflects what
+  // admin/master saved in Company Settings (the same values payslips now use).
+  useEffect(() => {
+    if (!auth?.company_id) return;
+    getCompany(auth.company_id)
+      .then((res) => setCfg({ ...DEFAULTS, ...(res.data.payroll_config || {}) }))
+      .catch(() => {/* keep defaults on failure */});
+  }, [auth?.company_id]);
+
+  const DEDUCTIONS = [
+    { name: "ESI", rate: `${cfg.esi_rate}%`, basis: "Gross Salary", mandatory: true },
+    { name: "PF", rate: `${cfg.pf_rate}%`, basis: "Gross Salary", mandatory: true },
+    { name: "Professional Tax", rate: "₹200", basis: "Fixed", mandatory: true },
+  ];
 
   return (
     <div className="row justify-content-center">
@@ -51,7 +67,7 @@ export default function PayrollSettings() {
                   </div>
                 ))}
                 <p className="text-muted small mt-2 mb-0">
-                  <strong>Working Days:</strong> 26 days/month (Sundays off)
+                  <strong>Working Days:</strong> {cfg.working_days} days/month (Sundays off)
                 </p>
               </div>
             </div>
@@ -103,8 +119,8 @@ export default function PayrollSettings() {
                   <div className="small">
                     <div className="mb-2"><strong>Gross Pay</strong> = Daily Rate × Days Worked</div>
                     <div className="mb-2"><strong>Daily Rate</strong> = Hourly Rate × Effective Shift Hours</div>
-                    <div className="mb-2"><strong>ESI Deduction</strong> = Gross Pay × 0.75%</div>
-                    <div className="mb-2"><strong>PF Deduction</strong> = Gross Pay × 12%</div>
+                    <div className="mb-2"><strong>ESI Deduction</strong> = Gross Pay × {cfg.esi_rate}%</div>
+                    <div className="mb-2"><strong>PF Deduction</strong> = Gross Pay × {cfg.pf_rate}%</div>
                     <div><strong>Net Pay</strong> = Gross Pay − ESI − PF − Advances</div>
                   </div>
                 </div>
@@ -130,7 +146,7 @@ export default function PayrollSettings() {
                     </tr>
                     <tr>
                       <td className="text-muted">Working Days/Month</td>
-                      <td className="fw-semibold">26 days</td>
+                      <td className="fw-semibold">{cfg.working_days} days</td>
                     </tr>
                     <tr>
                       <td className="text-muted">Weekend</td>

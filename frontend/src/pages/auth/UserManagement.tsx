@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback, type FormEvent } from "react";
 import { getUsers, createUser, deleteUser, updateUser } from "../../api/authApi";
+import { getCompanies } from "../../api/companyApi";
+import { useAuth } from "../../context/AuthContext";
 import AlertMessage from "../../components/AlertMessage";
 import ConfirmModal from "../../components/ConfirmModal";
 import MultiStepForm from "../../components/MultiStepForm";
@@ -16,6 +18,9 @@ const STEPS = [
 ];
 
 export default function UserManagement() {
+  const { auth } = useAuth();
+  const isMaster = auth?.role === "master";
+  const [companies, setCompanies] = useState<{ id: number; name: string }[]>([]);
   const [users, setUsers]         = useState<User[]>([]);
   const [form, setForm]           = useState(EMPTY);
   const [step, setStep]           = useState(0);
@@ -43,6 +48,14 @@ export default function UserManagement() {
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
   useEffect(() => { setPage(1); }, [search]);
 
+  // Master assigns users (including admins) to a company, so it needs the list.
+  useEffect(() => {
+    if (!isMaster) return;
+    getCompanies({ all: true })
+      .then((r) => setCompanies(r.data.items.map((c: any) => ({ id: c.id, name: c.name }))))
+      .catch(() => {/* non-fatal */});
+  }, [isMaster]);
+
   function set(field: string) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setForm(f => ({ ...f, [field]: e.target.value }));
@@ -50,8 +63,10 @@ export default function UserManagement() {
 
   function canAdvance() {
     if (step === 0) {
+      // Master must pick a company for any non-master user.
+      const companyOk = !isMaster || form.role === "master" || !!form.company_id;
       return form.username.length >= 3 && form.password.length >= 4
-        && form.password === form.confirmPassword && form.role;
+        && form.password === form.confirmPassword && !!form.role && companyOk;
     }
     if (step === 1) {
       return form.display_name.trim().length > 0 && form.email.includes("@") && form.phone.length >= 10;
@@ -168,13 +183,24 @@ export default function UserManagement() {
                     </div>
                     <div className="col-md-6">
                       <label className="form-label fw-semibold">Role <span className="text-danger">*</span></label>
-                      <select className="form-select" value={form.role} onChange={set("role")}>
+                      <select className="form-select" value={form.role}
+                        onChange={e => setForm(f => ({ ...f, role: e.target.value, company_id: e.target.value === "master" ? "" : f.company_id }))}>
                         <option value="master">Master</option>
                         <option value="admin">Admin</option>
                         <option value="supervisor">Supervisor</option>
                         <option value="worker">Worker</option>
                       </select>
                     </div>
+                    {/* Master assigns non-master users (incl. admins) to a company. */}
+                    {isMaster && form.role !== "master" && (
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">Company <span className="text-danger">*</span></label>
+                        <select className="form-select" value={form.company_id} onChange={set("company_id")} required>
+                          <option value="">— Select a company —</option>
+                          {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                    )}
                     <div className="col-md-6">
                       <label className="form-label fw-semibold">Password <span className="text-danger">*</span></label>
                       <input className="form-control" type="password" value={form.password}
@@ -246,6 +272,18 @@ export default function UserManagement() {
                           </div>
                         </div>
                       </div>
+                      {isMaster && form.role !== "master" && (
+                        <div className="col-md-6">
+                          <div className="card bg-light">
+                            <div className="card-body py-2">
+                              <small className="text-muted">Company</small>
+                              <div className="fw-semibold">
+                                {companies.find(c => String(c.id) === String(form.company_id))?.name || "—"}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <div className="col-md-4">
                         <div className="card bg-light">
                           <div className="card-body py-2">

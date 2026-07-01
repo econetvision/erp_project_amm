@@ -24,6 +24,8 @@ export default function CompanySettings() {
 
   const [selectedCoId, setSelectedCoId] = useState<number | null>(null);
   const companyId = id ? parseInt(id) : (selectedCoId ?? auth?.company_id ?? null);
+  // Logos are stored as backend-relative paths (/uploads/...); prefix with the API origin.
+  const apiBase = process.env.REACT_APP_API_URL || "http://localhost:8088";
 
   useEffect(() => {
     // For master users without company_id, load all companies for selection
@@ -180,7 +182,7 @@ export default function CompanySettings() {
             <div className="row g-3">
               <div className="col-md-4 text-center">
                 {company.logo_path ? (
-                  <img src={company.logo_path} alt="Logo" className="img-fluid rounded" style={{ maxHeight: 120 }} />
+                  <img src={company.logo_path.startsWith("http") ? company.logo_path : `${apiBase}${company.logo_path}`} alt="Logo" className="img-fluid rounded" style={{ maxHeight: 120 }} />
                 ) : (
                   <div className="bg-light rounded d-flex align-items-center justify-content-center" style={{ height: 120, width: 120, margin: "0 auto" }}>
                     <span className="text-muted">No Logo</span>

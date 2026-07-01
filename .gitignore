@@ -1,7 +1,10 @@
 *.pyc
 node_modules/
-dist/   
-mobile/app/build/
+dist/
+# Build output in any folder, at any depth
+build/
+**/build/
+frontend/build/static/
 mobile/.gradle/
 mobile/.idea/
 .env

@@ -174,14 +174,29 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db), _: User = De
     # Only master can create master users
     if payload.role == "master" and _.role != "master":
         raise HTTPException(status_code=403, detail="Only master users can create master accounts")
+
+    # Company hierarchy: every non-master user must belong to a company.
+    #  - Master may assign the new user (including an admin) to any company, but must pick one.
+    #  - Admin/supervisor may only add users within their own company.
+    if payload.role == "master":
+        company_id = None  # master accounts are global, not tied to a company
+    elif _.role == "master":
+        if not payload.company_id:
+            raise HTTPException(status_code=400, detail="Select a company for this user")
+        company_id = payload.company_id
+    else:
+        if _.company_id is None:
+            raise HTTPException(status_code=400, detail="Your account is not linked to a company")
+        company_id = _.company_id
+
     # Enforce the company seat limit when adding a seat-consuming (non-master) user.
-    if payload.role != "master" and payload.company_id is not None:
-        enforce_seat_limit(db, payload.company_id)
+    if payload.role != "master":
+        enforce_seat_limit(db, company_id)
     user = User(
         username=payload.username,
         password_hash=hash_password(payload.password),
         role=payload.role,
-        company_id=payload.company_id,
+        company_id=company_id,
         email=payload.email,
         display_name=payload.display_name,
         phone=payload.phone,
