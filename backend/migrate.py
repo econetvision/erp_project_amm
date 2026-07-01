@@ -20,16 +20,14 @@ sys.path.insert(0, os.path.dirname(__file__))
 from alembic.config import Config
 from alembic import command
 
+from config.settings import settings
+
 
 def get_alembic_config() -> Config:
     ini_path = os.path.join(os.path.dirname(__file__), "alembic.ini")
     cfg = Config(ini_path)
-    # Override DB URL from env (same var the app uses)
-    db_url = os.getenv(
-        "DATABASE_URL",
-        "postgresql://erp_user:erp_pass@localhost:5432/erp_db",
-    )
-    cfg.set_main_option("sqlalchemy.url", db_url)
+    # Override DB URL from settings (same var the app uses)
+    cfg.set_main_option("sqlalchemy.url", settings.database_url)
     return cfg
 
 

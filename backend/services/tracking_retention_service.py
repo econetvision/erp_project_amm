@@ -1,12 +1,12 @@
-import os
 import logging
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from models.vehicle_location import VehicleLocation
+from config.settings import settings
 
 logger = logging.getLogger("tracking_retention")
 
-LOCATION_RETENTION_DAYS = int(os.getenv("LOCATION_RETENTION_DAYS", "90"))
+LOCATION_RETENTION_DAYS = settings.location_retention_days
 
 
 def purge_old_vehicle_locations(db: Session) -> int:

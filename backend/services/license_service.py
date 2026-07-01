@@ -15,15 +15,25 @@ from models.user import User
 from models.company import Company
 from models.license import CompanyLicense
 from services.email_service import send_email
+from config.settings import settings
 
 logger = logging.getLogger(__name__)
-from models.license import CompanyLicense
 
 # Reasons returned by evaluate_license / raised by validate_company_license
 NO_LICENSE   = "No license issued for this company"
 SUSPENDED    = "License suspended"
 EXPIRED      = "License expired"
 SEAT_LIMIT   = "Seat limit exceeded"
+
+
+def license_bypass_active() -> bool:
+    """True when local license enforcement is short-circuited to "always valid":
+      - a static master LICENSE_KEY is configured (our own deployments), or
+      - enforcement is globally disabled via LICENSE_ENFORCE=false.
+
+    In bypass mode the backend also skips any call to the external license server.
+    """
+    return (not settings.license_enforce) or settings.has_static_license
 
 
 def get_company_license(db: Session, company_id: int) -> Optional[CompanyLicense]:
@@ -61,6 +71,9 @@ def evaluate_license(
     locked out of an over-provisioned company on login / per request — it is enforced
     when *adding* a new user instead.
     """
+    # Static master license / disabled enforcement → always valid, no DB or server check.
+    if license_bypass_active():
+        return None, None
     license = get_company_license(db, company_id)
     if license is None:
         return None, NO_LICENSE
@@ -94,6 +107,9 @@ def enforce_seat_limit(db: Session, company_id: int) -> None:
 def has_feature(license: Optional[CompanyLicense], key: str) -> bool:
     """Tier/feature gate helper. True when the license grants `key` (or has no feature
     map, i.e. all features allowed)."""
+    # Static master license / disabled enforcement grants every feature.
+    if license_bypass_active():
+        return True
     if license is None:
         return False
     if not license.features:

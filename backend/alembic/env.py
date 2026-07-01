@@ -18,6 +18,7 @@ from sqlalchemy import engine_from_config, pool
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from database import Base  # noqa: E402
+from config.settings import settings  # noqa: E402
 
 # Import every model so Base.metadata is fully populated
 import models.employee           # noqa: F401, E402
@@ -44,12 +45,8 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-# Override sqlalchemy.url with the env-var the app already uses
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://erp_user:erp_pass@localhost:5432/erp_db",
-)
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+# Override sqlalchemy.url with the centralized app settings
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 
 # ---------------------------------------------------------------------------

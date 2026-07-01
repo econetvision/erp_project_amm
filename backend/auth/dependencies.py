@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from typing import Optional, List
-import os
 import bcrypt
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status, Request
@@ -8,8 +7,9 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from database import get_db
 from models.user import User
+from config.settings import settings
 
-SECRET_KEY  = os.getenv("SECRET_KEY", "erp-secret-key-change-in-production")
+SECRET_KEY  = settings.secret_key
 ALGORITHM   = "HS256"
 TOKEN_EXPIRY_HOURS = 12
 
@@ -74,7 +74,7 @@ class ServiceIdentity:
     company_id = None
 
 
-TRACKING_GATEWAY_KEY = os.getenv("TRACKING_GATEWAY_KEY")
+TRACKING_GATEWAY_KEY = settings.tracking_gateway_key
 
 
 def get_current_user_or_service(request: Request, db: Session = Depends(get_db)):

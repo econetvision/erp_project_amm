@@ -2,16 +2,17 @@
 Credential encryption utilities.
 Uses Fernet symmetric encryption; key derived from SECRET_KEY env var.
 """
-import os
 import base64
 import hashlib
 import json
 from typing import Optional
 from cryptography.fernet import Fernet
 
+from config.settings import settings
+
 
 def _get_fernet() -> Fernet:
-    secret = os.getenv("SECRET_KEY", "erp-secret-key-change-in-production")
+    secret = settings.secret_key
     # Derive a 32-byte key from SECRET_KEY via SHA-256, then base64-encode for Fernet
     key = base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest())
     return Fernet(key)

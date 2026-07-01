@@ -1,12 +1,13 @@
 """Twilio verification service for phone (SMS) and email verification."""
 
-import os
 from twilio.rest import Client
 from twilio.base.exceptions import TwilioRestException
 
-TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
-TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
-TWILIO_VERIFY_SERVICE_SID = os.getenv("TWILIO_VERIFY_SERVICE_SID", "")
+from config.settings import settings
+
+TWILIO_ACCOUNT_SID = settings.twilio_account_sid
+TWILIO_AUTH_TOKEN = settings.twilio_auth_token
+TWILIO_VERIFY_SERVICE_SID = settings.twilio_verify_service_sid
 
 
 def _get_client() -> Client:

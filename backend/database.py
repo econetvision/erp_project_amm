@@ -1,11 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
-import os
+from config.settings import settings
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://erp_user:erp_pass@localhost:5432/erp_db"
-)
+DATABASE_URL = settings.database_url
 
 engine = create_engine(
     DATABASE_URL,
