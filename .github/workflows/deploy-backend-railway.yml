@@ -47,6 +47,7 @@ jobs:
           # Railway service variables — see the sync step below.
           LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
           LICENSE_SERVER_URL: ${{ secrets.LICENSE_SERVER_URL }}
+          LICENSE_ENFORCE: ${{ secrets.LICENSE_ENFORCE }}
         run: |
           echo "Starting deployment to Railway..."
           railway up --service erp_project_amm
@@ -58,6 +59,7 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
           LICENSE_SERVER_URL: ${{ secrets.LICENSE_SERVER_URL }}
+          LICENSE_ENFORCE: ${{ secrets.LICENSE_ENFORCE }}
         run: |
           # railway up does not push CI-step env into the runtime; set them as
           # service variables so the backend reads them via config.settings.
@@ -66,6 +68,9 @@ jobs:
           fi
           if [ -n "$LICENSE_SERVER_URL" ]; then
             railway variables --service erp_project_amm --set "LICENSE_SERVER_URL=$LICENSE_SERVER_URL"
+          fi
+          if [ -n "$LICENSE_ENFORCE" ]; then
+            railway variables --service erp_project_amm --set "LICENSE_ENFORCE=$LICENSE_ENFORCE"
           fi
 
       - name: Check Migration Status
