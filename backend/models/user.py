@@ -23,6 +23,7 @@ class User(Base):
     is_active     = Column(Boolean, nullable=True, default=True)
 
     # ── Employee fields (merged from employees table) ─────────────────────────
+    employee_code       = Column(String(20), nullable=True, unique=True)
     name                = Column(String(255), nullable=True)
     gender              = Column(String(10), nullable=True)
     date_of_birth       = Column(Date, nullable=True)

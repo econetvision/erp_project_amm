@@ -88,7 +88,7 @@ export default function EmployeeList() {
             <thead className="table-dark">
               <tr>
                 <th>Photo</th>
-                <th>#</th>
+                <th>Emp ID</th>
                 <th>Name</th>
                 <th>Gender</th>
                 <th>Aadhar</th>
@@ -115,7 +115,7 @@ export default function EmployeeList() {
                         </div>
                       )}
                     </td>
-                    <td>{emp.id}</td>
+                    <td><code className="text-primary fw-semibold">{emp.employee_code || `#${emp.id}`}</code></td>
                     <td className="fw-semibold">{emp.name}</td>
                     <td className="text-capitalize">{emp.gender || "—"}</td>
                     <td><code>{maskAadhar(emp.aadhar_number)}</code></td>

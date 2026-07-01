@@ -1,6 +1,8 @@
 import os
 import base64
 import uuid
+import random
+import re
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -18,6 +20,21 @@ UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads",
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 router = APIRouter()
+
+
+def _generate_employee_code(db: Session, company_id: int | None) -> str:
+    prefix = "EMP"
+    if company_id:
+        from models.company import Company
+        company = db.query(Company).filter(Company.id == company_id).first()
+        if company:
+            letters = re.sub(r"[^A-Za-z]", "", company.name).upper()
+            prefix = letters[:5] or "EMP"
+    for _ in range(20):
+        code = f"{prefix}-{random.randint(10000, 99999)}"
+        if not db.query(User).filter(User.employee_code == code).first():
+            return code
+    return f"{prefix}-{uuid.uuid4().hex[:6].upper()}"
 
 
 class FaceRegisterRequest(BaseModel):
@@ -82,6 +99,7 @@ def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db), _: U
         username=username,
         password_hash=pwd_context.hash(password),
         role=role,
+        employee_code=_generate_employee_code(db, _.company_id),
         **data,
     )
     db.add(emp)
