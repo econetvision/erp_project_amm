@@ -1,0 +1,7 @@
+Latest development APK
+----------------------
+Commit:    ea3e913c495a5d0ff7ca9b6b900d54c172fb855d
+Short SHA: ea3e913
+Branch:    master
+Built at:  2026-07-01 13:42:45 UTC
+Run:       https://github.com/econetvision/erp_project_amm/actions/runs/28521946818
