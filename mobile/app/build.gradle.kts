@@ -25,6 +25,7 @@ android {
         versionName = "1.0.0"
         // Default (used by debug): local backend via the emulator host loopback.
         buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8088/\"")
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {
