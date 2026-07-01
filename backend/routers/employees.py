@@ -189,19 +189,18 @@ def get_employee(employee_id: int, db: Session = Depends(get_db), current_user: 
 
 
 @router.put("/{employee_id}", response_model=EmployeeResponse)
-def update_employee(employee_id: int, payload: EmployeeCreate, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
+def update_employee(employee_id: int, payload: EmployeeUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
     """Full update of employee - Admin only.
 
     Supervisors should use PATCH /employees/{id}/work-location for work location updates.
+    Note: Username and password cannot be changed via this endpoint.
     """
-    if not payload.name or not payload.name.strip():
-        raise HTTPException(status_code=422, detail="Employee name is required")
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    data = payload.model_dump(exclude={"username", "password", "role", "company_id"})
-    for key, value in data.items():
+    # Update only provided fields (exclude None values)
+    for key, value in payload.model_dump(exclude_none=True).items():
         setattr(emp, key, value)
     db.commit()
     db.refresh(emp)
