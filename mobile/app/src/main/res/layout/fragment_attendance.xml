@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:map="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fillViewport="true">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="16dp">
 
@@ -45,6 +51,14 @@
                 android:layout_marginTop="4dp"
                 android:textSize="14sp"
                 tools:text="✅ Within range (12 m)" />
+
+            <com.google.android.gms.maps.MapView
+                android:id="@+id/map_view"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_marginTop="12dp"
+                map:liteMode="true"
+                map:mapType="normal" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_refresh_location"
@@ -205,3 +219,4 @@
         android:text="No records yet today." />
 
 </LinearLayout>
+</ScrollView>

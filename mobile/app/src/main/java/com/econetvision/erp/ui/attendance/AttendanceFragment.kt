@@ -26,6 +26,13 @@ import com.econetvision.erp.service.VehicleTrackingService
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.CircleOptions
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.tasks.CancellationTokenSource
 import java.io.ByteArrayOutputStream
 
@@ -40,6 +47,7 @@ class AttendanceFragment : Fragment() {
     private var lastKnownLocation: Location? = null
     private var currentAssignment: MyAssignment? = null
     private var isTrackingTrip = false
+    private var googleMap: GoogleMap? = null
 
     private val trackingPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -93,6 +101,14 @@ class AttendanceFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentAttendanceBinding.inflate(inflater, container, false)
         viewModel = ViewModelProvider(this)[AttendanceViewModel::class.java]
+
+        binding.mapView.onCreate(savedInstanceState)
+        binding.mapView.getMapAsync { map ->
+            googleMap = map
+            map.uiSettings.isMapToolbarEnabled = false
+            enableMyLocationLayer()
+            updateMap()
+        }
 
         val session = SessionManager(requireContext())
         val empId = session.getEmployeeId()
@@ -201,6 +217,89 @@ class AttendanceFragment : Fragment() {
             if (location != null) {
                 viewModel.updateCurrentDistance(location.latitude, location.longitude)
             }
+            updateMap()
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun enableMyLocationLayer() {
+        if (hasLocationPermission()) {
+            googleMap?.isMyLocationEnabled = true
+        }
+    }
+
+    /**
+     * Redraws the attendance map: assigned work location(s) with their geofence radius,
+     * the device's last-known position, and any recorded clock-in / clock-out pins.
+     * Safe to call before the map is ready — it no-ops until [googleMap] is set.
+     */
+    private fun updateMap() {
+        val map = googleMap ?: return
+        map.clear()
+
+        val boundsBuilder = LatLngBounds.Builder()
+        var pointCount = 0
+        var lastPoint: LatLng? = null
+
+        viewModel.myLocations.value?.forEach { loc ->
+            val pos = LatLng(loc.latitude, loc.longitude)
+            map.addMarker(
+                MarkerOptions()
+                    .position(pos)
+                    .title(loc.locationName)
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+            )
+            map.addCircle(
+                CircleOptions()
+                    .center(pos)
+                    .radius(loc.allowedRadiusM)
+                    .strokeWidth(3f)
+                    .strokeColor(0x552196F3)
+                    .fillColor(0x222196F3)
+            )
+            boundsBuilder.include(pos); lastPoint = pos; pointCount++
+        }
+
+        lastKnownLocation?.let {
+            val pos = LatLng(it.latitude, it.longitude)
+            boundsBuilder.include(pos); lastPoint = pos; pointCount++
+        }
+
+        val att = viewModel.attendanceStatus.value
+        val inLat = att?.clockInLatitude
+        val inLng = att?.clockInLongitude
+        if (inLat != null && inLng != null) {
+            val pos = LatLng(inLat, inLng)
+            map.addMarker(
+                MarkerOptions()
+                    .position(pos)
+                    .title("Clock-in")
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+            )
+            boundsBuilder.include(pos); lastPoint = pos; pointCount++
+        }
+        val outLat = att?.clockOutLatitude
+        val outLng = att?.clockOutLongitude
+        if (outLat != null && outLng != null) {
+            val pos = LatLng(outLat, outLng)
+            map.addMarker(
+                MarkerOptions()
+                    .position(pos)
+                    .title("Clock-out")
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+            )
+            boundsBuilder.include(pos); lastPoint = pos; pointCount++
+        }
+
+        when {
+            pointCount == 0 -> Unit
+            pointCount == 1 -> map.moveCamera(CameraUpdateFactory.newLatLngZoom(lastPoint!!, 16f))
+            else -> try {
+                map.moveCamera(CameraUpdateFactory.newLatLngBounds(boundsBuilder.build(), 120))
+            } catch (e: Exception) {
+                // Map not yet laid out (common in lite mode) — fall back to a single-point zoom.
+                map.moveCamera(CameraUpdateFactory.newLatLngZoom(lastPoint!!, 15f))
+            }
         }
     }
 
@@ -281,6 +380,7 @@ class AttendanceFragment : Fragment() {
                     "Location: %.6f, %.6f", location.latitude, location.longitude
                 )
                 viewModel.updateCurrentDistance(location.latitude, location.longitude)
+                updateMap()
                 submitAttendance(image, location.latitude, location.longitude)
             } else {
                 binding.tvLocationStatus.text = "Location unavailable"
@@ -322,6 +422,7 @@ class AttendanceFragment : Fragment() {
     private fun observeViewModel() {
         viewModel.myLocations.observe(viewLifecycleOwner) { locations ->
             renderWorkLocationCard(locations)
+            updateMap()
         }
 
         viewModel.currentDistanceStatus.observe(viewLifecycleOwner) {
@@ -371,6 +472,7 @@ class AttendanceFragment : Fragment() {
                 }
                 binding.tvLogDetails.text = locationInfo
             }
+            updateMap()
         }
 
         viewModel.clockInOutResult.observe(viewLifecycleOwner) { result ->
@@ -399,7 +501,29 @@ class AttendanceFragment : Fragment() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        _binding?.mapView?.onResume()
+    }
+
+    override fun onPause() {
+        _binding?.mapView?.onPause()
+        super.onPause()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        _binding?.mapView?.onSaveInstanceState(outState)
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        _binding?.mapView?.onLowMemory()
+    }
+
     override fun onDestroyView() {
+        binding.mapView.onDestroy()
+        googleMap = null
         super.onDestroyView()
         _binding = null
     }
