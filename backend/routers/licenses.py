@@ -7,6 +7,9 @@ from models.company import Company
 from models.license import CompanyLicense
 from models.rbac import AuditLog
 from schemas.license import LicenseCreate, LicenseUpdate, LicenseResponse
+from services.license_service import (
+    evaluate_license, count_active_seats, send_license_activated_email,
+)
 from services.license_service import evaluate_license, count_active_seats
 from auth.dependencies import require_master, require_admin
 
@@ -84,6 +87,9 @@ def issue_license(
     ))
     db.commit()
     db.refresh(license)
+    # Notify the company that their license is active (best-effort).
+    if license.status == "active":
+        send_license_activated_email(db, license, company)
     return _to_response(db, license)
 
 
@@ -97,6 +103,7 @@ def update_license(
     license = db.query(CompanyLicense).filter(CompanyLicense.id == license_id).first()
     if not license:
         raise HTTPException(status_code=404, detail="License not found")
+    was_active = license.status == "active"
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(license, key, value)
     db.add(AuditLog(
@@ -109,6 +116,9 @@ def update_license(
     ))
     db.commit()
     db.refresh(license)
+    # Notify if this update transitioned the license into the active state (best-effort).
+    if license.status == "active" and not was_active:
+        send_license_activated_email(db, license)
     return _to_response(db, license)
 
 
@@ -134,6 +144,7 @@ def _set_status(db: Session, license_id: int, status: str, master_user: User) ->
     license = db.query(CompanyLicense).filter(CompanyLicense.id == license_id).first()
     if not license:
         raise HTTPException(status_code=404, detail="License not found")
+    was_active = license.status == "active"
     license.status = status
     db.add(AuditLog(
         user_id=master_user.id,
@@ -145,4 +156,7 @@ def _set_status(db: Session, license_id: int, status: str, master_user: User) ->
     ))
     db.commit()
     db.refresh(license)
+    # Notify only on a real transition into the active state (best-effort).
+    if status == "active" and not was_active:
+        send_license_activated_email(db, license)
     return _to_response(db, license)

@@ -122,6 +122,45 @@ class AttendanceViewModel : ViewModel() {
         }
     }
 
+    fun clockInManual(employeeId: Int, latitude: Double? = null, longitude: Double? = null) {
+        _isLoading.value = true
+        viewModelScope.launch {
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val now = Date()
+            val result = repository.clockInManual(
+                employeeId = employeeId,
+                date = dateFormat.format(now),
+                entryTime = timeFormat.format(now),
+                latitude = latitude,
+                longitude = longitude
+            )
+            _clockInOutResult.value = result
+            if (result.isSuccess) {
+                _attendanceStatus.value = result.getOrNull()
+            }
+            _isLoading.value = false
+        }
+    }
+
+    fun clockOutManual(attendanceId: Int, latitude: Double? = null, longitude: Double? = null) {
+        _isLoading.value = true
+        viewModelScope.launch {
+            val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val result = repository.clockOutManual(
+                attendanceId = attendanceId,
+                exitTime = timeFormat.format(Date()),
+                latitude = latitude,
+                longitude = longitude
+            )
+            _clockInOutResult.value = result
+            if (result.isSuccess) {
+                _attendanceStatus.value = result.getOrNull()
+            }
+            _isLoading.value = false
+        }
+    }
+
     fun faceScan(image: String, latitude: Double? = null, longitude: Double? = null) {
         _isLoading.value = true
         viewModelScope.launch {

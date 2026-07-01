@@ -4,6 +4,7 @@ The master role issues a `CompanyLicense` per company. Every role below master i
 hierarchy is validated against its company's license at login and on each request.
 Master always bypasses these checks (handled by the callers / dependency).
 """
+import logging
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 
@@ -11,6 +12,11 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from models.user import User
+from models.company import Company
+from models.license import CompanyLicense
+from services.email_service import send_email
+
+logger = logging.getLogger(__name__)
 from models.license import CompanyLicense
 
 # Reasons returned by evaluate_license / raised by validate_company_license
@@ -93,3 +99,77 @@ def has_feature(license: Optional[CompanyLicense], key: str) -> bool:
     if not license.features:
         return True
     return bool(license.features.get(key, False))
+
+
+def _license_recipients(db: Session, company: Company) -> list[str]:
+    """Notification targets for a company's license: the company contact email plus
+    its active admin/supervisor users that have an email on file (deduplicated)."""
+    emails: set[str] = set()
+    if company.email:
+        emails.add(company.email)
+    contacts = (
+        db.query(User)
+        .filter(
+            User.company_id == company.id,
+            User.role.in_(("admin", "supervisor")),
+            User.email.isnot(None),
+            User.is_active.isnot(False),
+        )
+        .all()
+    )
+    for c in contacts:
+        if c.email:
+            emails.add(c.email)
+    return list(emails)
+
+
+def send_license_activated_email(
+    db: Session, license: CompanyLicense, company: Optional[Company] = None
+) -> bool:
+    """Best-effort 'license activated' notification. Never raises — a failed/disabled
+    email must not break license issuance or activation."""
+    try:
+        if company is None:
+            company = db.query(Company).filter(Company.id == license.company_id).first()
+        if not company:
+            return False
+        recipients = _license_recipients(db, company)
+        if not recipients:
+            logger.info("License %s activated but no recipient emails for company %s",
+                        license.id, company.id)
+            return False
+        valid_until = (
+            license.valid_until.strftime("%Y-%m-%d") if license.valid_until
+            else "No expiry (perpetual)"
+        )
+        max_seats = license.max_seats if license.max_seats is not None else "Unlimited"
+        subject = f"License Activated — {company.name}"
+        html_body = f"""\
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;">
+          <h2 style="color:#0d6efd;margin:0 0 12px;">Your license is now active</h2>
+          <p>Hello {company.name} team,</p>
+          <p>Your ERP license has been <strong>activated</strong>. You now have full
+             access to your subscribed modules.</p>
+          <table style="border-collapse:collapse;margin:16px 0;">
+            <tr><td style="padding:4px 12px 4px 0;color:#666;">Company</td>
+                <td style="padding:4px 0;"><strong>{company.name}</strong></td></tr>
+            <tr><td style="padding:4px 12px 4px 0;color:#666;">Plan / Tier</td>
+                <td style="padding:4px 0;text-transform:capitalize;">{license.tier}</td></tr>
+            <tr><td style="padding:4px 12px 4px 0;color:#666;">Status</td>
+                <td style="padding:4px 0;">Active</td></tr>
+            <tr><td style="padding:4px 12px 4px 0;color:#666;">Seats</td>
+                <td style="padding:4px 0;">{max_seats}</td></tr>
+            <tr><td style="padding:4px 12px 4px 0;color:#666;">Valid until</td>
+                <td style="padding:4px 0;">{valid_until}</td></tr>
+          </table>
+          <p style="color:#888;font-size:12px;">This is an automated message; please do
+             not reply.</p>
+        </div>"""
+        sent = send_email(recipients, subject, html_body)
+        if sent:
+            logger.info("License-activated email sent for company %s to %d recipient(s)",
+                        company.id, len(recipients))
+        return sent
+    except Exception as e:  # never let email break the request
+        logger.error("Failed to send license-activated email: %s", e)
+        return False
