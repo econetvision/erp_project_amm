@@ -1,0 +1,80 @@
+name: Build Dev APK
+
+# Development builds: a debug-signed, directly-installable APK for testing.
+# Runs automatically on pushes that touch the mobile app, and can also be
+# triggered manually from the Actions tab.
+
+on:
+  push:
+    branches: [master, develop]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/build-dev-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-dev-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Configure local.properties
+        working-directory: ./mobile
+        env:
+          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+        run: |
+          # Overwrite the committed local.properties: drop the developer's local
+          # sdk.dir (Gradle uses ANDROID_SDK_ROOT/ANDROID_HOME on the runner) and
+          # inject the Maps key from the secret so map tiles render.
+          echo "MAPS_API_KEY=${MAPS_API_KEY}" > local.properties
+
+      - name: Grant execute permission for gradlew
+        working-directory: ./mobile
+        run: chmod +x gradlew
+
+      - name: Build Debug APK
+        working-directory: ./mobile
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK
+        working-directory: ./mobile
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          mv app/build/outputs/apk/debug/app-debug.apk \
+             "app/build/outputs/apk/debug/erp-dev-${SHORT_SHA}.apk"
+          ls -la app/build/outputs/apk/debug/
+
+      - name: Upload Dev APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: erp-dev-apk
+          path: mobile/app/build/outputs/apk/debug/erp-dev-*.apk
+          retention-days: 14
+
+      - name: Build Summary
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "### Dev APK Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Type:** debug (installable, debug-signed)" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${SHORT_SHA}" >> $GITHUB_STEP_SUMMARY
+          echo "**Artifact:** \`erp-dev-apk\` (download from the run's Artifacts section)" >> $GITHUB_STEP_SUMMARY
