@@ -1,5 +1,6 @@
 export interface Employee {
   id: number;
+  employee_code: string | null;
   name: string;
   gender: string | null;
   date_of_birth: string | null;

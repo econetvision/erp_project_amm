@@ -88,7 +88,7 @@ export default function EmployeeList() {
             <thead className="table-dark">
               <tr>
                 <th>Photo</th>
-                <th>#</th>
+                <th>Emp ID</th>
                 <th>Name</th>
                 <th>Gender</th>
                 <th>Aadhar</th>
@@ -111,11 +111,11 @@ export default function EmployeeList() {
                       ) : (
                         <div style={{ width: 42, height: 42, borderRadius: "50%", background: "#e9ecef", border: "2px solid #dee2e6",
                           display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: "#adb5bd", fontWeight: 600 }}>
-                          {emp.name.charAt(0).toUpperCase()}
+                          {(emp.name || '?').charAt(0).toUpperCase()}
                         </div>
                       )}
                     </td>
-                    <td>{emp.id}</td>
+                    <td><code className="text-primary fw-semibold">{emp.employee_code || `#${emp.id}`}</code></td>
                     <td className="fw-semibold">{emp.name}</td>
                     <td className="text-capitalize">{emp.gender || "—"}</td>
                     <td><code>{maskAadhar(emp.aadhar_number)}</code></td>

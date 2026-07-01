@@ -28,8 +28,7 @@ class SettingsFragment : Fragment() {
 
         setupUI()
         observeViewModel()
-
-        viewModel.loadUserProfile()
+        // Profile is (re)loaded in onResume so edits made on the Edit Profile screen reflect here.
 
         return binding.root
     }
@@ -38,35 +37,10 @@ class SettingsFragment : Fragment() {
         binding.tvUsername.text = "Username: ${session.getUsername() ?: "—"}"
         binding.tvRole.text = "Role: ${session.getRole() ?: "—"}"
 
-        binding.etDisplayName.setText(session.getDisplayName())
-        binding.etEmail.setText(session.getEmail())
-        binding.etPhone.setText(session.getPhone())
+        renderProfile(session.getDisplayName(), session.getEmail(), session.getPhone())
 
-        binding.btnSave.setOnClickListener {
-            val displayName = binding.etDisplayName.text.toString()
-            val email = binding.etEmail.text.toString()
-            val phone = binding.etPhone.text.toString()
-            viewModel.updateProfile(displayName, email, phone)
-        }
-
-        binding.btnChangePassword.setOnClickListener {
-            val currentPw = binding.etCurrentPassword.text.toString()
-            val newPw = binding.etNewPassword.text.toString()
-            val confirmPw = binding.etConfirmPassword.text.toString()
-
-            if (currentPw.isBlank() || newPw.isBlank()) {
-                Toast.makeText(requireContext(), "Please fill in all password fields", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            if (newPw != confirmPw) {
-                Toast.makeText(requireContext(), "New passwords do not match", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            if (newPw.length < 6) {
-                Toast.makeText(requireContext(), "New password must be at least 6 characters", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            viewModel.changePassword(currentPw, newPw)
+        binding.btnEditProfile.setOnClickListener {
+            findNavController().navigate(R.id.action_settingsFragment_to_editProfileFragment)
         }
 
         binding.btnLogout.setOnClickListener {
@@ -91,38 +65,27 @@ class SettingsFragment : Fragment() {
         }
     }
 
+    private fun renderProfile(displayName: String?, email: String?, phone: String?) {
+        binding.tvDisplayName.text = if (displayName.isNullOrBlank()) "—" else displayName
+        binding.tvEmail.text = if (email.isNullOrBlank()) "—" else email
+        binding.tvPhone.text = if (phone.isNullOrBlank()) "—" else phone
+    }
+
     private fun observeViewModel() {
         viewModel.user.observe(viewLifecycleOwner) { user ->
-            binding.etDisplayName.setText(user.displayName)
-            binding.etEmail.setText(user.email)
-            binding.etPhone.setText(user.phone)
+            renderProfile(user.displayName, user.email, user.phone)
             session.saveUser(user)
-        }
-
-        viewModel.updateResult.observe(viewLifecycleOwner) { result ->
-            if (result.isSuccess) {
-                Toast.makeText(requireContext(), "Profile updated", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(requireContext(), "Error: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
-            }
-        }
-
-        viewModel.passwordResult.observe(viewLifecycleOwner) { result ->
-            if (result.isSuccess) {
-                Toast.makeText(requireContext(), "Password changed successfully", Toast.LENGTH_SHORT).show()
-                binding.etCurrentPassword.text?.clear()
-                binding.etNewPassword.text?.clear()
-                binding.etConfirmPassword.text?.clear()
-            } else {
-                Toast.makeText(requireContext(), "Error: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
-            }
         }
 
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
             binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
-            binding.btnSave.isEnabled = !isLoading
-            binding.btnChangePassword.isEnabled = !isLoading
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Reflect edits made on the Edit Profile screen.
+        viewModel.loadUserProfile()
     }
 
     override fun onDestroyView() {

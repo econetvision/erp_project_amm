@@ -20,6 +20,22 @@ class AttendanceClockOut(BaseModel):
     longitude:  Optional[float] = None
 
 
+class AttendanceManualClockIn(BaseModel):
+    """Clock-in without face verification (fallback when face capture is unavailable)."""
+    employee_id: int
+    date:        date
+    entry_time:  time
+    latitude:    Optional[float] = None
+    longitude:   Optional[float] = None
+
+
+class AttendanceManualClockOut(BaseModel):
+    """Clock-out without face verification."""
+    exit_time:  time
+    latitude:   Optional[float] = None
+    longitude:  Optional[float] = None
+
+
 class AttendanceUpdate(BaseModel):
     date:       Optional[date] = None
     entry_time: Optional[time] = None
@@ -45,7 +61,7 @@ class AttendanceResponse(BaseModel):
 
 class MonthlyAttendanceSummary(BaseModel):
     employee_id:   int
-    employee_name: str
+    employee_name: Optional[str] = None
     month:         int
     year:          int
     total_days:    int

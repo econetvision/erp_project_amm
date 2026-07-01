@@ -69,6 +69,7 @@ class EmployeeUpdate(BaseModel):
 
 class EmployeeResponse(BaseModel):
     id:                  int
+    employee_code:       Optional[str] = None
     name:                Optional[str] = None
     gender:              Optional[str] = None
     date_of_birth:       Optional[date] = None

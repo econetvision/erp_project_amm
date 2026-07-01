@@ -40,7 +40,17 @@
         <action
             android:id="@+id/action_settingsFragment_to_usersFragment"
             app:destination="@id/usersFragment" />
+
+        <action
+            android:id="@+id/action_settingsFragment_to_editProfileFragment"
+            app:destination="@id/editProfileFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/editProfileFragment"
+        android:name="com.econetvision.erp.ui.settings.EditProfileFragment"
+        android:label="Edit Profile"
+        tools:layout="@layout/fragment_edit_profile" />
 
     <fragment
         android:id="@+id/employeesFragment"

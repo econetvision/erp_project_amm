@@ -67,6 +67,12 @@ interface ApiService {
     @PATCH("/api/attendance/{id}/clock-out")
     suspend fun clockOut(@Path("id") id: Int, @Body data: ClockOutRequest): Response<Attendance>
 
+    @POST("/api/attendance/clock-in/manual")
+    suspend fun clockInManual(@Body data: ManualClockInRequest): Response<Attendance>
+
+    @PATCH("/api/attendance/{id}/clock-out/manual")
+    suspend fun clockOutManual(@Path("id") id: Int, @Body data: ManualClockOutRequest): Response<Attendance>
+
     @POST("/api/attendance/face-scan")
     suspend fun faceScan(@Body data: FaceScanRequest): Response<FaceScanResponse>
 

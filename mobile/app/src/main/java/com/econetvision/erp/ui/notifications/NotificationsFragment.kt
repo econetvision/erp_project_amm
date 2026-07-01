@@ -27,6 +27,13 @@ class NotificationsFragment : Fragment() {
             viewModel.markAllAsRead()
         }
 
+        binding.toggleView.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked) {
+                viewModel.setArchiveMode(checkedId == binding.btnArchive.id)
+            }
+        }
+        binding.toggleView.check(binding.btnActive.id)
+
         binding.swipeRefresh.setOnRefreshListener {
             viewModel.loadNotifications()
         }
@@ -51,6 +58,12 @@ class NotificationsFragment : Fragment() {
             adapter.updateData(notifications)
             binding.tvEmpty.visibility = if (notifications.isEmpty()) View.VISIBLE else View.GONE
             binding.swipeRefresh.isRefreshing = false
+        }
+
+        viewModel.showArchive.observe(viewLifecycleOwner) { archive ->
+            binding.tvEmpty.text = if (archive) "No archived notifications" else "No active notifications"
+            // Mark-all-read only applies to active (unread) notifications.
+            binding.btnMarkAllRead.visibility = if (archive) View.GONE else View.VISIBLE
         }
 
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->

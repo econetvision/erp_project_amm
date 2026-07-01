@@ -59,6 +59,55 @@ class AttendanceRepository {
         }
     }
 
+    suspend fun clockInManual(
+        employeeId: Int,
+        date: String,
+        entryTime: String,
+        latitude: Double? = null,
+        longitude: Double? = null
+    ): Result<Attendance> {
+        return try {
+            val request = ManualClockInRequest(
+                employeeId = employeeId,
+                date = date,
+                entryTime = entryTime,
+                latitude = latitude,
+                longitude = longitude
+            )
+            val response = api.clockInManual(request)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception(response.errorBody()?.string() ?: "Clock-in failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun clockOutManual(
+        attendanceId: Int,
+        exitTime: String,
+        latitude: Double? = null,
+        longitude: Double? = null
+    ): Result<Attendance> {
+        return try {
+            val request = ManualClockOutRequest(
+                exitTime = exitTime,
+                latitude = latitude,
+                longitude = longitude
+            )
+            val response = api.clockOutManual(attendanceId, request)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception(response.errorBody()?.string() ?: "Clock-out failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun faceScan(image: String, latitude: Double? = null, longitude: Double? = null): Result<FaceScanResponse> {
         return try {
             val response = api.faceScan(FaceScanRequest(image = image, latitude = latitude, longitude = longitude))

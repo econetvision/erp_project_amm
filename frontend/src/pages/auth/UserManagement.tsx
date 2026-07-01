@@ -61,6 +61,11 @@ export default function UserManagement() {
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
+    if (!form.username || form.password.length < 4 || form.password !== form.confirmPassword || !form.role) {
+      setAlert({ type: "warning", message: "Required fields are missing. Check username, matching passwords, and role." });
+      setStep(0);
+      return;
+    }
     setLoading(true);
     try {
       await createUser({
@@ -103,6 +108,10 @@ export default function UserManagement() {
   async function handleEditSave(e: FormEvent) {
     e.preventDefault();
     if (!editTarget) return;
+    if (!editForm.role) {
+      setAlert({ type: "warning", message: "Role is required. Please select a role before saving." });
+      return;
+    }
     setLoading(true);
     try {
       const payload: any = {};
@@ -362,8 +371,8 @@ export default function UserManagement() {
                   <td>{u.email || "—"}</td>
                   <td>{u.phone || "—"}</td>
                   <td>
-                    <span className={`badge bg-${ROLE_BADGE[u.role]}`}>
-                      {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
+                    <span className={`badge bg-${ROLE_BADGE[u.role] || 'secondary'}`}>
+                      {(u.role || '').charAt(0).toUpperCase() + (u.role || '').slice(1)}
                     </span>
                   </td>
                   <td>
