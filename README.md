@@ -41,11 +41,45 @@ REACT_APP_API_URL=http://localhost:8088 npm start
 
 Default seed admin account: `admin` / `admin123` (created by `backend/seed.py` on first startup).
 
+## Configuration
+
+All backend settings are centralized in **[`backend/config/settings.py`](backend/config/settings.py)** (a Pydantic `BaseSettings` singleton). Import `settings` instead of calling `os.getenv` directly:
+
+```python
+from config.settings import settings
+engine = create_engine(settings.database_url)
+```
+
+Values come from environment variables (or a local `.env`); field names map to `UPPER_SNAKE_CASE` (`database_url` → `DATABASE_URL`). See **[`.env.example`](.env.example)** for the full list. Key groups: database/auth, CORS, SMTP email, Twilio, KYC, fleet tracking, and **licensing**.
+
+### Licensing
+
+Each company has a license validated at login and per request (`backend/services/license_service.py`). Two enforcement modes:
+
+| Mode | Trigger | Behaviour |
+|---|---|---|
+| **Local DB** (default) | no `LICENSE_KEY` set | Validates against the `company_licenses` table (status/expiry/seats). |
+| **Static bypass** | `LICENSE_KEY` set, or `LICENSE_ENFORCE=false` | Every company is treated as licensed; the external license server is **not** called. Used for our own deployments — inject `LICENSE_KEY` via a CI/deploy secret. |
+
+**External license server** — when configured (`LICENSE_SERVER_URL`) and not bypassed, `backend/services/license_client.py` talks to the server's public API (`LICENSE_API_BASE`, default `/api/v1`; auth = `licenseKey` in the body):
+
+| Method | Path | Body | Purpose |
+|---|---|---|---|
+| POST | `/validate` | `{licenseKey}` | Check status, no seat consumed |
+| POST | `/activate` | `{licenseKey, deviceId, hostname?, platform?}` | Claim a device seat (idempotent) |
+| POST | `/heartbeat` | `{licenseKey, deviceId}` | Keep the seat alive (< 30 min) |
+| POST | `/deactivate` | `{licenseKey, deviceId}` | Release the seat |
+| GET | `/public-key` | — | PEM for offline verification |
+
+Device / OS / browser info is reported via the `hostname` and `platform` fields; web and mobile clients can pass their own `platform` descriptor (e.g. `web:Chrome/120`, `android:Pixel7/Android14`).
+
+In CI, `LICENSE_KEY` and `LICENSE_SERVER_URL` are GitHub Actions secrets that the Railway deploy workflow syncs to the service's runtime variables.
+
 ## Key Features
 
 - Employee & user management with RBAC (master/admin/supervisor/worker)
 - Attendance: manual clock-in/out, face-scan auto clock-in/out, fingerprint and face login on mobile
-- Geofenced check-in — work locations have a configurable radius (meters, default 50)
+- Geofenced check-in — work locations have a configurable radius (meters, default 50); the Android app shows a Google Maps view of the live position, geofence radius, and recorded clock-in/out pins
 - Payslips, payroll runs, and templated PDF generation
 - Vehicle fleet assignment and live GPS tracking, fed by hardware GPS trackers (via `gateway/`) with the Android app as a backup location source
 - Holidays, notifications, multi-company/multi-tenant support

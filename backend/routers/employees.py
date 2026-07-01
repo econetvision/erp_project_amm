@@ -12,6 +12,7 @@ from models.user import User
 from schemas.employee import EmployeeCreate, EmployeeUpdate, EmployeeResponse
 from services.face_service import get_face_encoding
 from auth.dependencies import require_admin_or_supervisor
+from config.settings import settings
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -201,9 +202,9 @@ async def verify_bank_account_endpoint(
         bank_account=emp.bank_account_number,
         ifsc_code=emp.ifsc_code,
         account_holder_name=emp.name,
-        provider=os.environ.get("KYC_PROVIDER", "manual"),
-        api_key=os.environ.get("KYC_API_KEY"),
-        api_secret=os.environ.get("KYC_API_SECRET"),
+        provider=settings.kyc_provider,
+        api_key=settings.kyc_api_key or None,
+        api_secret=settings.kyc_api_secret or None,
     )
     emp.kyc_status = result["status"]
     emp.kyc_verified_name = result.get("registered_name")

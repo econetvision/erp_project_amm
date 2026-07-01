@@ -1,23 +1,23 @@
-import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import logging
 
+from config.settings import settings
+
 logger = logging.getLogger(__name__)
 
 
 def get_smtp_config() -> dict | None:
-    host = os.environ.get("SMTP_HOST")
-    if not host:
+    if not settings.smtp_host:
         return None
     return {
-        "host": host,
-        "port": int(os.environ.get("SMTP_PORT", "587")),
-        "user": os.environ.get("SMTP_USER", ""),
-        "password": os.environ.get("SMTP_PASS", ""),
-        "from_email": os.environ.get("SMTP_FROM", os.environ.get("SMTP_USER", "")),
-        "use_tls": os.environ.get("SMTP_USE_TLS", "true").lower() == "true",
+        "host": settings.smtp_host,
+        "port": settings.smtp_port,
+        "user": settings.smtp_user,
+        "password": settings.smtp_pass,
+        "from_email": settings.effective_smtp_from,
+        "use_tls": settings.smtp_use_tls,
     }
 
 

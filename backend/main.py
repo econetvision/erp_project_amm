@@ -8,10 +8,11 @@ from routers import employees, attendance, payslips, auth, holidays, vehicles, a
 from routers import companies, rbac, master as master_router, integrations as integrations_router
 from routers import payslip_templates, licenses
 from auth.dependencies import require_valid_license
+from config.settings import settings
 from logging_config import setup_logging, get_logger
 
 # Setup logging before anything else
-setup_logging(log_level=os.getenv("LOG_LEVEL", "INFO"))
+setup_logging(log_level=settings.log_level)
 logger = get_logger(__name__)
 import models.holiday           # noqa: F401
 import models.vehicle           # noqa: F401
@@ -52,7 +53,7 @@ logger.info("Running database seed...")
 seed()
 logger.info("Database seed completed")
 
-if os.getenv("SEED_TEST_DATA", "false").lower() in ("1", "true", "yes"):
+if settings.seed_test_data:
     from seed_test_data import seed_test_data
     logger.info("Running test data seed...")
     try:
@@ -68,7 +69,7 @@ app = FastAPI(
     redirect_slashes=False,
 )
 
-_allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")]
+_allowed_origins = settings.allowed_origins_list
 logger.info(f"CORS allowed origins: {_allowed_origins}")
 
 app.add_middleware(
@@ -159,7 +160,7 @@ def start_scheduler():
     scheduler.start()
     logger.info("Background scheduler started successfully")
     logger.info(f"Application started - Version: {app.version}")
-    logger.info(f"Build SHA: {os.getenv('BUILD_SHA', 'dev')}")
+    logger.info(f"Build SHA: {settings.build_sha}")
 
 @app.on_event("shutdown")
 def stop_scheduler():
@@ -180,9 +181,9 @@ def health_check():
     from database import SessionLocal
 
     # ── Backend version & build info ──
-    backend_version = os.getenv("APP_VERSION", app.version)
-    build_sha       = os.getenv("BUILD_SHA", "dev")
-    build_time      = os.getenv("BUILD_TIME", "unknown")
+    backend_version = settings.app_version or app.version
+    build_sha       = settings.build_sha
+    build_time      = settings.build_time
 
     # ── Database connectivity & migration info ──
     db_status      = "ok"
