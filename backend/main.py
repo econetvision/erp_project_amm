@@ -30,24 +30,11 @@ import models.integration       # noqa: F401
 import models.payslip_template  # noqa: F401
 import models.license            # noqa: F401
 
-# ── Run DB migrations on startup ──────────────────────────────────────────────
-from alembic.config import Config as AlembicConfig
-from alembic import command as alembic_command
-
-def _run_migrations():
-    logger.info("Starting database migrations...")
-    try:
-        ini_path = os.path.join(os.path.dirname(__file__), "alembic.ini")
-        cfg = AlembicConfig(ini_path)
-        cfg.set_main_option("sqlalchemy.url", str(engine.url))
-        alembic_command.upgrade(cfg, "head")
-        logger.info("Database migrations completed successfully")
-    except Exception as e:
-        logger.error(f"Database migration failed: {str(e)}", exc_info=True)
-        raise
-
-_run_migrations()
-
+# ── Database seed ─────────────────────────────────────────────────────────────
+# NOTE: migrations are NOT run here. The container entrypoint (entrypoint.sh) runs
+# `migrate.py upgrade` before starting uvicorn — running them again at import time
+# only duplicated work and slowed time-to-/health on every deploy. If you launch
+# uvicorn directly (without entrypoint.sh), run `python migrate.py upgrade` first.
 from seed import seed
 logger.info("Running database seed...")
 seed()
