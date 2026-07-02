@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     tracking_gateway_key: str = ""
     location_retention_days: int = 90
 
+    # ─── Attendance geofence ─────────────────────────────────────────────────
+    # Extra tolerance (metres) added to a work location's allowed radius when
+    # validating attendance, to absorb GPS drift. Keep in sync with the mobile
+    # app's Constants.GEOFENCE_BUFFER_M (default 25).
+    geofence_buffer_m: float = 25.0
+
     # ─── File storage (photos / logos) ───────────────────────────────────────
     # "local"  → write to `upload_root`. Point that at a mounted Railway volume
     #            for persistence across redeploys.

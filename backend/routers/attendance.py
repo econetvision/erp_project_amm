@@ -20,6 +20,7 @@ from services.attendance_service import (
 )
 from services.face_service import identify_employee, verify_employee_face
 from auth.dependencies import require_any, require_admin_or_supervisor
+from config.settings import settings
 from decimal import Decimal
 import math
 
@@ -36,8 +37,15 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def validate_geofence(emp: User, latitude: float | None, longitude: float | None, db: Session | None = None):
-    """Raise 403 if employee has assigned locations and the provided coordinates are outside all allowed radii."""
-    # First check multi-location assignments if db is available
+    """Raise if the employee has assigned work location(s) and the coordinates fall
+    outside every allowed radius (plus a GPS-drift tolerance buffer).
+
+    The buffer (``settings.geofence_buffer_m``) is kept in sync with the mobile app
+    so the client and server agree on what counts as "within range".
+    """
+    buffer_m = settings.geofence_buffer_m
+
+    # Multi-location assignments take precedence when a db session is available.
     if db:
         from models.work_location import EmployeeLocationAssignment, WorkLocation
         assignments = (
@@ -48,34 +56,47 @@ def validate_geofence(emp: User, latitude: float | None, longitude: float | None
         if assignments:
             if latitude is None or longitude is None:
                 raise HTTPException(status_code=400, detail="Location is required. Please enable GPS and try again.")
+            nearest_name: str | None = None
+            nearest_distance = float("inf")
+            nearest_effective = 0.0
+            active_count = 0
             for a in assignments:
                 loc = db.query(WorkLocation).filter(WorkLocation.id == a.location_id).first()
-                if loc and loc.is_active:
-                    distance_m = haversine_km(loc.latitude, loc.longitude, latitude, longitude) * 1000
-                    if distance_m <= loc.allowed_radius_m:
-                        return  # Within at least one assigned location
-            # Not within any assigned location
-            loc_names = []
-            for a in assignments:
-                loc = db.query(WorkLocation).filter(WorkLocation.id == a.location_id).first()
-                if loc and loc.is_active:
-                    loc_names.append(loc.location_name)
+                if not (loc and loc.is_active):
+                    continue
+                active_count += 1
+                distance_m = haversine_km(loc.latitude, loc.longitude, latitude, longitude) * 1000
+                effective_m = loc.allowed_radius_m + buffer_m
+                if distance_m <= effective_m:
+                    return  # within at least one assigned location (incl. tolerance)
+                if distance_m < nearest_distance:
+                    nearest_distance = distance_m
+                    nearest_name = loc.location_name
+                    nearest_effective = effective_m
+            if active_count == 0:
+                return  # assignments exist but none active — nothing to enforce
             raise HTTPException(
                 status_code=403,
-                detail=f"You are not within any assigned work location ({', '.join(loc_names)}). Please move closer to mark attendance."
+                detail=(
+                    f"You are {nearest_distance:.0f} m from {nearest_name}. "
+                    f"Move within {nearest_effective:.0f} m to mark attendance."
+                ),
             )
 
-    # Fallback: check the legacy work_location fields on employee
-    if emp.work_latitude is None or emp.work_longitude is None:
+    # Fallback: legacy single work_location fields on the employee.
+    if emp is None or emp.work_latitude is None or emp.work_longitude is None:
         return  # No work location configured — skip validation
     if latitude is None or longitude is None:
         raise HTTPException(status_code=400, detail="Location is required. Please enable GPS and try again.")
     distance_m = haversine_km(emp.work_latitude, emp.work_longitude, latitude, longitude) * 1000
-    radius_m = emp.attendance_radius_m or 50.0
+    radius_m = (emp.attendance_radius_m or 50.0) + buffer_m
     if distance_m > radius_m:
         raise HTTPException(
             status_code=403,
-            detail=f"You are {distance_m:.0f} m away from your work location ({emp.work_location_name or 'assigned site'}). Must be within {radius_m:.0f} m."
+            detail=(
+                f"You are {distance_m:.0f} m from {emp.work_location_name or 'your work location'}. "
+                f"Must be within {radius_m:.0f} m."
+            ),
         )
 
 

@@ -53,6 +53,46 @@ class AttendanceViewModel : ViewModel() {
         }
     }
 
+    /** Result of checking the current position against assigned work location(s). */
+    sealed class GeofenceResult {
+        /** Employee has no assigned work location — geofence does not apply. */
+        object NoAssignment : GeofenceResult()
+        data class Inside(val location: MyWorkLocation, val distance: Double) : GeofenceResult()
+        data class Outside(
+            val location: MyWorkLocation,
+            val distance: Double,
+            val effectiveRadius: Double,
+        ) : GeofenceResult()
+    }
+
+    /**
+     * Check [currentLat]/[currentLng] against the nearest assigned work location,
+     * allowing the location's radius plus [bufferM] of tolerance.
+     */
+    fun evaluateGeofence(currentLat: Double, currentLng: Double, bufferM: Double): GeofenceResult {
+        val locations = _myLocations.value
+        if (locations.isNullOrEmpty()) return GeofenceResult.NoAssignment
+
+        var nearest: MyWorkLocation? = null
+        var nearestDistance = Float.MAX_VALUE
+        val results = FloatArray(1)
+        for (loc in locations) {
+            Location.distanceBetween(currentLat, currentLng, loc.latitude, loc.longitude, results)
+            if (results[0] < nearestDistance) {
+                nearestDistance = results[0]
+                nearest = loc
+            }
+        }
+        val loc = nearest ?: return GeofenceResult.NoAssignment
+        val effective = loc.allowedRadiusM + bufferM
+        val dist = nearestDistance.toDouble()
+        return if (dist <= effective) {
+            GeofenceResult.Inside(loc, dist)
+        } else {
+            GeofenceResult.Outside(loc, dist, effective)
+        }
+    }
+
     fun updateCurrentDistance(currentLat: Double, currentLng: Double) {
         val locations = _myLocations.value
         if (locations.isNullOrEmpty()) {

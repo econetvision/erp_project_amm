@@ -15,7 +15,6 @@ import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -28,6 +27,9 @@ import com.econetvision.erp.data.model.MyAssignment
 import com.econetvision.erp.data.model.MyWorkLocation
 import com.econetvision.erp.databinding.FragmentAttendanceBinding
 import com.econetvision.erp.service.VehicleTrackingService
+import com.econetvision.erp.util.Constants
+import com.econetvision.erp.util.ToastType
+import com.econetvision.erp.util.showToast
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -65,11 +67,7 @@ class AttendanceFragment : Fragment() {
         if (backgroundGranted) {
             startVehicleTracking()
         } else {
-            Toast.makeText(
-                requireContext(),
-                "Background location permission is required for trip tracking",
-                Toast.LENGTH_LONG
-            ).show()
+            showToast("Background location permission is required for trip tracking", ToastType.WARNING, longDuration = true)
         }
     }
 
@@ -83,10 +81,10 @@ class AttendanceFragment : Fragment() {
         if (cameraGranted) {
             launchCamera()
         } else {
-            Toast.makeText(requireContext(), "Camera permission is required for face verification", Toast.LENGTH_LONG).show()
+            showToast("Camera permission is required for face verification", ToastType.ERROR, longDuration = true)
         }
         if (!locationGranted) {
-            Toast.makeText(requireContext(), "Location permission denied — attendance will be recorded without location", Toast.LENGTH_SHORT).show()
+            showToast("Location permission denied — attendance will be recorded without location", ToastType.WARNING)
         }
     }
 
@@ -106,12 +104,12 @@ class AttendanceFragment : Fragment() {
                 capturedImage = bitmapToBase64(bitmap)
                 fetchLocationAndSubmit()
             } else {
-                Toast.makeText(requireContext(), "Failed to process image", Toast.LENGTH_SHORT).show()
+                showToast("Failed to process image", ToastType.ERROR)
             }
             // Clean up temp file
             photoFile?.delete()
         } else {
-            Toast.makeText(requireContext(), "Photo capture cancelled", Toast.LENGTH_SHORT).show()
+            showToast("Photo capture cancelled", ToastType.WARNING)
         }
     }
 
@@ -169,7 +167,7 @@ class AttendanceFragment : Fragment() {
                     pendingAction = "clock_out_manual"
                     fetchLocationAndSubmitManual()
                 }
-                else -> Toast.makeText(requireContext(), "Already clocked out today", Toast.LENGTH_SHORT).show()
+                else -> showToast("Already clocked out today", ToastType.INFO)
             }
         }
 
@@ -189,7 +187,7 @@ class AttendanceFragment : Fragment() {
             requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
         if (!fineGranted) {
-            Toast.makeText(requireContext(), "Location permission is required to start tracking", Toast.LENGTH_LONG).show()
+            showToast("Location permission is required to start tracking", ToastType.WARNING, longDuration = true)
             return
         }
 
@@ -406,6 +404,38 @@ class AttendanceFragment : Fragment() {
         takePictureLauncher.launch(photoUri)
     }
 
+    /**
+     * Enforce the assigned-work-location geofence and surface the result as a toast.
+     * Returns true if attendance may proceed (inside the allowed radius + tolerance,
+     * no assigned location, or location unknown), false if the user is outside range
+     * (in which case submission is blocked).
+     */
+    private fun passesGeofence(location: Location?): Boolean {
+        if (location == null) {
+            if (!viewModel.myLocations.value.isNullOrEmpty()) {
+                showToast("Location unavailable — attendance may be rejected", ToastType.WARNING, longDuration = true)
+            }
+            return true
+        }
+        return when (val geo = viewModel.evaluateGeofence(
+            location.latitude, location.longitude, Constants.GEOFENCE_BUFFER_M
+        )) {
+            is AttendanceViewModel.GeofenceResult.NoAssignment -> true
+            is AttendanceViewModel.GeofenceResult.Inside -> {
+                showToast("Within ${geo.location.locationName} • ${geo.distance.toInt()} m", ToastType.SUCCESS)
+                true
+            }
+            is AttendanceViewModel.GeofenceResult.Outside -> {
+                showToast(
+                    "You are ${geo.distance.toInt()} m from ${geo.location.locationName}. " +
+                        "Move within ${geo.effectiveRadius.toInt()} m to mark attendance.",
+                    ToastType.ERROR, longDuration = true,
+                )
+                false
+            }
+        }
+    }
+
     private fun fetchLocationAndSubmit() {
         val image = capturedImage ?: return
 
@@ -425,9 +455,16 @@ class AttendanceFragment : Fragment() {
                 )
                 viewModel.updateCurrentDistance(location.latitude, location.longitude)
                 updateMap()
+                if (!passesGeofence(location)) {
+                    binding.tvLocationStatus.text = "Outside work location range — not submitted"
+                    pendingAction = null
+                    capturedImage = null
+                    return@fetchCurrentLocation
+                }
                 submitAttendance(image, location.latitude, location.longitude)
             } else {
                 binding.tvLocationStatus.text = "Location unavailable"
+                passesGeofence(null)
                 submitAttendance(image, null, null)
             }
         }
@@ -460,9 +497,15 @@ class AttendanceFragment : Fragment() {
                     "Location: %.6f, %.6f", location.latitude, location.longitude
                 )
                 viewModel.updateCurrentDistance(location.latitude, location.longitude)
+                if (!passesGeofence(location)) {
+                    binding.tvLocationStatus.text = "Outside work location range — not submitted"
+                    pendingAction = null
+                    return@fetchCurrentLocation
+                }
                 submitManual(location.latitude, location.longitude)
             } else {
                 binding.tvLocationStatus.text = "Location unavailable"
+                passesGeofence(null)
                 submitManual(null, null)
             }
         }
@@ -614,9 +657,12 @@ class AttendanceFragment : Fragment() {
 
         viewModel.clockInOutResult.observe(viewLifecycleOwner) { result ->
             if (result.isSuccess) {
-                Toast.makeText(requireContext(), "Success!", Toast.LENGTH_SHORT).show()
+                showToast("Attendance recorded successfully", ToastType.SUCCESS)
             } else {
-                Toast.makeText(requireContext(), "Error: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+                showToast(
+                    result.exceptionOrNull()?.message ?: "Could not record attendance",
+                    ToastType.ERROR, longDuration = true,
+                )
             }
         }
 
@@ -624,9 +670,12 @@ class AttendanceFragment : Fragment() {
             if (result.isSuccess) {
                 val response = result.getOrNull()
                 val action = if (response?.action == "clock_in") "Clocked In" else "Clocked Out"
-                Toast.makeText(requireContext(), "$action: ${response?.employeeName}", Toast.LENGTH_SHORT).show()
+                showToast("$action: ${response?.employeeName}", ToastType.SUCCESS)
             } else {
-                Toast.makeText(requireContext(), "Error: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+                showToast(
+                    result.exceptionOrNull()?.message ?: "Face scan failed",
+                    ToastType.ERROR, longDuration = true,
+                )
             }
         }
 
