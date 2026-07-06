@@ -4,14 +4,15 @@ from database import get_db
 from models.vehicle import Vehicle
 from models.user import User
 from schemas.vehicle import VehicleCreate, VehicleUpdate, VehicleResponse
-from auth.dependencies import require_admin_or_supervisor, require_admin, get_current_user_or_service, ServiceIdentity
+from auth.dependencies import require_admin_or_supervisor, require_admin, get_current_user_or_service, ServiceIdentity, assert_tenant, tenant_scope
 
 router = APIRouter()
 
 
 @router.get("", response_model=list[VehicleResponse])
-def list_vehicles(db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
-    return db.query(Vehicle).order_by(Vehicle.id).all()
+def list_vehicles(db: Session = Depends(get_db), current: User = Depends(require_admin_or_supervisor)):
+    q = tenant_scope(db.query(Vehicle), Vehicle.company_id, current)
+    return q.order_by(Vehicle.id).all()
 
 
 @router.get("/imei-map")
@@ -25,7 +26,7 @@ def imei_map(db: Session = Depends(get_db), current=Depends(get_current_user_or_
 
 
 @router.post("", response_model=VehicleResponse, status_code=201)
-def create_vehicle(payload: VehicleCreate, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def create_vehicle(payload: VehicleCreate, db: Session = Depends(get_db), current: User = Depends(require_admin)):
     existing = db.query(Vehicle).filter(Vehicle.reg_number == payload.reg_number).first()
     if existing:
         raise HTTPException(status_code=400, detail="Registration number already exists")
@@ -33,7 +34,7 @@ def create_vehicle(payload: VehicleCreate, db: Session = Depends(get_db), _: Use
         imei_taken = db.query(Vehicle).filter(Vehicle.tracker_imei == payload.tracker_imei).first()
         if imei_taken:
             raise HTTPException(status_code=400, detail="Tracker IMEI is already registered to another vehicle")
-    v = Vehicle(**payload.model_dump())
+    v = Vehicle(**payload.model_dump(), company_id=current.company_id)
     db.add(v)
     db.commit()
     db.refresh(v)
@@ -41,18 +42,20 @@ def create_vehicle(payload: VehicleCreate, db: Session = Depends(get_db), _: Use
 
 
 @router.get("/{vehicle_id}", response_model=VehicleResponse)
-def get_vehicle(vehicle_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def get_vehicle(vehicle_id: int, db: Session = Depends(get_db), current: User = Depends(require_admin_or_supervisor)):
     v = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
     if not v:
         raise HTTPException(status_code=404, detail="Vehicle not found")
+    assert_tenant(current, v.company_id)
     return v
 
 
 @router.patch("/{vehicle_id}", response_model=VehicleResponse)
-def update_vehicle(vehicle_id: int, payload: VehicleUpdate, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def update_vehicle(vehicle_id: int, payload: VehicleUpdate, db: Session = Depends(get_db), current: User = Depends(require_admin)):
     v = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
     if not v:
         raise HTTPException(status_code=404, detail="Vehicle not found")
+    assert_tenant(current, v.company_id)
     if payload.tracker_imei:
         imei_taken = (
             db.query(Vehicle)
@@ -69,9 +72,10 @@ def update_vehicle(vehicle_id: int, payload: VehicleUpdate, db: Session = Depend
 
 
 @router.delete("/{vehicle_id}", status_code=204)
-def delete_vehicle(vehicle_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def delete_vehicle(vehicle_id: int, db: Session = Depends(get_db), current: User = Depends(require_admin)):
     v = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
     if not v:
         raise HTTPException(status_code=404, detail="Vehicle not found")
+    assert_tenant(current, v.company_id)
     db.delete(v)
     db.commit()

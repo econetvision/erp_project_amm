@@ -8,6 +8,7 @@ class VehicleLocation(Base):
     __tablename__ = "vehicle_locations"
 
     id          = Column(Integer, primary_key=True, index=True)
+    company_id  = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
     vehicle_id  = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False)
     latitude    = Column(Float, nullable=False)
     longitude   = Column(Float, nullable=False)

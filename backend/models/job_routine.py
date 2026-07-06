@@ -9,6 +9,7 @@ class JobRoutine(Base):
     __tablename__ = "job_routines"
 
     id              = Column(Integer, primary_key=True, index=True)
+    company_id      = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
     name            = Column(String(255), nullable=False)
     type            = Column(String(50), nullable=False)    # absent_report | late_report | custom
     frequency       = Column(String(20), nullable=False)    # daily | weekly | monthly

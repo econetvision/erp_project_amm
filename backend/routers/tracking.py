@@ -12,7 +12,7 @@ from models.user import User
 from schemas.vehicle_location import LocationPush, LocationResponse, LatestLocationResponse
 from auth.dependencies import (
     require_admin_or_supervisor, get_current_user, get_current_user_or_service,
-    decode_ws_token, ServiceIdentity,
+    decode_ws_token, ServiceIdentity, assert_tenant, tenant_scope,
 )
 
 router = APIRouter()
@@ -76,7 +76,7 @@ def push_location(payload: LocationPush, db: Session = Depends(get_db), current=
 
 # ── REST: latest location for all assigned vehicles ──────────────────────────
 @router.get("/latest", response_model=list[LatestLocationResponse])
-def get_latest_locations(db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def get_latest_locations(db: Session = Depends(get_db), current: User = Depends(require_admin_or_supervisor)):
     # Subquery: max recorded_at per vehicle
     latest_ts_subq = (
         db.query(
@@ -109,7 +109,7 @@ def get_latest_locations(db: Session = Depends(get_db), _: User = Depends(requir
     )
     assign_map = {a.vehicle_id: a for a in active_assignments}
 
-    vehicles = db.query(Vehicle).all()
+    vehicles = tenant_scope(db.query(Vehicle), Vehicle.company_id, current).all()
     result = []
     for v in vehicles:
         active = assign_map.get(v.id)
@@ -135,8 +135,12 @@ def location_history(
     vehicle_id: int,
     limit: int = Query(50, le=500),
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin_or_supervisor),
+    current: User = Depends(require_admin_or_supervisor),
 ):
+    vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    assert_tenant(current, vehicle.company_id)
     return (
         db.query(VehicleLocation)
         .filter(VehicleLocation.vehicle_id == vehicle_id)
@@ -159,6 +163,14 @@ async def vehicle_ws(vehicle_id: int, websocket: WebSocket):
         user = decode_ws_token(token, db)
         if user is None:
             await websocket.close(code=4401)
+            return
+
+        # Tenant isolation: the vehicle must exist and, for non-master users,
+        # belong to the caller's company. assert_tenant raises HTTP (unsuitable
+        # for a WS), so we check explicitly and close with a policy-violation code.
+        vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
+        if vehicle is None or (user.role != "master" and vehicle.company_id != user.company_id):
+            await websocket.close(code=1008)
             return
 
         is_viewer = user.role in ("admin", "supervisor", "master")

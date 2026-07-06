@@ -13,7 +13,7 @@ class LoginRequest(BaseModel):
 
 class UserCreate(BaseModel):
     username:     str
-    password:     str
+    password:     str = Field(..., min_length=8)
     role:         Literal["master", "admin", "supervisor", "worker"]
     company_id:   Optional[int] = None
     email:        Optional[str] = None
@@ -41,12 +41,12 @@ class AdminUserUpdate(BaseModel):
     phone:        Optional[str] = Field(None, max_length=20)
     role:         Optional[Literal["master", "admin", "supervisor", "worker"]] = None
     company_id:   Optional[int] = None
-    password:     Optional[str] = Field(None, min_length=4)
+    password:     Optional[str] = Field(None, min_length=8)
 
 
 class PasswordChangeRequest(BaseModel):
     current_password: str
-    new_password:     str = Field(..., min_length=4)
+    new_password:     str = Field(..., min_length=8)
 
 
 class UserResponse(BaseModel):

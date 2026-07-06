@@ -3,6 +3,7 @@ import base64
 import uuid
 import random
 import time
+import hmac
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -297,15 +298,36 @@ def admin_update_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Tenant isolation: a non-master admin may only edit users in their own company.
+    if current.role != "master" and user.company_id != current.company_id:
+        raise HTTPException(status_code=404, detail="User not found")
+
     update_data = payload.model_dump(exclude_none=True)
+
+    # Privilege-escalation guards: only master may grant the master role or move
+    # a user between companies. This blocks an admin from self-promoting to
+    # master or reassigning users across tenants via this endpoint.
+    if current.role != "master":
+        if update_data.get("role") == "master":
+            raise HTTPException(status_code=403, detail="Only master users can grant the master role")
+        if "company_id" in update_data and update_data["company_id"] != current.company_id:
+            raise HTTPException(status_code=403, detail="Cannot move users to another company")
+        if user.role == "master":
+            raise HTTPException(status_code=403, detail="Cannot modify a master account")
+
     if "password" in update_data:
         user.password_hash = hash_password(update_data.pop("password"))
         # An admin-supplied password must again be replaced by the user's own
         # via a browser login before mobile access resumes.
         if user.role in ("admin", "supervisor"):
             user.must_change_password = True
+
+    # Allow-list the mutable fields instead of a blind setattr over the payload.
+    ALLOWED_FIELDS = {"display_name", "email", "phone", "role", "company_id"}
     for key, value in update_data.items():
-        setattr(user, key, value)
+        if key in ALLOWED_FIELDS:
+            setattr(user, key, value)
     db.commit()
     db.refresh(user)
     return user
@@ -342,8 +364,9 @@ def send_verification_code(
         "code": code,
         "expires": time.time() + 300,  # 5 minutes
     }
-    # TODO: integrate real email/SMS provider
-    return {"detail": f"Verification code sent to your {payload.type}", "debug_code": code}
+    # TODO: integrate real email/SMS provider to deliver `code` out-of-band.
+    # The code must never be returned in the response, or verification is meaningless.
+    return {"detail": f"Verification code sent to your {payload.type}"}
 
 
 @router.post("/me/verify")
@@ -358,7 +381,7 @@ def verify_code(
     if time.time() > stored["expires"]:
         _verification_codes.pop(current_user.id, None)
         raise HTTPException(status_code=400, detail="Verification code expired")
-    if stored["code"] != payload.code:
+    if not hmac.compare_digest(str(stored["code"]), str(payload.code)):
         raise HTTPException(status_code=400, detail="Invalid code")
     _verification_codes.pop(current_user.id, None)
     return {"detail": f"{payload.type} verified successfully"}

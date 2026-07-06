@@ -12,6 +12,39 @@ from auth.dependencies import require_master, require_admin, get_current_user
 router = APIRouter()
 
 
+def _caller_granted_permission_ids(db: Session, current_user: User) -> set[int]:
+    """Return the set of permission ids the caller already holds.
+
+    Mirrors ``auth.dependencies.require_permission``: resolve the caller's Role by
+    name within their company (or a global system role), then collect its granted
+    permission ids. Used to stop a non-master from attaching permissions they do
+    not themselves possess (privilege escalation).
+    """
+    role_obj = db.query(Role).filter(
+        Role.name == current_user.role,
+        ((Role.company_id == current_user.company_id) | (Role.company_id.is_(None))),
+    ).first()
+    if not role_obj:
+        return set()
+    rows = db.query(RolePermission.permission_id).filter(
+        RolePermission.role_id == role_obj.id
+    ).all()
+    return {r[0] for r in rows}
+
+
+def _assert_no_permission_escalation(db: Session, current_user: User, permission_ids) -> None:
+    """Reject (403) if a non-master tries to attach permission ids they lack."""
+    if current_user.role == "master" or not permission_ids:
+        return
+    held = _caller_granted_permission_ids(db, current_user)
+    escalated = set(permission_ids) - held
+    if escalated:
+        raise HTTPException(
+            status_code=403,
+            detail="Cannot grant permissions you do not hold",
+        )
+
+
 # ── Permissions ──────────────────────────────────────────────────────────────
 @router.get("/permissions")
 def list_permissions(
@@ -74,10 +107,13 @@ def create_role(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    # Non-master users can only create roles for their company
+    # Non-master users can only create roles for their own company (never a
+    # global / company_id-NULL role, which would resolve for every tenant).
     company_id = payload.company_id
     if current_user.role != "master":
         company_id = current_user.company_id
+    # Block privilege escalation: a non-master may only attach permissions it holds.
+    _assert_no_permission_escalation(db, current_user, payload.permissions)
     existing = db.query(Role).filter(
         Role.name == payload.name,
         Role.company_id == company_id,
@@ -109,6 +145,8 @@ def update_role(
     role = db.query(Role).filter(Role.id == role_id).first()
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
+    # A non-master may never touch a system role or a global (company_id NULL)
+    # role, and only roles inside its own company.
     if role.is_system and current_user.role != "master":
         raise HTTPException(status_code=403, detail="System roles can only be modified by master")
     if current_user.role != "master" and role.company_id != current_user.company_id:
@@ -118,6 +156,8 @@ def update_role(
     if payload.description is not None:
         role.description = payload.description
     if payload.permissions is not None:
+        # Block privilege escalation before rewriting the permission set.
+        _assert_no_permission_escalation(db, current_user, payload.permissions)
         db.query(RolePermission).filter(RolePermission.role_id == role.id).delete()
         for perm_id in payload.permissions:
             db.add(RolePermission(role_id=role.id, permission_id=perm_id))

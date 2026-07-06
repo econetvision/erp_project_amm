@@ -5,7 +5,7 @@ from models.payslip import Payslip
 from models.user import User
 from schemas.payslip import PayslipGenerateRequest, PayslipResponse
 from services.payslip_service import generate_or_regenerate_payslip
-from auth.dependencies import require_admin
+from auth.dependencies import require_admin, assert_tenant, tenant_scope
 
 router = APIRouter()
 
@@ -37,7 +37,11 @@ def generate_payslip(payload: PayslipGenerateRequest, db: Session = Depends(get_
 
 
 @router.get("/{employee_id}", response_model=list[PayslipResponse])
-def list_employee_payslips(employee_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def list_employee_payslips(employee_id: int, db: Session = Depends(get_db), current: User = Depends(require_admin)):
+    emp = db.query(User).filter(User.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current, emp.company_id)
     payslips = (
         db.query(Payslip)
         .filter(Payslip.employee_id == employee_id)
@@ -48,7 +52,11 @@ def list_employee_payslips(employee_id: int, db: Session = Depends(get_db), _: U
 
 
 @router.get("/{employee_id}/{year}/{month}", response_model=PayslipResponse)
-def get_payslip(employee_id: int, year: int, month: int, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def get_payslip(employee_id: int, year: int, month: int, db: Session = Depends(get_db), current: User = Depends(require_admin)):
+    emp = db.query(User).filter(User.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current, emp.company_id)
     payslip = db.query(Payslip).filter(
         Payslip.employee_id == employee_id,
         Payslip.year == year,
@@ -60,19 +68,19 @@ def get_payslip(employee_id: int, year: int, month: int, db: Session = Depends(g
 
 
 @router.get("/month/{year}/{month}", response_model=list[PayslipResponse])
-def get_month_payslips(year: int, month: int, db: Session = Depends(get_db), _: User = Depends(require_admin)):
-    payslips = (
-        db.query(Payslip)
-        .filter(Payslip.year == year, Payslip.month == month)
-        .all()
-    )
+def get_month_payslips(year: int, month: int, db: Session = Depends(get_db), current: User = Depends(require_admin)):
+    q = db.query(Payslip).join(User, Payslip.employee_id == User.id)
+    q = tenant_scope(q, User.company_id, current)
+    payslips = q.filter(Payslip.year == year, Payslip.month == month).all()
     return [_to_response(p, db) for p in payslips]
 
 
 @router.delete("/{payslip_id}", status_code=204)
-def delete_payslip(payslip_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def delete_payslip(payslip_id: int, db: Session = Depends(get_db), current: User = Depends(require_admin)):
     payslip = db.query(Payslip).filter(Payslip.id == payslip_id).first()
     if not payslip:
         raise HTTPException(status_code=404, detail="Payslip not found")
+    emp = db.query(User).filter(User.id == payslip.employee_id).first()
+    assert_tenant(current, emp.company_id if emp else None)
     db.delete(payslip)
     db.commit()

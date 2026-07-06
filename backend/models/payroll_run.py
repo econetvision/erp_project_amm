@@ -9,6 +9,7 @@ class PayrollRun(Base):
     __tablename__ = "payroll_runs"
 
     id               = Column(Integer, primary_key=True, index=True)
+    company_id       = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
     month            = Column(SmallInteger, nullable=False)
     year             = Column(SmallInteger, nullable=False)
     status           = Column(String(20), nullable=False, default="draft")  # draft | processing | completed | cancelled

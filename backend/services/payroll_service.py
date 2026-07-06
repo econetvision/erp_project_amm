@@ -36,24 +36,33 @@ def resolve_payroll_config(db: Session, company_id: int | None) -> dict:
     }
 
 
-def create_payroll_run(db: Session, month: int, year: int, user_id: int) -> PayrollRun:
-    # Check for existing draft/completed run
-    existing = db.query(PayrollRun).filter(
+def create_payroll_run(db: Session, month: int, year: int, user_id: int,
+                       company_id: int | None = None) -> PayrollRun:
+    # Check for an existing draft/completed run for this company + period.
+    existing_q = db.query(PayrollRun).filter(
         PayrollRun.month == month,
         PayrollRun.year == year,
         PayrollRun.status.in_(["draft", "completed"]),
-    ).first()
+    )
+    if company_id is not None:
+        existing_q = existing_q.filter(PayrollRun.company_id == company_id)
+    existing = existing_q.first()
     if existing:
         raise HTTPException(
             status_code=400,
             detail=f"Payroll run already exists for {month}/{year} (status: {existing.status})",
         )
 
-    run = PayrollRun(month=month, year=year, status="draft", run_by=user_id)
+    run = PayrollRun(month=month, year=year, status="draft", run_by=user_id, company_id=company_id)
     db.add(run)
     db.flush()
 
-    employees = db.query(User).filter(User.role.in_(["worker", "supervisor"])).order_by(User.id).all()
+    # Tenant isolation: a company-scoped run only pays that company's employees.
+    # A run created by master with no company_id still spans all companies (legacy).
+    emp_q = db.query(User).filter(User.role.in_(["worker", "supervisor"]))
+    if company_id is not None:
+        emp_q = emp_q.filter(User.company_id == company_id)
+    employees = emp_q.order_by(User.id).all()
     total_gross = Decimal("0")
     total_deductions = Decimal("0")
     total_net = Decimal("0")

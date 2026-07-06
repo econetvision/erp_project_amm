@@ -8,6 +8,7 @@ class VehicleAssignment(Base):
     __tablename__ = "vehicle_assignments"
 
     id          = Column(Integer, primary_key=True, index=True)
+    company_id  = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
     vehicle_id  = Column(Integer, ForeignKey("vehicles.id",  ondelete="CASCADE"), nullable=False)
     employee_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     assigned_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -8,6 +8,7 @@ class Vehicle(Base):
     __tablename__ = "vehicles"
 
     id         = Column(Integer, primary_key=True, index=True)
+    company_id   = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
     reg_number   = Column(String(20), nullable=False, unique=True)
     type         = Column(String(20), nullable=False)
     make         = Column(String(100), nullable=True)

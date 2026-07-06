@@ -93,25 +93,35 @@ def calc_overtime(hours_worked, shift: str) -> Decimal:
     return max(ot, Decimal("0.00")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def get_dashboard_overview(db: Session, month: int, year: int, holiday_dates: set) -> list:
+def get_dashboard_overview(db: Session, month: int, year: int, holiday_dates: set,
+                           company_id: int | None = None) -> list:
     from models.user import User
 
-    records = (
+    # Tenant isolation: restrict to the given company's employees when provided
+    # (None = master's cross-company view).
+    emp_q = db.query(User.id).filter(User.role.in_(["worker", "supervisor"]))
+    if company_id is not None:
+        emp_q = emp_q.filter(User.company_id == company_id)
+    emp_ids = [uid for (uid,) in emp_q.all()]
+
+    rec_q = (
         db.query(Attendance)
         .options(joinedload(Attendance.employee))
         .filter(
             extract("month", Attendance.date) == month,
             extract("year",  Attendance.date) == year,
         )
-        .all()
     )
+    if company_id is not None:
+        rec_q = rec_q.filter(Attendance.employee_id.in_(emp_ids))
+    records = rec_q.all()
 
     # Group records by date
     by_date: dict = {}
     for r in records:
         by_date.setdefault(r.date, []).append(r)
 
-    total_employees = db.query(User).filter(User.role.in_(["worker", "supervisor"])).count()
+    total_employees = len(emp_ids)
     working_days    = get_working_days_in_month(year, month, holiday_dates)
 
     result = []
@@ -132,18 +142,26 @@ def get_dashboard_overview(db: Session, month: int, year: int, holiday_dates: se
     return result
 
 
-def get_employee_stats(db: Session, month: int, year: int, holiday_dates: set) -> list:
+def get_employee_stats(db: Session, month: int, year: int, holiday_dates: set,
+                       company_id: int | None = None) -> list:
     from models.user import User
 
-    employees = db.query(User).filter(User.role.in_(["worker", "supervisor"])).order_by(User.id).all()
-    records   = (
+    # Tenant isolation: only this company's employees (None = master global view).
+    emp_q = db.query(User).filter(User.role.in_(["worker", "supervisor"]))
+    if company_id is not None:
+        emp_q = emp_q.filter(User.company_id == company_id)
+    employees = emp_q.order_by(User.id).all()
+
+    rec_q = (
         db.query(Attendance)
         .filter(
             extract("month", Attendance.date) == month,
             extract("year",  Attendance.date) == year,
         )
-        .all()
     )
+    if company_id is not None:
+        rec_q = rec_q.filter(Attendance.employee_id.in_([e.id for e in employees]))
+    records = rec_q.all()
 
     # Group records by employee_id
     by_emp: dict = {}

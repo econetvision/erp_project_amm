@@ -19,11 +19,11 @@ from schemas.employee import (
 from services.face_service import get_face_encoding
 from services.license_service import enforce_seat_limit, SEAT_LIMIT
 from services import storage
-from auth.dependencies import require_admin_or_supervisor, require_admin, get_current_user
+from auth.dependencies import (
+    require_admin_or_supervisor, require_admin, get_current_user,
+    hash_password, assert_tenant, tenant_scope,
+)
 from config.settings import settings
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 router = APIRouter()
 
@@ -104,6 +104,14 @@ def _generate_employee_code(db: Session, company_id: int | None, work_location_n
     return f"{base}{next_id:0{cfg['seq_digits']}d}"
 
 
+# Fields a caller may mass-edit via PUT/PATCH /{employee_id}. Derived from the
+# EmployeeUpdate schema MINUS a hard denylist of privilege/identity fields that
+# must never be set through the generic update path (role/company escalation,
+# credential or activation tampering, employee-code collisions).
+_EMPLOYEE_UPDATE_DENYLIST = {"role", "company_id", "username", "password_hash", "is_active", "employee_code"}
+EMPLOYEE_EDITABLE_FIELDS = set(EmployeeUpdate.model_fields) - _EMPLOYEE_UPDATE_DENYLIST
+
+
 class FaceRegisterRequest(BaseModel):
     image: str  # base64-encoded image
 
@@ -122,6 +130,8 @@ def list_employees(
         q = db.query(User).filter(User.role == "worker")
     else:
         q = db.query(User).filter(User.role.in_(["worker", "supervisor"]))
+    # Tenant isolation: non-master callers only see their own company's employees.
+    q = tenant_scope(q, User.company_id, current_user)
     if search:
         q = q.filter(
             or_(
@@ -166,7 +176,13 @@ def _persist_employee(db: Session, payload: EmployeeCreate, current_user: User) 
     username = data.pop("username")
     password = data.pop("password")
     role = data.pop("role", None) or "worker"
-    company_id = data.pop("company_id", None) or current_user.company_id
+    # Tenant isolation: only a master may target another company; every other
+    # caller is pinned to their own company_id regardless of any client-supplied value.
+    supplied_company_id = data.pop("company_id", None)
+    if current_user.role == "master":
+        company_id = supplied_company_id or current_user.company_id
+    else:
+        company_id = current_user.company_id
 
     # Check username uniqueness
     if db.query(User).filter(User.username == username).first():
@@ -187,7 +203,7 @@ def _persist_employee(db: Session, payload: EmployeeCreate, current_user: User) 
 
     emp = User(
         username=username,
-        password_hash=pwd_context.hash(password),
+        password_hash=hash_password(password),
         role=role,
         company_id=company_id,
         employee_code=employee_code,
@@ -337,6 +353,9 @@ def export_employees(
     from openpyxl.utils import get_column_letter
 
     q = db.query(User).filter(User.role.in_(["worker", "supervisor"]))
+    # Tenant isolation: the export includes Aadhaar/bank details — never leak
+    # another company's employees to a non-master admin.
+    q = tenant_scope(q, User.company_id, current_user)
     if search:
         q = q.filter(
             or_(
@@ -515,6 +534,7 @@ def get_employee(employee_id: int, db: Session = Depends(get_db), current_user: 
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current_user, emp.company_id)
 
     # Supervisors can only view workers (not other supervisors)
     if current_user.role == "supervisor" and emp.role != "worker":
@@ -533,10 +553,12 @@ def update_employee(employee_id: int, payload: EmployeeUpdate, db: Session = Dep
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current_user, emp.company_id)
 
-    # Update only provided fields (exclude None values)
+    # Update only provided, allow-listed fields (never role/company/credentials).
     for key, value in payload.model_dump(exclude_none=True).items():
-        setattr(emp, key, value)
+        if key in EMPLOYEE_EDITABLE_FIELDS:
+            setattr(emp, key, value)
     db.commit()
     db.refresh(emp)
     return emp
@@ -551,9 +573,12 @@ def partial_update_employee(employee_id: int, payload: EmployeeUpdate, db: Sessi
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current_user, emp.company_id)
 
+    # Update only provided, allow-listed fields (never role/company/credentials).
     for key, value in payload.model_dump(exclude_none=True).items():
-        setattr(emp, key, value)
+        if key in EMPLOYEE_EDITABLE_FIELDS:
+            setattr(emp, key, value)
     db.commit()
     db.refresh(emp)
     return emp
@@ -573,6 +598,7 @@ def update_employee_work_location(
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current_user, emp.company_id)
 
     # Supervisors can only edit workers
     if current_user.role == "supervisor" and emp.role != "worker":
@@ -599,6 +625,7 @@ def update_employee_code(
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current_user, emp.company_id)
 
     # Check if the new code is already in use
     existing = db.query(User).filter(
@@ -620,6 +647,7 @@ def delete_employee(employee_id: int, db: Session = Depends(get_db), current_use
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current_user, emp.company_id)
     if emp.id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
     db.delete(emp)
@@ -636,6 +664,7 @@ def register_face(employee_id: int, payload: FaceRegisterRequest, db: Session = 
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current_user, emp.company_id)
 
     # Supervisors can only register faces for workers
     if current_user.role == "supervisor" and emp.role != "worker":
@@ -664,8 +693,12 @@ def register_face(employee_id: int, payload: FaceRegisterRequest, db: Session = 
 
 
 @router.get("/{employee_id}/ifsc-lookup")
-async def ifsc_lookup(employee_id: int, ifsc: str, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+async def ifsc_lookup(employee_id: int, ifsc: str, db: Session = Depends(get_db), current_user: User = Depends(require_admin_or_supervisor)):
     from services.kyc_service import lookup_ifsc
+    emp = db.query(User).filter(User.id == employee_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current_user, emp.company_id)
     return await lookup_ifsc(ifsc)
 
 
@@ -673,13 +706,14 @@ async def ifsc_lookup(employee_id: int, ifsc: str, db: Session = Depends(get_db)
 async def verify_bank_account_endpoint(
     employee_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin_or_supervisor),
+    current_user: User = Depends(require_admin_or_supervisor),
 ):
     from services.kyc_service import verify_bank_account
     import os
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current_user, emp.company_id)
     if not emp.ifsc_code:
         raise HTTPException(status_code=400, detail="IFSC code is required for bank verification")
     
@@ -705,12 +739,13 @@ class OTPRequest(BaseModel):
 
 
 @router.post("/{employee_id}/send-phone-otp")
-def send_phone_verification(employee_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def send_phone_verification(employee_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_admin_or_supervisor)):
     """Send OTP to employee's phone number via Twilio."""
     from services.twilio_service import send_phone_otp
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current_user, emp.company_id)
     if not emp.phone:
         raise HTTPException(status_code=400, detail="Employee phone number is not set")
     result = send_phone_otp(emp.phone)
@@ -720,12 +755,13 @@ def send_phone_verification(employee_id: int, db: Session = Depends(get_db), _: 
 
 
 @router.post("/{employee_id}/verify-phone", response_model=EmployeeResponse)
-def verify_phone(employee_id: int, payload: OTPRequest, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def verify_phone(employee_id: int, payload: OTPRequest, db: Session = Depends(get_db), current_user: User = Depends(require_admin_or_supervisor)):
     """Verify phone OTP and mark phone as verified."""
     from services.twilio_service import verify_phone_otp
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current_user, emp.company_id)
     if not emp.phone:
         raise HTTPException(status_code=400, detail="Employee phone number is not set")
     result = verify_phone_otp(emp.phone, payload.code)
@@ -738,12 +774,13 @@ def verify_phone(employee_id: int, payload: OTPRequest, db: Session = Depends(ge
 
 
 @router.post("/{employee_id}/send-email-otp")
-def send_email_verification(employee_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def send_email_verification(employee_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_admin_or_supervisor)):
     """Send OTP to employee's email via Twilio."""
     from services.twilio_service import send_email_otp
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current_user, emp.company_id)
     if not emp.email:
         raise HTTPException(status_code=400, detail="Employee email is not set")
     result = send_email_otp(emp.email)
@@ -753,12 +790,13 @@ def send_email_verification(employee_id: int, db: Session = Depends(get_db), _: 
 
 
 @router.post("/{employee_id}/verify-email", response_model=EmployeeResponse)
-def verify_email(employee_id: int, payload: OTPRequest, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def verify_email(employee_id: int, payload: OTPRequest, db: Session = Depends(get_db), current_user: User = Depends(require_admin_or_supervisor)):
     """Verify email OTP and mark email as verified."""
     from services.twilio_service import verify_email_otp
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current_user, emp.company_id)
     if not emp.email:
         raise HTTPException(status_code=400, detail="Employee email is not set")
     result = verify_email_otp(emp.email, payload.code)
@@ -780,11 +818,12 @@ class WorkLocationAssignment(BaseModel):
 
 
 @router.put("/{employee_id}/work-location", response_model=EmployeeResponse)
-def assign_work_location(employee_id: int, payload: WorkLocationAssignment, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def assign_work_location(employee_id: int, payload: WorkLocationAssignment, db: Session = Depends(get_db), current_user: User = Depends(require_admin_or_supervisor)):
     """Assign or update work location for an User."""
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current_user, emp.company_id)
     emp.work_location_name = payload.work_location_name
     emp.work_latitude = payload.work_latitude
     emp.work_longitude = payload.work_longitude

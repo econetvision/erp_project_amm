@@ -12,8 +12,11 @@ so ``database_url`` reads ``DATABASE_URL``. Values are also loaded from a local
 """
 from functools import cached_property
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Insecure defaults that must never reach a production deployment.
+_DEFAULT_SECRET_KEY = "erp-secret-key-change-in-production"
 
 
 class Settings(BaseSettings):
@@ -25,8 +28,11 @@ class Settings(BaseSettings):
     )
 
     # ─── Core ────────────────────────────────────────────────────────────────
+    # Deployment stage. Set ENVIRONMENT=production in prod to enforce the
+    # secure-config checks below (a strong SECRET_KEY, non-wildcard CORS).
+    environment: str = "development"
     database_url: str = "postgresql://erp_user:erp_pass@localhost:5432/erp_db"
-    secret_key: str = "erp-secret-key-change-in-production"
+    secret_key: str = _DEFAULT_SECRET_KEY
     allowed_origins: str = "http://localhost:3000"
     log_level: str = "INFO"
     seed_test_data: bool = False
@@ -114,6 +120,33 @@ class Settings(BaseSettings):
     def has_static_license(self) -> bool:
         """True when a static master license key is configured (bypass mode)."""
         return bool(self.license_key.strip())
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.strip().lower() in ("production", "prod")
+
+    @model_validator(mode="after")
+    def _enforce_secure_production_config(self):
+        """Refuse to boot a production deployment on insecure defaults.
+
+        SECRET_KEY signs JWTs and derives the key that encrypts stored
+        integration credentials, so the public default must never run in prod.
+        A wildcard CORS origin combined with credentialed requests is likewise
+        rejected.
+        """
+        if self.is_production:
+            if self.secret_key == _DEFAULT_SECRET_KEY or len(self.secret_key) < 32:
+                raise ValueError(
+                    "SECRET_KEY must be set to a strong, unique value (>=32 chars) "
+                    "in production. Generate one with: python -c "
+                    "\"import secrets; print(secrets.token_urlsafe(48))\""
+                )
+            if "*" in self.allowed_origins_list:
+                raise ValueError(
+                    "ALLOWED_ORIGINS must not contain '*' in production "
+                    "(credentialed CORS requires explicit origins)."
+                )
+        return self
 
 
 # Import this singleton everywhere; instantiated once at import time.

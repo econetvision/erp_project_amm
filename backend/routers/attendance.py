@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import extract
+from sqlalchemy import extract, or_
 from datetime import date
 from database import get_db
 from models.attendance import Attendance
@@ -19,12 +19,16 @@ from services.attendance_service import (
     get_working_days_in_month, is_late_arrival, calc_overtime,
 )
 from services.face_service import identify_employee, verify_employee_face
-from auth.dependencies import require_any, require_admin_or_supervisor
+from auth.dependencies import require_any, require_admin_or_supervisor, assert_tenant, tenant_scope
 from config.settings import settings
 from decimal import Decimal
 import math
 
 router = APIRouter()
+
+# Fields an admin/supervisor may edit via PUT /attendance/{id}. Derived from
+# AttendanceUpdate; never allow re-pointing the record to another employee (or id).
+ATTENDANCE_EDITABLE_FIELDS = set(AttendanceUpdate.model_fields) - {"employee_id", "id"}
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -139,20 +143,24 @@ def dashboard_overview(
     month: int = Query(..., ge=1, le=12),
     year:  int = Query(..., ge=2000),
     db:    Session = Depends(get_db),
-    _:     object  = Depends(require_admin_or_supervisor),
+    current: User  = Depends(require_admin_or_supervisor),
 ):
-    holiday_rows  = (
-        db.query(PublicHoliday)
-        .filter(
-            extract("month", PublicHoliday.date) == month,
-            extract("year",  PublicHoliday.date) == year,
-        )
-        .all()
+    holiday_q = db.query(PublicHoliday).filter(
+        extract("month", PublicHoliday.date) == month,
+        extract("year",  PublicHoliday.date) == year,
     )
+    # Non-master: only this company's holidays plus global (NULL-company) ones.
+    if current.role != "master":
+        holiday_q = holiday_q.filter(
+            or_(PublicHoliday.company_id == current.company_id, PublicHoliday.company_id.is_(None))
+        )
+    holiday_rows = holiday_q.all()
     holiday_dates    = {h.date for h in holiday_rows}
-    total_employees  = db.query(User).filter(User.role.in_(["worker", "supervisor"])).count()
+    emp_q            = db.query(User).filter(User.role.in_(["worker", "supervisor"]))
+    emp_q            = tenant_scope(emp_q, User.company_id, current)
+    total_employees  = emp_q.count()
     working_day_list = get_working_days_in_month(year, month, holiday_dates)
-    daily_entries    = get_dashboard_overview(db, month, year, holiday_dates)
+    daily_entries    = get_dashboard_overview(db, month, year, holiday_dates, company_id=current.company_id)
 
     return DashboardOverviewResponse(
         month=month,
@@ -168,29 +176,40 @@ def dashboard_employee_stats(
     month: int = Query(..., ge=1, le=12),
     year:  int = Query(..., ge=2000),
     db:    Session = Depends(get_db),
-    _:     object  = Depends(require_admin_or_supervisor),
+    current: User  = Depends(require_admin_or_supervisor),
 ):
-    holiday_rows  = (
-        db.query(PublicHoliday)
-        .filter(
-            extract("month", PublicHoliday.date) == month,
-            extract("year",  PublicHoliday.date) == year,
-        )
-        .all()
+    holiday_q = db.query(PublicHoliday).filter(
+        extract("month", PublicHoliday.date) == month,
+        extract("year",  PublicHoliday.date) == year,
     )
+    # Non-master: only this company's holidays plus global (NULL-company) ones.
+    if current.role != "master":
+        holiday_q = holiday_q.filter(
+            or_(PublicHoliday.company_id == current.company_id, PublicHoliday.company_id.is_(None))
+        )
+    holiday_rows = holiday_q.all()
     holiday_dates = {h.date for h in holiday_rows}
-    return get_employee_stats(db, month, year, holiday_dates)
+    # Tenant isolation is enforced in the service via company_id (None for master).
+    return get_employee_stats(db, month, year, holiday_dates, company_id=current.company_id)
 
 
 @router.get("/daily-summary", response_model=list[DailyEmployeeStatus])
 def daily_summary(
     date_param: date = Query(..., alias="date"),
     db:         Session = Depends(get_db),
-    _:          object  = Depends(require_admin_or_supervisor),
+    current:    User    = Depends(require_admin_or_supervisor),
 ):
     holiday = db.query(PublicHoliday).filter(PublicHoliday.date == date_param).first()
-    employees = db.query(User).filter(User.role.in_(["worker", "supervisor"])).order_by(User.id).all()
-    records   = db.query(Attendance).filter(Attendance.date == date_param).all()
+    emp_q = db.query(User).filter(User.role.in_(["worker", "supervisor"]))
+    emp_q = tenant_scope(emp_q, User.company_id, current)
+    employees = emp_q.order_by(User.id).all()
+    rec_q = (
+        db.query(Attendance)
+        .join(User, Attendance.employee_id == User.id)
+        .filter(Attendance.date == date_param)
+    )
+    rec_q = tenant_scope(rec_q, User.company_id, current)
+    records   = rec_q.all()
     rec_map   = {r.employee_id: r for r in records}
 
     result = []
@@ -232,6 +251,7 @@ def clock_in(payload: AttendanceClockIn, db: Session = Depends(get_db), current:
     emp = db.query(User).filter(User.id == payload.employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current, emp.company_id)
 
     validate_geofence(emp, payload.latitude, payload.longitude, db)
     verify_employee_face(payload.image, emp)
@@ -265,6 +285,7 @@ def clock_in_manual(payload: AttendanceManualClockIn, db: Session = Depends(get_
     emp = db.query(User).filter(User.id == payload.employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current, emp.company_id)
 
     validate_geofence(emp, payload.latitude, payload.longitude, db)
 
@@ -299,6 +320,7 @@ def clock_out_manual(attendance_id: int, payload: AttendanceManualClockOut, db: 
         raise HTTPException(status_code=403, detail="Workers can only clock out for themselves")
 
     emp = db.query(User).filter(User.id == record.employee_id).first()
+    assert_tenant(current, emp.company_id if emp else None)
     validate_geofence(emp, payload.latitude, payload.longitude, db)
 
     record.exit_time    = payload.exit_time
@@ -323,6 +345,7 @@ def clock_out(attendance_id: int, payload: AttendanceClockOut, db: Session = Dep
         raise HTTPException(status_code=403, detail="Workers can only clock out for themselves")
 
     emp = db.query(User).filter(User.id == record.employee_id).first()
+    assert_tenant(current, emp.company_id if emp else None)
     validate_geofence(emp, payload.latitude, payload.longitude, db)
     verify_employee_face(payload.image, emp)
 
@@ -341,11 +364,12 @@ def get_monthly_report(
     month: int = Query(..., ge=1, le=12),
     year:  int = Query(..., ge=2000),
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin_or_supervisor),
+    current: User = Depends(require_admin_or_supervisor),
 ):
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+    assert_tenant(current, emp.company_id)
     records = (
         db.query(Attendance)
         .filter(
@@ -372,7 +396,17 @@ def get_monthly_report(
 
 
 @router.get("/{employee_id}/today", response_model=AttendanceResponse | None)
-def get_today_status(employee_id: int, db: Session = Depends(get_db), _: User = Depends(require_any)):
+def get_today_status(employee_id: int, db: Session = Depends(get_db), current: User = Depends(require_any)):
+    # Ownership/tenant check: a worker may only query their own status; every
+    # other role is limited to employees within their own company.
+    if current.role == "worker":
+        if current.id != employee_id:
+            raise HTTPException(status_code=403, detail="Workers can only view their own status")
+    else:
+        emp = db.query(User).filter(User.id == employee_id).first()
+        if not emp:
+            raise HTTPException(status_code=404, detail="Employee not found")
+        assert_tenant(current, emp.company_id)
     today = date.today()
     return db.query(Attendance).filter(
         Attendance.employee_id == employee_id,
@@ -381,19 +415,28 @@ def get_today_status(employee_id: int, db: Session = Depends(get_db), _: User = 
 
 
 @router.get("/date/{record_date}", response_model=list[AttendanceResponse])
-def get_by_date(record_date: date, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
-    return db.query(Attendance).filter(Attendance.date == record_date).all()
+def get_by_date(record_date: date, db: Session = Depends(get_db), current: User = Depends(require_admin_or_supervisor)):
+    q = (
+        db.query(Attendance)
+        .join(User, Attendance.employee_id == User.id)
+        .filter(Attendance.date == record_date)
+    )
+    q = tenant_scope(q, User.company_id, current)
+    return q.all()
 
 
 @router.put("/{attendance_id}", response_model=AttendanceResponse)
-def update_attendance(attendance_id: int, payload: AttendanceUpdate, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def update_attendance(attendance_id: int, payload: AttendanceUpdate, db: Session = Depends(get_db), current: User = Depends(require_admin_or_supervisor)):
     record = db.query(Attendance).filter(Attendance.id == attendance_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Attendance record not found")
+    emp = db.query(User).get(record.employee_id)
+    assert_tenant(current, emp.company_id if emp else None)
+    # Allow-listed fields only — never re-point the record to another employee/id.
     for key, value in payload.model_dump(exclude_none=True).items():
-        setattr(record, key, value)
+        if key in ATTENDANCE_EDITABLE_FIELDS:
+            setattr(record, key, value)
     if record.entry_time and record.exit_time:
-        emp = db.query(User).filter(User.id == record.employee_id).first()
         record.hours_worked = calculate_hours_worked(record.entry_time, record.exit_time, emp.shift if emp else None)
     db.commit()
     db.refresh(record)
@@ -401,18 +444,23 @@ def update_attendance(attendance_id: int, payload: AttendanceUpdate, db: Session
 
 
 @router.delete("/{attendance_id}", status_code=204)
-def delete_attendance(attendance_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def delete_attendance(attendance_id: int, db: Session = Depends(get_db), current: User = Depends(require_admin_or_supervisor)):
     record = db.query(Attendance).filter(Attendance.id == attendance_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Attendance record not found")
+    emp = db.query(User).get(record.employee_id)
+    assert_tenant(current, emp.company_id if emp else None)
     db.delete(record)
     db.commit()
 
 
 @router.post("/face-scan", response_model=FaceScanResponse, status_code=201)
-def face_scan_clock(payload: FaceScanRequest, db: Session = Depends(get_db), _: User = Depends(require_any)):
+def face_scan_clock(payload: FaceScanRequest, db: Session = Depends(get_db), current: User = Depends(require_any)):
     """Identify employee from face image and auto clock in or clock out."""
-    employees = db.query(User).filter(User.face_encoding.isnot(None)).all()
+    # Only match faces within the caller's own company (master matches globally).
+    face_q = db.query(User).filter(User.face_encoding.isnot(None))
+    face_q = tenant_scope(face_q, User.company_id, current)
+    employees = face_q.all()
     emp = identify_employee(payload.image, employees)
     if not emp:
         raise HTTPException(status_code=404, detail="No matching employee found. Please register your face first.")

@@ -18,19 +18,37 @@ from protocol_gt06 import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("gateway.server")
 
+# Bounds concurrent connections; acquired per-connection, released on close.
+_conn_semaphore = asyncio.Semaphore(config.MAX_CONNECTIONS)
+
 
 async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
     peer = writer.get_extra_info("peername")
     buffer = b""
     imei: str | None = None
+    # A device must log in within this deadline before location frames are honoured.
+    login_deadline = asyncio.get_event_loop().time() + config.LOGIN_TIMEOUT_SECONDS
     logger.info("Device connected: %s", peer)
 
     try:
         while True:
-            data = await reader.read(1024)
+            try:
+                data = await asyncio.wait_for(reader.read(1024), timeout=config.READ_TIMEOUT_SECONDS)
+            except asyncio.TimeoutError:
+                logger.info("Idle timeout for %s (imei=%s), closing", peer, imei)
+                break
             if not data:
                 break
             buffer += data
+
+            # Reject a client that floods bytes without ever forming a valid frame.
+            if len(buffer) > config.MAX_BUFFER_BYTES:
+                logger.warning("Buffer overflow from %s (%d bytes, imei=%s), closing", peer, len(buffer), imei)
+                break
+
+            if imei is None and asyncio.get_event_loop().time() > login_deadline:
+                logger.warning("Login timeout for %s, closing", peer)
+                break
 
             frames, buffer = parse_frames(buffer)
             for frame in frames:
@@ -69,9 +87,27 @@ async def handle_connection(reader: asyncio.StreamReader, writer: asyncio.Stream
         logger.info("Device disconnected: %s (imei=%s)", peer, imei)
 
 
+async def _guarded_connection(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+    """Enforce the global connection cap around each device session."""
+    if _conn_semaphore.locked():
+        logger.warning("Connection cap (%d) reached, refusing %s",
+                       config.MAX_CONNECTIONS, writer.get_extra_info("peername"))
+        writer.close()
+        return
+    async with _conn_semaphore:
+        await handle_connection(reader, writer)
+
+
 async def main() -> None:
+    if not config.TRACKING_GATEWAY_KEY:
+        # Without the shared key the backend rejects every push (401); warn loudly
+        # rather than silently forwarding nothing.
+        logger.critical(
+            "TRACKING_GATEWAY_KEY is not set — the backend will reject all forwarded "
+            "positions. Set it to the same value configured on the backend."
+        )
     asyncio.create_task(imei_lookup.refresh_loop())
-    server = await asyncio.start_server(handle_connection, config.LISTEN_HOST, config.LISTEN_PORT)
+    server = await asyncio.start_server(_guarded_connection, config.LISTEN_HOST, config.LISTEN_PORT)
     logger.info("GT06 gateway listening on %s:%s", config.LISTEN_HOST, config.LISTEN_PORT)
     async with server:
         await server.serve_forever()

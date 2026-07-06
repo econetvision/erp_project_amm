@@ -8,7 +8,8 @@ class SalaryStructure(Base):
     __tablename__ = "salary_structures"
 
     id          = Column(Integer, primary_key=True, index=True)
-    name        = Column(String(255), nullable=False, unique=True)
+    company_id  = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+    name        = Column(String(255), nullable=False)
     description = Column(String(500), nullable=True)
     is_default  = Column(Boolean, nullable=False, default=False)
     created_at  = Column(DateTime(timezone=True), server_default=func.now())

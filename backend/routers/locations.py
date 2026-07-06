@@ -10,7 +10,7 @@ from schemas.work_location import (
     EmployeeLocationAssignmentCreate, EmployeeLocationAssignmentResponse,
     BulkAssignRequest, MyWorkLocationResponse,
 )
-from auth.dependencies import require_admin_or_supervisor, require_admin, get_current_user
+from auth.dependencies import require_admin_or_supervisor, require_admin, get_current_user, assert_tenant, tenant_scope
 
 router = APIRouter()
 
@@ -116,11 +116,17 @@ def create_location(
     db: Session = Depends(get_db),
     current: User = Depends(require_admin),
 ):
+    # Non-master locations are always created inside the caller's own company.
+    company_id = current.company_id
     if payload.location_code:
-        existing = db.query(WorkLocation).filter(WorkLocation.location_code == payload.location_code).first()
-        if existing:
+        code_q = db.query(WorkLocation).filter(WorkLocation.location_code == payload.location_code)
+        # Scope uniqueness to the owning company so two tenants can reuse a code.
+        code_q = tenant_scope(code_q, WorkLocation.company_id, current)
+        if company_id is not None:
+            code_q = code_q.filter(WorkLocation.company_id == company_id)
+        if code_q.first():
             raise HTTPException(status_code=400, detail="Location code already exists")
-    loc = WorkLocation(**payload.model_dump(), company_id=current.company_id, created_by=current.id)
+    loc = WorkLocation(**payload.model_dump(), company_id=company_id, created_by=current.id)
     db.add(loc)
     db.commit()
     db.refresh(loc)
@@ -130,10 +136,11 @@ def create_location(
 
 
 @router.get("/{location_id}", response_model=WorkLocationResponse)
-def get_location(location_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def get_location(location_id: int, db: Session = Depends(get_db), current: User = Depends(require_admin_or_supervisor)):
     loc = db.query(WorkLocation).filter(WorkLocation.id == location_id).first()
     if not loc:
         raise HTTPException(status_code=404, detail="Work location not found")
+    assert_tenant(current, loc.company_id)
     count = db.query(EmployeeLocationAssignment).filter(EmployeeLocationAssignment.location_id == location_id).count()
     resp = WorkLocationResponse.model_validate(loc)
     resp.employee_count = count
@@ -145,13 +152,17 @@ def update_location(
     location_id: int,
     payload: WorkLocationUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    current: User = Depends(require_admin),
 ):
     loc = db.query(WorkLocation).filter(WorkLocation.id == location_id).first()
     if not loc:
         raise HTTPException(status_code=404, detail="Work location not found")
+    assert_tenant(current, loc.company_id)
     for key, value in payload.model_dump(exclude_none=True).items():
         setattr(loc, key, value)
+    # Never let a non-master re-home a location into another tenant.
+    if current.role != "master":
+        loc.company_id = current.company_id
     db.commit()
     db.refresh(loc)
     count = db.query(EmployeeLocationAssignment).filter(EmployeeLocationAssignment.location_id == location_id).count()
@@ -161,10 +172,11 @@ def update_location(
 
 
 @router.delete("/{location_id}", status_code=204)
-def delete_location(location_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def delete_location(location_id: int, db: Session = Depends(get_db), current: User = Depends(require_admin)):
     loc = db.query(WorkLocation).filter(WorkLocation.id == location_id).first()
     if not loc:
         raise HTTPException(status_code=404, detail="Work location not found")
+    assert_tenant(current, loc.company_id)
     db.delete(loc)
     db.commit()
 
@@ -172,10 +184,11 @@ def delete_location(location_id: int, db: Session = Depends(get_db), _: User = D
 # ── Employee-Location Assignments ─────────────────────────────────────────────
 
 @router.get("/{location_id}/employees", response_model=list[EmployeeLocationAssignmentResponse])
-def list_location_employees(location_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def list_location_employees(location_id: int, db: Session = Depends(get_db), current: User = Depends(require_admin_or_supervisor)):
     loc = db.query(WorkLocation).filter(WorkLocation.id == location_id).first()
     if not loc:
         raise HTTPException(status_code=404, detail="Work location not found")
+    assert_tenant(current, loc.company_id)
     assignments = (
         db.query(EmployeeLocationAssignment)
         .filter(EmployeeLocationAssignment.location_id == location_id)
@@ -210,6 +223,9 @@ def assign_employee(
     loc = db.query(WorkLocation).filter(WorkLocation.id == payload.location_id).first()
     if not loc:
         raise HTTPException(status_code=404, detail="Work location not found")
+    # Both the employee and the location must live in the caller's tenant.
+    assert_tenant(current, emp.company_id)
+    assert_tenant(current, loc.company_id)
     # Check for duplicate
     existing = db.query(EmployeeLocationAssignment).filter(
         EmployeeLocationAssignment.employee_id == payload.employee_id,
@@ -263,12 +279,16 @@ def assign_bulk(
     loc = db.query(WorkLocation).filter(WorkLocation.id == payload.location_id).first()
     if not loc:
         raise HTTPException(status_code=404, detail="Work location not found")
+    # The target location must belong to the caller's tenant.
+    assert_tenant(current, loc.company_id)
 
     assigned = 0
     for emp_id in payload.employee_ids:
         emp = db.query(User).filter(User.id == emp_id).first()
         if not emp:
             continue
+        # Only assign employees that live in the caller's tenant.
+        assert_tenant(current, emp.company_id)
         existing = db.query(EmployeeLocationAssignment).filter(
             EmployeeLocationAssignment.employee_id == emp_id,
             EmployeeLocationAssignment.location_id == payload.location_id,
@@ -299,9 +319,12 @@ def assign_bulk(
 
 
 @router.delete("/assign/{assignment_id}", status_code=204)
-def unassign_employee(assignment_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin_or_supervisor)):
+def unassign_employee(assignment_id: int, db: Session = Depends(get_db), current: User = Depends(require_admin_or_supervisor)):
     assignment = db.query(EmployeeLocationAssignment).filter(EmployeeLocationAssignment.id == assignment_id).first()
     if not assignment:
         raise HTTPException(status_code=404, detail="Assignment not found")
+    loc = db.query(WorkLocation).filter(WorkLocation.id == assignment.location_id).first()
+    if loc:
+        assert_tenant(current, loc.company_id)
     db.delete(assignment)
     db.commit()

@@ -26,7 +26,6 @@ class LicenseUpdate(BaseModel):
 class LicenseResponse(BaseModel):
     id:          int
     company_id:  int
-    license_key: str
     tier:        str
     status:      str
     max_seats:   Optional[int] = None

@@ -127,7 +127,13 @@ def update_company(
         raise HTTPException(status_code=404, detail="Company not found")
     if current_user.role != "master" and current_user.company_id != company_id:
         raise HTTPException(status_code=403, detail="Access denied to this company")
-    for key, value in payload.model_dump(exclude_none=True).items():
+    updates = payload.model_dump(exclude_none=True)
+    # Master-controlled fields: a non-master admin must not toggle activation or
+    # rewrite billing / feature-gating config for their own company.
+    MASTER_ONLY_FIELDS = {"is_active", "features", "payroll_config", "attendance_config"}
+    if current_user.role != "master":
+        updates = {k: v for k, v in updates.items() if k not in MASTER_ONLY_FIELDS}
+    for key, value in updates.items():
         setattr(company, key, value)
     db.commit()
     db.refresh(company)

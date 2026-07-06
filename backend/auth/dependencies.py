@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 from typing import Optional, List
+import hmac
 import bcrypt
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -44,7 +46,7 @@ def _user_from_token(token: str, db: Session) -> User:
         user_id  = payload.get("sub")
         if user_id is None:
             raise credentials_exception
-    except JWTError:
+    except PyJWTError:
         raise credentials_exception
 
     user = db.query(User).filter(User.id == int(user_id)).first()
@@ -82,7 +84,7 @@ def get_current_user_or_service(request: Request, db: Session = Depends(get_db))
     TRACKING_GATEWAY_KEY) or a normal per-user JWT. Used by endpoints that the
     tracking gateway calls on behalf of hardware devices that have no user account."""
     internal_key = request.headers.get("x-internal-key")
-    if TRACKING_GATEWAY_KEY and internal_key == TRACKING_GATEWAY_KEY:
+    if TRACKING_GATEWAY_KEY and internal_key and hmac.compare_digest(internal_key, TRACKING_GATEWAY_KEY):
         return ServiceIdentity()
     auth_header = request.headers.get("authorization", "")
     if not auth_header.lower().startswith("bearer "):
@@ -170,6 +172,30 @@ def require_permission(*permission_codes: str):
             )
         return current_user
     return _dependency
+
+
+def assert_tenant(current_user: User, company_id: Optional[int]) -> None:
+    """Enforce multi-tenant isolation on a single fetched record.
+
+    Master may access any company. Every other role may only touch records whose
+    ``company_id`` matches their own. Raises 404 (not 403) so callers cannot use
+    the response to probe whether a foreign record exists.
+    """
+    if current_user.role == "master":
+        return
+    if company_id is None or company_id != current_user.company_id:
+        raise HTTPException(status_code=404, detail="Not found")
+
+
+def tenant_scope(query, column, current_user: User):
+    """Apply a tenant filter to a list/collection query.
+
+    Master sees every company; everyone else is restricted to their own company
+    via ``column`` (e.g. ``Vehicle.company_id`` or ``User.company_id``).
+    """
+    if current_user.role == "master":
+        return query
+    return query.filter(column == current_user.company_id)
 
 
 def get_tenant_company_id(current_user: User = Depends(get_current_user), request: Request = None) -> Optional[int]:

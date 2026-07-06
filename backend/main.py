@@ -59,12 +59,19 @@ app = FastAPI(
 _allowed_origins = settings.allowed_origins_list
 logger.info(f"CORS allowed origins: {_allowed_origins}")
 
+# A wildcard origin combined with credentials is invalid/unsafe; refuse it.
+if "*" in _allowed_origins:
+    raise RuntimeError(
+        "ALLOWED_ORIGINS must list explicit origins, not '*', because CORS is "
+        "configured with allow_credentials=True."
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Company-Id", "X-Internal-Key"],
 )
 
 # Per-request license enforcement (master bypasses inside the dependency). Applied to
@@ -185,7 +192,9 @@ def health_check():
             db_migration = row[0]
         db.close()
     except Exception as exc:
-        db_status = f"error: {exc}"
+        # Don't leak DB driver/connection internals to an unauthenticated caller.
+        logger.error(f"/health DB check failed: {exc}")
+        db_status = "error"
 
     return {
         "status": "ok",

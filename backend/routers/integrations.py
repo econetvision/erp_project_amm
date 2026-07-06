@@ -50,7 +50,7 @@ router = APIRouter()
 @router.get("/providers", response_model=list[IntegrationProviderResponse])
 def list_providers(
     category: Optional[str] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_master),
     db: Session = Depends(get_db),
 ):
     q = db.query(IntegrationProvider)
@@ -106,7 +106,7 @@ def delete_provider(
 
 
 @router.get("/providers/categories")
-def list_categories(current_user: User = Depends(get_current_user)):
+def list_categories(current_user: User = Depends(require_master)):
     from schemas.integration import INTEGRATION_CATEGORIES
     return list(INTEGRATION_CATEGORIES)
 
