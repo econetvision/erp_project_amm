@@ -40,6 +40,7 @@ class CompanyUpdate(BaseModel):
     payroll_config:   Optional[dict] = None
     attendance_config: Optional[dict] = None
     features:         Optional[dict] = None
+    employee_id_config: Optional[dict] = None
 
 
 class CompanyResponse(BaseModel):
@@ -64,6 +65,7 @@ class CompanyResponse(BaseModel):
     payroll_config:   Optional[dict] = None
     attendance_config: Optional[dict] = None
     features:         Optional[dict] = None
+    employee_id_config: Optional[dict] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

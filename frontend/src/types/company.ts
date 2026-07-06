@@ -20,6 +20,7 @@ export interface Company {
   payroll_config: Record<string, any> | null;
   attendance_config: Record<string, any> | null;
   features: Record<string, boolean> | null;
+  employee_id_config: Record<string, any> | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -61,6 +62,7 @@ export interface CompanyUpdate {
   payroll_config?: Record<string, any>;
   attendance_config?: Record<string, any>;
   features?: Record<string, boolean>;
+  employee_id_config?: Record<string, any>;
 }
 
 export interface CompanyStats {

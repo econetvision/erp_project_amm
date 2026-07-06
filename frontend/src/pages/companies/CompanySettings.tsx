@@ -21,6 +21,7 @@ export default function CompanySettings() {
   const [payrollConfig, setPayrollConfig] = useState({ esi_rate: 0.75, pf_rate: 12.0, working_days: 26, overtime_multiplier: 1.5 });
   const [attendanceConfig, setAttendanceConfig] = useState({ gps_enabled: true, geofencing: true, qr_enabled: false });
   const [features, setFeatures] = useState({ payroll: true, vehicles: true, attendance_face: true, jobs: true });
+  const [employeeIdConfig, setEmployeeIdConfig] = useState({ prefix: "", include_site: true, separator: "-", seq_digits: 3, seq_start: 1 });
 
   const [selectedCoId, setSelectedCoId] = useState<number | null>(null);
   const companyId = id ? parseInt(id) : (selectedCoId ?? auth?.company_id ?? null);
@@ -58,6 +59,7 @@ export default function CompanySettings() {
         if (r.data.payroll_config) setPayrollConfig(prev => ({ ...prev, ...r.data.payroll_config }));
         if (r.data.attendance_config) setAttendanceConfig(prev => ({ ...prev, ...r.data.attendance_config }));
         if (r.data.features) setFeatures(prev => ({ ...prev, ...r.data.features }));
+        if (r.data.employee_id_config) setEmployeeIdConfig(prev => ({ ...prev, ...r.data.employee_id_config }));
       } catch (e: any) {
         setAlert({ type: "danger", message: e.message });
       } finally {
@@ -117,6 +119,16 @@ export default function CompanySettings() {
     }
   }
 
+  async function saveEmployeeIdConfig() {
+    if (!companyId) return;
+    try {
+      await updateCompany(companyId, { employee_id_config: employeeIdConfig } as CompanyUpdate);
+      setAlert({ type: "success", message: "Employee ID pattern saved. New employees will use this format." });
+    } catch (e: any) {
+      setAlert({ type: "danger", message: e.message });
+    }
+  }
+
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     if (!companyId || !e.target.files?.[0]) return;
     const reader = new FileReader();
@@ -148,8 +160,16 @@ export default function CompanySettings() {
     { key: "theme", label: "Branding & Theme" },
     { key: "payroll", label: "Payroll Config" },
     { key: "attendance", label: "Attendance Rules" },
+    { key: "employee_id", label: "Employee ID" },
     { key: "features", label: "Features" },
   ];
+
+  // Live preview of the configured employee-code pattern
+  const previewPrefix = (employeeIdConfig.prefix || company.name.replace(/[^A-Za-z]/g, "").slice(0, 5) || "EMP").toUpperCase();
+  const previewParts = [previewPrefix, ...(employeeIdConfig.include_site ? ["HQ"] : [])];
+  const previewCode = previewParts.join(employeeIdConfig.separator)
+    + employeeIdConfig.separator
+    + String(employeeIdConfig.seq_start || 1).padStart(employeeIdConfig.seq_digits || 3, "0");
 
   return (
     <div>
@@ -393,6 +413,65 @@ export default function CompanySettings() {
             </div>
             <div className="text-end mt-3">
               <button className="btn btn-primary" onClick={saveAttendance}>Save Attendance Settings</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Employee ID Tab */}
+      {activeTab === "employee_id" && (
+        <div className="card shadow-sm">
+          <div className="card-body">
+            <p className="text-muted mb-3">
+              Define the Employee ID format used when creating employees (manually or via bulk import).
+              Changing this only affects <strong>new</strong> employees — existing IDs are not renumbered.
+            </p>
+            <div className="row g-3">
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Company Prefix</label>
+                <input className="form-control" maxLength={5} placeholder="e.g. ABC"
+                  value={employeeIdConfig.prefix}
+                  onChange={e => setEmployeeIdConfig({ ...employeeIdConfig, prefix: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") })} />
+                <small className="text-muted">Blank = first 5 letters of company name</small>
+              </div>
+              <div className="col-md-2">
+                <label className="form-label fw-semibold">Separator</label>
+                <select className="form-select" value={employeeIdConfig.separator}
+                  onChange={e => setEmployeeIdConfig({ ...employeeIdConfig, separator: e.target.value })}>
+                  <option value="-">- (dash)</option>
+                  <option value="/">/ (slash)</option>
+                  <option value="_">_ (underscore)</option>
+                  <option value="">None</option>
+                </select>
+              </div>
+              <div className="col-md-2">
+                <label className="form-label fw-semibold">Number Digits</label>
+                <input type="number" min={1} max={8} className="form-control" value={employeeIdConfig.seq_digits}
+                  onChange={e => setEmployeeIdConfig({ ...employeeIdConfig, seq_digits: Math.min(8, Math.max(1, parseInt(e.target.value) || 3)) })} />
+                <small className="text-muted">Zero-padding, e.g. 3 → 001</small>
+              </div>
+              <div className="col-md-2">
+                <label className="form-label fw-semibold">Start From</label>
+                <input type="number" min={1} className="form-control" value={employeeIdConfig.seq_start}
+                  onChange={e => setEmployeeIdConfig({ ...employeeIdConfig, seq_start: Math.max(1, parseInt(e.target.value) || 1) })} />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Site Segment</label>
+                <div className="form-check form-switch mt-2">
+                  <input className="form-check-input" type="checkbox" checked={employeeIdConfig.include_site}
+                    onChange={e => setEmployeeIdConfig({ ...employeeIdConfig, include_site: e.target.checked })} />
+                  <label className="form-check-label">Include work location (e.g. HQ)</label>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4">
+              <h6 className="fw-semibold">Preview</h6>
+              <div className="p-3 rounded border bg-light d-inline-block">
+                <code className="fs-5 text-primary fw-bold">{previewCode}</code>
+              </div>
+            </div>
+            <div className="text-end mt-3">
+              <button className="btn btn-primary" onClick={saveEmployeeIdConfig}>Save Employee ID Pattern</button>
             </div>
           </div>
         </div>

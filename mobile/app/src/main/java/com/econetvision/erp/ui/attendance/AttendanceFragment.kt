@@ -2,13 +2,10 @@ package com.econetvision.erp.ui.attendance
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
 import android.location.Location
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Base64
@@ -17,8 +14,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
-import androidx.exifinterface.media.ExifInterface
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.econetvision.erp.R
@@ -41,7 +36,6 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.tasks.CancellationTokenSource
-import java.io.ByteArrayOutputStream
 import java.io.File
 
 class AttendanceFragment : Fragment() {
@@ -57,8 +51,6 @@ class AttendanceFragment : Fragment() {
     private var currentAssignment: MyAssignment? = null
     private var isTrackingTrip = false
     private var googleMap: GoogleMap? = null
-    private var photoUri: Uri? = null
-    private var photoFile: File? = null
 
     private val trackingPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -95,21 +87,25 @@ class AttendanceFragment : Fragment() {
         doFetchLocationAndSubmitManual()
     }
 
-    private val takePictureLauncher = registerForActivityResult(
-        ActivityResultContracts.TakePicture()
-    ) { success: Boolean ->
-        if (success && photoFile?.exists() == true) {
-            val bitmap = loadAndResizeBitmap(photoFile!!, 640)
-            if (bitmap != null) {
-                capturedImage = bitmapToBase64(bitmap)
+    // Live face scan with blink liveness check. FaceCaptureActivity only returns a
+    // photo (already rotated + resized to 640px JPEG) after a real blink was seen.
+    private val faceCaptureLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val path = result.data?.getStringExtra(FaceCaptureActivity.EXTRA_IMAGE_PATH)
+        if (result.resultCode == Activity.RESULT_OK && path != null) {
+            val file = File(path)
+            if (file.exists()) {
+                capturedImage = Base64.encodeToString(file.readBytes(), Base64.NO_WRAP)
+                file.delete()
                 fetchLocationAndSubmit()
             } else {
                 showToast("Failed to process image", ToastType.ERROR)
+                pendingAction = null
             }
-            // Clean up temp file
-            photoFile?.delete()
         } else {
-            showToast("Photo capture cancelled", ToastType.WARNING)
+            showToast("Face capture cancelled", ToastType.WARNING)
+            pendingAction = null
         }
     }
 
@@ -393,15 +389,7 @@ class AttendanceFragment : Fragment() {
     }
 
     private fun launchCamera() {
-        val cacheDir = File(requireContext().cacheDir, "face_captures")
-        if (!cacheDir.exists()) cacheDir.mkdirs()
-        photoFile = File(cacheDir, "face_${System.currentTimeMillis()}.jpg")
-        photoUri = FileProvider.getUriForFile(
-            requireContext(),
-            "${requireContext().packageName}.fileprovider",
-            photoFile!!
-        )
-        takePictureLauncher.launch(photoUri)
+        faceCaptureLauncher.launch(Intent(requireContext(), FaceCaptureActivity::class.java))
     }
 
     /**
@@ -542,58 +530,6 @@ class AttendanceFragment : Fragment() {
         }
         pendingAction = null
         capturedImage = null
-    }
-
-    private fun bitmapToBase64(bitmap: Bitmap): String {
-        val stream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
-        val byteArray = stream.toByteArray()
-        return Base64.encodeToString(byteArray, Base64.NO_WRAP)
-    }
-
-    /**
-     * Load image from file and resize to target width while maintaining aspect ratio.
-     * Also applies EXIF rotation correction for front camera images.
-     */
-    private fun loadAndResizeBitmap(file: File, targetWidth: Int): Bitmap? {
-        return try {
-            // First decode bounds only
-            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeFile(file.absolutePath, options)
-
-            // Calculate sample size for efficient loading
-            val scale = (options.outWidth.toFloat() / targetWidth).toInt().coerceAtLeast(1)
-            options.inJustDecodeBounds = false
-            options.inSampleSize = scale
-
-            var bitmap = BitmapFactory.decodeFile(file.absolutePath, options) ?: return null
-
-            // Apply EXIF rotation
-            val exif = ExifInterface(file.absolutePath)
-            val orientation = exif.getAttributeInt(
-                ExifInterface.TAG_ORIENTATION,
-                ExifInterface.ORIENTATION_NORMAL
-            )
-            val matrix = Matrix()
-            when (orientation) {
-                ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
-                ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
-                ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
-                ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
-                ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
-            }
-            if (!matrix.isIdentity) {
-                bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-            }
-
-            // Scale to target width
-            val ratio = targetWidth.toFloat() / bitmap.width
-            val newHeight = (bitmap.height * ratio).toInt()
-            Bitmap.createScaledBitmap(bitmap, targetWidth, newHeight, true)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
     }
 
     private fun observeViewModel() {

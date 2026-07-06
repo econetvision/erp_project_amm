@@ -95,8 +95,10 @@ function AppRoutes() {
         <Route path="employees/new" element={
           <RequireAuth roles={["master","admin","supervisor"]}><EmployeeForm /></RequireAuth>
         } />
+        {/* Full employee edit is admin/master only (backend PUT/PATCH enforce the same);
+            supervisors can still create workers and adjust work locations. */}
         <Route path="employees/:id/edit" element={
-          <RequireAuth roles={["master","admin","supervisor"]}><EmployeeForm /></RequireAuth>
+          <RequireAuth roles={["master","admin"]}><EmployeeForm /></RequireAuth>
         } />
         <Route path="work-locations" element={
           <RequireAuth roles={["master","admin","supervisor"]}><WorkLocations /></RequireAuth>

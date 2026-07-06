@@ -7,4 +7,7 @@
     <string name="nav_attendance">Attendance</string>
     <string name="nav_notifications">Alerts</string>
     <string name="nav_settings">Settings</string>
+    <string name="face_scan_title">Face Verification</string>
+    <string name="face_scan_position_hint">Position your face inside the oval</string>
+    <string name="face_scan_cancel">Cancel</string>
 </resources>

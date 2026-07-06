@@ -41,5 +41,9 @@ class Company(Base):
     features        = Column(JSONB, nullable=True, default=None)
     # e.g. {"payroll": true, "vehicles": true, "attendance_face": true, "jobs": true}
 
+    # Employee ID (employee_code) generation pattern
+    employee_id_config = Column(JSONB, nullable=True, default=None)
+    # e.g. {"prefix": "ABC", "include_site": true, "separator": "-", "seq_digits": 3, "seq_start": 1}
+
     created_at      = Column(DateTime(timezone=True), server_default=func.now())
     updated_at      = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

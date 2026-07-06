@@ -20,3 +20,24 @@ export const verifyEmail     = (id: number | string, code: string): Promise<Axio
 
 // Work location assignment
 export const assignWorkLocation = (id: number | string, data: { work_location_name: string; work_latitude: number; work_longitude: number; attendance_radius_m?: number }): Promise<AxiosResponse<Employee>> => api.put(`/api/employees/${id}/work-location`, data);
+
+// Bulk import / export (Excel). Longer timeouts — these move whole files.
+export interface ImportResult {
+  total_rows: number;
+  created: number;
+  failed: number;
+  created_employees: { row: number; employee_code: string; name: string }[];
+  errors: { row: number; error: string }[];
+}
+export const downloadEmployeeTemplate = (): Promise<AxiosResponse<Blob>> =>
+  api.get("/api/employees/import/template", { responseType: "blob", timeout: 60000 });
+export const exportEmployees = (q?: string): Promise<AxiosResponse<Blob>> =>
+  api.get("/api/employees/export", { params: q ? { q } : undefined, responseType: "blob", timeout: 120000 });
+export const importEmployees = (file: File): Promise<AxiosResponse<ImportResult>> => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post("/api/employees/import", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+    timeout: 300000,
+  });
+};

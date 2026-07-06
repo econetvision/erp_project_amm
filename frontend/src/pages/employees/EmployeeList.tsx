@@ -1,9 +1,25 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAllEmployees, deleteEmployee } from "../../api/employeeApi";
+import {
+  getAllEmployees, deleteEmployee,
+  downloadEmployeeTemplate, exportEmployees, importEmployees,
+} from "../../api/employeeApi";
+import type { ImportResult } from "../../api/employeeApi";
 import AlertMessage from "../../components/AlertMessage";
 import ConfirmModal from "../../components/ConfirmModal";
+import { useAuth } from "../../context/AuthContext";
 import type { Employee } from "../../types/employee";
+
+function saveBlob(data: Blob, filename: string) {
+  const url = window.URL.createObjectURL(data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
 
 function maskAadhar(num: string) {
   return num ? `XXXX-XXXX-${num.slice(-4)}` : "-";
@@ -18,7 +34,14 @@ export default function EmployeeList() {
   const [pages, setPages]         = useState(1);
   const [alert, setAlert]         = useState({ type: "", message: "" });
   const [deleteId, setDeleteId]   = useState<number | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const fileInputRef              = useRef<HTMLInputElement>(null);
   const navigate                  = useNavigate();
+  const { auth }                  = useAuth();
+  // Employee edit/delete and bulk import/export follow the admin/master hierarchy;
+  // supervisors can only view and add workers.
+  const canManage = ["master", "admin"].includes(auth?.role || "");
   // Photos are stored as backend-relative paths (/uploads/...); prefix with the API origin.
   const apiBase = process.env.REACT_APP_API_URL || "http://localhost:8088";
 
@@ -47,6 +70,46 @@ export default function EmployeeList() {
     }
   }
 
+  async function handleDownloadTemplate() {
+    try {
+      const res = await downloadEmployeeTemplate();
+      saveBlob(res.data, "employee_import_template.xlsx");
+    } catch (e: any) {
+      setAlert({ type: "danger", message: e.message });
+    }
+  }
+
+  async function handleExport() {
+    try {
+      const res = await exportEmployees(search || undefined);
+      saveBlob(res.data, `employees_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      setAlert({ type: "success", message: "Employees exported." });
+    } catch (e: any) {
+      setAlert({ type: "danger", message: e.message });
+    }
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const res = await importEmployees(file);
+      setImportResult(res.data);
+      setAlert({
+        type: res.data.failed === 0 ? "success" : "warning",
+        message: `Import finished: ${res.data.created} created, ${res.data.failed} failed (of ${res.data.total_rows} rows).`,
+      });
+      fetchEmployees();
+    } catch (err: any) {
+      setAlert({ type: "danger", message: err.message });
+    } finally {
+      setImporting(false);
+    }
+  }
+
   function getPageNumbers(): (number | "...")[] {
     const arr: (number | "...")[] = [];
     if (pages <= 7) { for (let i = 1; i <= pages; i++) arr.push(i); return arr; }
@@ -60,14 +123,53 @@ export default function EmployeeList() {
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h3 className="fw-bold">Employees</h3>
-        <button className="btn btn-primary" onClick={() => navigate("/employees/new")}>
-          + Add Employee
-        </button>
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h3 className="fw-bold mb-0">Employees</h3>
+        <div className="d-flex gap-2 flex-wrap">
+          {canManage && (
+            <>
+              <button className="btn btn-outline-secondary" onClick={handleDownloadTemplate}
+                title="Download the sample Excel format for bulk import">
+                📄 Sample Template
+              </button>
+              <button className="btn btn-outline-success" onClick={handleExport}>
+                ⬇ Export Excel
+              </button>
+              <button className="btn btn-outline-primary" disabled={importing}
+                onClick={() => fileInputRef.current?.click()}>
+                {importing ? "Importing…" : "⬆ Import Excel"}
+              </button>
+              <input type="file" ref={fileInputRef} hidden
+                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                onChange={handleImportFile} />
+            </>
+          )}
+          <button className="btn btn-primary" onClick={() => navigate("/employees/new")}>
+            + Add Employee
+          </button>
+        </div>
       </div>
 
       <AlertMessage {...alert} onClose={() => setAlert({ type: "", message: "" })} />
+
+      {importResult && importResult.errors.length > 0 && (
+        <div className="card border-warning shadow-sm mb-3">
+          <div className="card-header bg-warning-subtle d-flex justify-content-between align-items-center">
+            <span className="fw-semibold">Import issues ({importResult.errors.length} rows skipped)</span>
+            <button className="btn-close" onClick={() => setImportResult(null)} />
+          </div>
+          <div className="table-responsive" style={{ maxHeight: 240, overflowY: "auto" }}>
+            <table className="table table-sm mb-0">
+              <thead><tr><th style={{ width: 90 }}>Row</th><th>Problem</th></tr></thead>
+              <tbody>
+                {importResult.errors.map((err, i) => (
+                  <tr key={i}><td>#{err.row}</td><td className="text-danger">{err.error}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="row g-2 mb-3">
         <div className="col">
@@ -130,10 +232,16 @@ export default function EmployeeList() {
                       {(!emp.kyc_status || emp.kyc_status === "pending") && <span className="badge bg-secondary">Pending</span>}
                     </td>
                     <td>
-                      <button className="btn btn-sm btn-outline-primary me-1"
-                        onClick={() => navigate(`/employees/${emp.id}/edit`)}>Edit</button>
-                      <button className="btn btn-sm btn-outline-danger"
-                        onClick={() => setDeleteId(emp.id)}>Delete</button>
+                      {canManage ? (
+                        <>
+                          <button className="btn btn-sm btn-outline-primary me-1"
+                            onClick={() => navigate(`/employees/${emp.id}/edit`)}>Edit</button>
+                          <button className="btn btn-sm btn-outline-danger"
+                            onClick={() => setDeleteId(emp.id)}>Delete</button>
+                        </>
+                      ) : (
+                        <span className="text-muted small">View only</span>
+                      )}
                     </td>
                   </tr>
                 ))

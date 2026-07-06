@@ -40,6 +40,16 @@
 
         <activity android:name=".MainActivity" />
         <activity android:name=".ui.SecurityActivity" />
+        <activity
+            android:name=".ui.attendance.FaceCaptureActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- Ask Play services to download the ML Kit face model at install time so
+             the first face scan doesn't have to wait for it. -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="face" />
 
         <service
             android:name=".service.VehicleTrackingService"

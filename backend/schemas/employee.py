@@ -139,12 +139,19 @@ class WorkLocationUpdateSchema(BaseModel):
 
 
 class EmployeeCodeUpdateSchema(BaseModel):
-    """Schema for admin to update employee code - format: COMPANY-SITE-ID"""
-    employee_code: str = Field(..., min_length=3, max_length=50)
+    """Schema for admin to update employee code.
+
+    Accepts codes matching any company-configured pattern: alphanumeric
+    segments joined by -, / or _ (or none), e.g. ABC-HQ-001, XYZ/PLANT1/0042,
+    EMP0007.
+    """
+    employee_code: str = Field(..., min_length=3, max_length=20)
 
     @field_validator("employee_code")
     @classmethod
     def validate_employee_code(cls, v: str) -> str:
-        if not re.fullmatch(r"[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+", v.upper()):
-            raise ValueError("Employee code must be in format: COMPANY-SITE-ID (e.g., ABC-HQ-001)")
+        if not re.fullmatch(r"[A-Z0-9]+(?:[-/_][A-Z0-9]+)*", v.upper()):
+            raise ValueError(
+                "Employee code may only contain letters, numbers and - / _ separators (e.g. ABC-HQ-001)"
+            )
         return v.upper()

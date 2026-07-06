@@ -112,6 +112,17 @@ dependencies {
     // Biometric
     implementation("androidx.biometric:biometric:1.1.0")
 
+    // CameraX — live front-camera preview for face scan with blink liveness
+    implementation("androidx.camera:camera-core:1.3.1")
+    implementation("androidx.camera:camera-camera2:1.3.1")
+    implementation("androidx.camera:camera-lifecycle:1.3.1")
+    implementation("androidx.camera:camera-view:1.3.1")
+
+    // ML Kit face detection (thin client — model is delivered via Google Play services)
+    // Used for on-device blink (liveness) detection before the capture is sent to the
+    // backend for face verification.
+    implementation("com.google.android.gms:play-services-mlkit-face-detection:17.1.0")
+
     // EXIF for image rotation
     implementation("androidx.exifinterface:exifinterface:1.3.7")
 }
