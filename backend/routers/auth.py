@@ -3,7 +3,7 @@ import base64
 import uuid
 import random
 import time
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
@@ -29,7 +29,7 @@ class PhotoUploadRequest(BaseModel):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == payload.username).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password")
@@ -37,8 +37,12 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     if user.role != "master" and user.company_id is not None:
         validate_company_license(db, user.company_id)
     # Accounts pending a first-login password setup must do it from a browser
-    # before the mobile app will let them in.
-    if payload.client != "web" and user.must_change_password:
+    # before the mobile app will let them in. A browser is recognised by the
+    # explicit client field, or — for frontend bundles that predate that field —
+    # by its Mozilla User-Agent (the Android app's OkHttp sends "okhttp/x.y").
+    user_agent = request.headers.get("user-agent", "").lower()
+    is_browser = payload.client == "web" or (not payload.client and "mozilla" in user_agent)
+    if not is_browser and user.must_change_password:
         raise HTTPException(
             status_code=403,
             detail="First login must be done from a browser. Please sign in on the web portal, set your password, then log in here.",
