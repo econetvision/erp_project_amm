@@ -17,6 +17,7 @@ from schemas.employee import (
     EmployeeCreateResponse, WorkLocationUpdateSchema, EmployeeCodeUpdateSchema
 )
 from services.face_service import get_face_encoding
+from services.license_service import enforce_seat_limit, SEAT_LIMIT
 from services import storage
 from auth.dependencies import require_admin_or_supervisor, require_admin, get_current_user
 from config.settings import settings
@@ -175,6 +176,11 @@ def _persist_employee(db: Session, payload: EmployeeCreate, current_user: User) 
     if current_user.role == "supervisor" and role != "worker":
         raise HTTPException(status_code=403, detail="Supervisors can only create workers")
 
+    # Every new employee consumes a license seat — enforce the company's seat
+    # limit (no-op when license enforcement is bypassed via settings flags).
+    if company_id is not None:
+        enforce_seat_limit(db, company_id)
+
     # Generate employee code following the company's configured pattern
     work_location = data.get("work_location_name")
     employee_code = _generate_employee_code(db, company_id, work_location)
@@ -229,7 +235,6 @@ IMPORT_COLUMNS = [
     ("aadhar_number",       True,  "Exactly 12 digits",                                  "234567890123"),
     ("bank_account_number", True,  "8-18 digits",                                        "12345678901"),
     ("hourly_rate",         True,  "Hourly wage, number >= 0",                           "150.50"),
-    ("role",                False, "worker or supervisor (default: worker)",             "worker"),
     ("gender",              False, "male / female / other",                              "male"),
     ("date_of_birth",       False, "YYYY-MM-DD",                                         "1995-04-23"),
     ("blood_group",         False, "e.g. O+, AB-",                                       "O+"),
@@ -305,6 +310,7 @@ def download_import_template(current_user: User = Depends(require_admin)):
     info.append(["3. Dates must be YYYY-MM-DD. Keep Aadhar/account numbers as text to avoid losing digits."])
     info.append(["4. The Employee ID is generated automatically from your company's configured pattern."])
     info.append(["5. Rows that fail validation are skipped and reported — the rest are still imported."])
+    info.append(["6. All imported employees are created as workers. Create supervisor/admin accounts individually from User Management."])
     info.append([])
     info.append(["Column", "Required", "Description", "Example"])
     for c in ("A", "B", "C", "D"):
@@ -400,7 +406,7 @@ def _parse_import_row(raw: dict) -> dict:
     if data.get("shift"):
         shift = data["shift"].upper().replace(" ", "_")
         data["shift"] = {"A": "SHIFT_A", "B": "SHIFT_B"}.get(shift, shift)
-    for key in ("gender", "marital_status", "role"):
+    for key in ("gender", "marital_status"):
         if data.get(key):
             data[key] = data[key].lower()
     if data.get("ifsc_code"):
@@ -420,6 +426,11 @@ async def import_employees(
     invalid rows are reported with their row number and reason.
     """
     from openpyxl import load_workbook
+
+    # Fail fast when the company's license is missing/suspended/expired or the
+    # seat limit is already reached, before parsing the file at all.
+    if current_user.company_id is not None:
+        enforce_seat_limit(db, current_user.company_id)
 
     if file.filename and not file.filename.lower().endswith((".xlsx", ".xlsm")):
         raise HTTPException(status_code=400, detail="Please upload an Excel (.xlsx) file — download the sample template first")
@@ -460,6 +471,15 @@ async def import_employees(
             break
 
         raw = {key: value for key, value in zip(headers, row) if key}
+
+        # Bulk import creates workers only; reject rows that ask for another
+        # role (e.g. files based on an older template) instead of silently
+        # downgrading them.
+        role_value = _cell_to_str(raw.get("role"))
+        if role_value and role_value.lower() != "worker":
+            errors.append({"row": idx, "error": "Bulk import can only create workers — remove the role column or set it to 'worker'"})
+            continue
+
         try:
             payload = EmployeeCreate(**_parse_import_row(raw))
             emp = _persist_employee(db, payload, current_user)
@@ -473,6 +493,9 @@ async def import_employees(
             })
         except HTTPException as he:
             db.rollback()
+            if he.detail == SEAT_LIMIT:
+                errors.append({"row": idx, "error": "License seat limit reached — this and all remaining rows were skipped"})
+                break
             errors.append({"row": idx, "error": str(he.detail)})
         except Exception as e:
             db.rollback()

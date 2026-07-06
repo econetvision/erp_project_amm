@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import Layout           from "./components/Layout";
 import LockScreen       from "./components/LockScreen";
 import Login            from "./pages/auth/Login";
+import SetPassword      from "./pages/auth/SetPassword";
 import UserManagement   from "./pages/auth/UserManagement";
 import EmployeeList     from "./pages/employees/EmployeeList";
 import EmployeeForm     from "./pages/employees/EmployeeForm";
@@ -41,6 +42,8 @@ import CompanyIntegrations  from "./pages/integrations/CompanyIntegrations";
 function RequireAuth({ children, roles }: { children: ReactNode; roles?: string[] }) {
   const { auth } = useAuth();
   if (!auth) return <Navigate to="/login" replace />;
+  // First browser login: force the user to set their own password first
+  if (auth.must_change_password) return <Navigate to="/set-password" replace />;
   if (roles && !roles.includes(auth.role)) return <Navigate to="/attendance" replace />;
   return <>{children}</>;
 }
@@ -53,7 +56,12 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/login" element={auth ? <Navigate to="/dashboard" replace /> : <Login />} />
+      <Route path="/login" element={
+        auth
+          ? <Navigate to={auth.must_change_password ? "/set-password" : "/dashboard"} replace />
+          : <Login />
+      } />
+      <Route path="/set-password" element={auth ? <SetPassword /> : <Navigate to="/login" replace />} />
 
       {/* Public landing page */}
       <Route path="/" element={<LandingPage />} />

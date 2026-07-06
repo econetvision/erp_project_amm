@@ -49,6 +49,9 @@ class User(Base):
     phone_verified      = Column(String(1), nullable=True, default="N")
     email_verified      = Column(String(1), nullable=True, default="N")
     onboarding_complete = Column(Boolean, nullable=True, default=False)
+    # Admin/supervisor accounts created by an admin must set their own password
+    # on first browser login before the mobile app will accept them.
+    must_change_password = Column(Boolean, nullable=True, default=False)
 
     created_at    = Column(DateTime(timezone=True), server_default=func.now())
     updated_at    = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

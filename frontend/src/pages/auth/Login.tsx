@@ -18,8 +18,10 @@ export default function Login() {
     try {
       const res = await loginApi(form);
       login(res.data);
-      // Redirect based on role
-      if (res.data.role === "worker") {
+      // First browser login: the user must set their own password before anything else
+      if (res.data.must_change_password) {
+        navigate("/set-password", { state: { currentPassword: form.password } });
+      } else if (res.data.role === "worker") {
         navigate("/attendance");
       } else {
         navigate("/dashboard");

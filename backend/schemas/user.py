@@ -6,6 +6,9 @@ from datetime import datetime
 class LoginRequest(BaseModel):
     username: str
     password: str
+    # "web" (browser) | "android" (mobile app). Defaults to unknown so legacy
+    # mobile builds that don't send it can't bypass the first-login-from-browser rule.
+    client:   str = ""
 
 
 class UserCreate(BaseModel):
@@ -91,3 +94,4 @@ class TokenResponse(BaseModel):
     lock_timeout: Optional[int] = None
     has_pin:      bool = False
     theme_preference: Optional[dict] = None
+    must_change_password: bool = False

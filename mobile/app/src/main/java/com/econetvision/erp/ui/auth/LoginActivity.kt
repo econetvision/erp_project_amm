@@ -119,10 +119,10 @@ class LoginActivity : AppCompatActivity() {
             result.onSuccess { token ->
                 sessionManager.saveToken(token)
                 navigateToMain()
-            }.onFailure {
+            }.onFailure { error ->
                 Toast.makeText(
                     this,
-                    "Face not recognized. Please log in with your username and password.",
+                    error.message ?: "Face not recognized. Please log in with your username and password.",
                     Toast.LENGTH_LONG
                 ).show()
             }

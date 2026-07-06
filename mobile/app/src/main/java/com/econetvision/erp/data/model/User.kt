@@ -4,7 +4,9 @@ import com.google.gson.annotations.SerializedName
 
 data class LoginRequest(
     val username: String,
-    val password: String
+    val password: String,
+    // Lets the backend enforce the first-login-from-browser rule for admin/supervisor
+    val client: String = "android"
 )
 
 data class FaceLoginRequest(

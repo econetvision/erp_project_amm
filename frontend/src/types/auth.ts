@@ -16,6 +16,7 @@ export interface TokenResponse {
   has_pin?: boolean;
   theme_preference?: { mode: string; primaryColor: string; accentColor: string } | null;
   impersonated?: boolean;
+  must_change_password?: boolean;
 }
 
 export interface User {

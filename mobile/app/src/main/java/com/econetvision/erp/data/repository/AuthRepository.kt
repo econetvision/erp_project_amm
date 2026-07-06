@@ -6,13 +6,23 @@ import com.econetvision.erp.data.model.*
 class AuthRepository {
     private val api = RetrofitClient.instance
 
+    /** Extract the human-readable "detail" field from a FastAPI error body. */
+    private fun errorDetail(raw: String?, fallback: String): String {
+        if (raw.isNullOrBlank()) return fallback
+        return try {
+            org.json.JSONObject(raw).optString("detail").ifBlank { fallback }
+        } catch (e: Exception) {
+            fallback
+        }
+    }
+
     suspend fun login(username: String, password: String): Result<TokenResponse> {
         return try {
             val response = api.login(LoginRequest(username, password))
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
             } else {
-                Result.failure(Exception(response.errorBody()?.string() ?: "Login failed"))
+                Result.failure(Exception(errorDetail(response.errorBody()?.string(), "Login failed")))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -25,7 +35,7 @@ class AuthRepository {
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
             } else {
-                Result.failure(Exception(response.errorBody()?.string() ?: "Face login failed"))
+                Result.failure(Exception(errorDetail(response.errorBody()?.string(), "Face login failed")))
             }
         } catch (e: Exception) {
             Result.failure(e)

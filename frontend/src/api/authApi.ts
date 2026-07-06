@@ -3,7 +3,7 @@ import type { LoginCredentials, TokenResponse, User, UserCreate, UserUpdate, Pas
 import type { PaginatedResponse } from "../types/employee";
 import type { AxiosResponse } from "axios";
 
-export const loginApi        = (credentials: LoginCredentials): Promise<AxiosResponse<TokenResponse>> => api.post("/api/auth/login", credentials);
+export const loginApi        = (credentials: LoginCredentials): Promise<AxiosResponse<TokenResponse>> => api.post("/api/auth/login", { ...credentials, client: "web" });
 export const getMe           = (): Promise<AxiosResponse<User>> => api.get("/api/auth/me");
 export const getUsers        = (params?: { page?: number; per_page?: number; q?: string }): Promise<AxiosResponse<PaginatedResponse<User>>> => api.get("/api/auth/users", { params });
 export const createUser      = (data: UserCreate): Promise<AxiosResponse<User>> => api.post("/api/auth/users", data);

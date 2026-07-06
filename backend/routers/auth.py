@@ -36,6 +36,13 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     # Validate the company license for every role below master in the hierarchy.
     if user.role != "master" and user.company_id is not None:
         validate_company_license(db, user.company_id)
+    # Accounts pending a first-login password setup must do it from a browser
+    # before the mobile app will let them in.
+    if payload.client != "web" and user.must_change_password:
+        raise HTTPException(
+            status_code=403,
+            detail="First login must be done from a browser. Please sign in on the web portal, set your password, then log in here.",
+        )
     token = create_access_token({"sub": str(user.id), "role": user.role, "company_id": user.company_id})
     return TokenResponse(
         access_token=token,
@@ -48,6 +55,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         lock_timeout=user.lock_timeout,
         has_pin=bool(user.pin_hash),
         theme_preference=user.theme_preference,
+        must_change_password=bool(user.must_change_password),
     )
 
 
@@ -63,6 +71,12 @@ def face_login(payload: FaceLoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Face not recognized. Please log in with your username and password.")
     if user.role != "master" and user.company_id is not None:
         validate_company_license(db, user.company_id)
+    # Face login only happens from the mobile app — same first-login rule applies.
+    if user.must_change_password:
+        raise HTTPException(
+            status_code=403,
+            detail="First login must be done from a browser. Please sign in on the web portal, set your password, then log in here.",
+        )
     token = create_access_token({"sub": str(user.id), "role": user.role, "company_id": user.company_id})
     return TokenResponse(
         access_token=token,
@@ -105,6 +119,7 @@ def change_password(
     if not verify_password(payload.current_password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     current_user.password_hash = hash_password(payload.new_password)
+    current_user.must_change_password = False
     db.commit()
     return {"detail": "Password changed successfully"}
 
@@ -195,6 +210,9 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db), _: User = De
         email=payload.email,
         display_name=payload.display_name,
         phone=payload.phone,
+        # Admin/supervisor accounts start with an admin-supplied password;
+        # they must set their own on first browser login.
+        must_change_password=payload.role in ("admin", "supervisor"),
     )
     db.add(user)
     db.commit()
@@ -278,6 +296,10 @@ def admin_update_user(
     update_data = payload.model_dump(exclude_none=True)
     if "password" in update_data:
         user.password_hash = hash_password(update_data.pop("password"))
+        # An admin-supplied password must again be replaced by the user's own
+        # via a browser login before mobile access resumes.
+        if user.role in ("admin", "supervisor"):
+            user.must_change_password = True
     for key, value in update_data.items():
         setattr(user, key, value)
     db.commit()
