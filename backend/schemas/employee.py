@@ -35,9 +35,10 @@ class EmployeeBase(BaseModel):
 
     @field_validator("ifsc_code")
     @classmethod
-    def validate_ifsc(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and not re.fullmatch(r"[A-Z]{4}0[A-Z0-9]{6}", v):
-            raise ValueError("IFSC code must be 11 characters: 4 letters + 0 + 6 alphanumeric")
+    def normalize_ifsc(cls, v: Optional[str]) -> Optional[str]:
+        # Non-blocking validation: just normalize to uppercase, don't reject invalid formats
+        if v is not None:
+            return v.upper().strip()
         return v
 
 
