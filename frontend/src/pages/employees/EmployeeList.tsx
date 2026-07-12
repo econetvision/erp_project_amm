@@ -144,9 +144,12 @@ export default function EmployeeList() {
                 onChange={handleImportFile} />
             </>
           )}
-          <button className="btn btn-primary" onClick={() => navigate("/employees/new")}>
-            + Add Employee
-          </button>
+          {/* Only Admin/Master can add employees - Supervisors can only view/monitor */}
+          {canManage && (
+            <button className="btn btn-primary" onClick={() => navigate("/employees/new")}>
+              + Add Employee
+            </button>
+          )}
         </div>
       </div>
 

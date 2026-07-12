@@ -217,10 +217,10 @@ def _persist_employee(db: Session, payload: EmployeeCreate, current_user: User) 
 
 
 @router.post("", status_code=201)
-def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db), current_user: User = Depends(require_admin_or_supervisor)):
+def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
     """Create a new employee with admin-defined login credentials.
 
-    Admin must provide username and password for the employee.
+    Only Admin/Master can create employees. Supervisors can only monitor workers.
     Employee ID is auto-generated following the company's configured pattern.
     """
     emp = _persist_employee(db, payload, current_user)
