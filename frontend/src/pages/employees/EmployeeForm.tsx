@@ -7,7 +7,7 @@ import ValidatedInput from "../../components/ValidatedInput";
 import { useAuth } from "../../context/AuthContext";
 import { useFormValidation, required, pattern, minLength, minValue } from "../../hooks/useFormValidation";
 
-const EMPTY = { employee_code: "", name: "", address: "", aadhar_number: "", bank_account_number: "", ifsc_code: "", hourly_rate: "", shift: "SHIFT_A", gender: "", date_of_birth: "", blood_group: "", marital_status: "", emergency_contact: "", emergency_name: "", username: "", password: "", work_location_name: "" };
+const EMPTY = { employee_code: "", name: "", address: "", aadhar_number: "", bank_account_number: "", ifsc_code: "", hourly_rate: "", shift: "SHIFT_A", gender: "", date_of_birth: "", blood_group: "", marital_status: "", emergency_contact: "", emergency_name: "", username: "", password: "", work_location_name: "", role: "worker" };
 const STEPS = [
   { title: "Login & Personal", icon: "👤" },
   { title: "Bank Details", icon: "🏦" },
@@ -22,6 +22,8 @@ export default function EmployeeForm() {
   const { auth }              = useAuth();
   // Only Admin/Supervisor (and Master) may set/change an employee's work location.
   const canEditWorkLocation   = ["master", "admin", "supervisor"].includes(auth?.role || "");
+  // Only Admin (and Master) can assign roles to employees
+  const canAssignRole         = ["master", "admin"].includes(auth?.role || "");
   const [locations, setLocations] = useState<{ id: number; location_name: string }[]>([]);
   const [form, setForm]       = useState(EMPTY);
   const [alert, setAlert]     = useState({ type: "", message: "" });
@@ -43,11 +45,14 @@ export default function EmployeeForm() {
   const [ifscLoading, setIfscLoading] = useState(false);
   const [kycStatus, setKycStatus] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
+  // IFSC warning (non-blocking validation)
+  const [ifscWarning, setIfscWarning] = useState<string | null>(null);
 
   // Employee code (shown after creation)
   const [createdEmployeeCode, setCreatedEmployeeCode] = useState<string | null>(null);
 
   // Form validation - username/password only required for new employees
+  // Note: IFSC validation is now a non-blocking warning, not a strict validation
   const { touch, validateAll, getFieldProps, reset } = useFormValidation({
     username: isEdit ? [] : [required(), minLength(3, "Username must be at least 3 characters"), pattern(/^[a-zA-Z0-9_]+$/, "Only letters, numbers, and underscores allowed")],
     password: isEdit ? [] : [required(), minLength(6, "Password must be at least 6 characters")],
@@ -56,9 +61,18 @@ export default function EmployeeForm() {
     aadhar_number: [required(), pattern(/^\d{12}$/, "Must be exactly 12 digits")],
     bank_account_number: [required(), pattern(/^\d{8,18}$/, "Must be 8-18 digits")],
     hourly_rate: [required(), minValue(0, "Rate cannot be negative")],
-    ifsc_code: [pattern(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC format (e.g. SBIN0001234)")],
     emergency_contact: [pattern(/^\+?\d[\d\s-]{7,14}\d$/, "Enter a valid phone number (digits only, 9-15 digits)")],
   });
+
+  // IFSC validation helper (non-blocking warning)
+  const IFSC_PATTERN = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+  const validateIfscWarning = (code: string) => {
+    if (code && code.length > 0 && !IFSC_PATTERN.test(code.toUpperCase())) {
+      setIfscWarning("Invalid IFSC format (e.g. SBIN0001234). You can still proceed.");
+    } else {
+      setIfscWarning(null);
+    }
+  };
 
   // Today (YYYY-MM-DD) — used to prevent selecting a future Date of Birth.
   const today = new Date().toISOString().slice(0, 10);
@@ -89,6 +103,7 @@ export default function EmployeeForm() {
           marital_status: res.data.marital_status || "",
           emergency_contact: res.data.emergency_contact || "",
           emergency_name: res.data.emergency_name || "",
+          role: res.data.role || "worker",
         });
           setSavedId(parseInt(id!));
           setKycStatus(res.data.kyc_status);
@@ -115,6 +130,10 @@ export default function EmployeeForm() {
     setForm((prev) => {
       const next = { ...prev, [name]: value };
       touch(name, value, next);
+      // Check IFSC warning on change
+      if (name === "ifsc_code") {
+        validateIfscWarning(value);
+      }
       return next;
     });
   }
@@ -385,17 +404,21 @@ export default function EmployeeForm() {
                       <label className="form-label fw-semibold">IFSC Code</label>
                       <div className="input-group">
                         <span className="input-group-text">🏛️</span>
-                        <input className={`form-control ${getFieldProps("ifsc_code").className || ""}`}
+                        <input className={`form-control ${ifscWarning ? "is-warning border-warning" : ""}`}
                           name="ifsc_code" value={form.ifsc_code || ""}
-                          onChange={handleChange} onBlur={() => touch("ifsc_code", form.ifsc_code)}
+                          onChange={handleChange} onBlur={() => validateIfscWarning(form.ifsc_code || "")}
                           maxLength={11} placeholder="e.g. SBIN0001234"
                           style={{ textTransform: "uppercase" }} />
                         <button className="btn btn-outline-secondary" type="button"
                           onClick={handleIfscLookup} disabled={ifscLoading || !form.ifsc_code}>
                           {ifscLoading ? "Looking up…" : "Lookup"}
                         </button>
-                        {getFieldProps("ifsc_code").error && <div className="invalid-feedback">{getFieldProps("ifsc_code").error}</div>}
                       </div>
+                      {ifscWarning && (
+                        <div className="form-text text-warning">
+                          ⚠️ {ifscWarning}
+                        </div>
+                      )}
                       {bankInfo && (
                         <div className="form-text text-success">
                           🏦 {bankInfo.bank} — {bankInfo.branch}
@@ -437,6 +460,20 @@ export default function EmployeeForm() {
                       <option value="SHIFT_A">Shift A — 6:30 AM to 2:00 PM (break 10:30 AM, 20 min)</option>
                       <option value="SHIFT_B">Shift B — 9:00 AM to 5:00 PM (break 1:30 PM, 20 min)</option>
                     </ValidatedInput>
+
+                    {/* Role Assignment - Only visible to Admin/Master, and only for new employees */}
+                    {canAssignRole && !isEdit && (
+                      <div className="mb-3">
+                        <label className="form-label fw-semibold">Employee Role</label>
+                        <select className="form-select" name="role" value={form.role} onChange={handleChange}>
+                          <option value="worker">Worker</option>
+                          <option value="supervisor">Supervisor</option>
+                        </select>
+                        <small className="form-text text-muted">
+                          Supervisors can manage workers, approve attendance, and view reports for their assigned location.
+                        </small>
+                      </div>
+                    )}
 
                     <div className="d-flex justify-content-between mt-3">
                       <button type="button" className="btn btn-outline-secondary" onClick={() => setStep(1)}>← Back</button>

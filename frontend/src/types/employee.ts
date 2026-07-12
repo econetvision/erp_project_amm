@@ -1,6 +1,8 @@
 export interface Employee {
   id: number;
   employee_code: string | null;
+  username: string | null;
+  role: string | null;
   name: string;
   gender: string | null;
   date_of_birth: string | null;
@@ -31,6 +33,9 @@ export interface Employee {
 }
 
 export interface EmployeeCreate {
+  username: string;
+  password: string;
+  role?: "worker" | "supervisor";
   name: string;
   gender?: string;
   date_of_birth?: string;
