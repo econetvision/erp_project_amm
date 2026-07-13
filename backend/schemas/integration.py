@@ -62,6 +62,7 @@ class CompanyIntegrationBase(BaseModel):
     rate_limit_per_min: Optional[int] = None
 
 class CompanyIntegrationCreate(CompanyIntegrationBase):
+    company_id:  Optional[int] = None           # ignored; taken from the URL path
     credentials: Optional[dict] = None          # plain-text; will be encrypted before storage
 
 class CompanyIntegrationUpdate(BaseModel):
