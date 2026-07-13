@@ -27,7 +27,8 @@ from schemas.integration import (
     ConnectionTestRequest, ConnectionTestResponse,
     IntegrationDashboard,
 )
-from providers.crypto import encrypt_credentials, mask_credentials
+from providers.crypto import encrypt_credentials, decrypt_credentials, mask_credentials
+from providers.schemas import missing_required_credentials
 from services.integration_service import (
     test_provider_connection,
     get_integration_dashboard,
@@ -39,8 +40,24 @@ import providers.email       # noqa: F401
 import providers.maps        # noqa: F401
 import providers.kyc         # noqa: F401
 import providers.bank        # noqa: F401
+import providers.otp         # noqa: F401
 
 router = APIRouter()
+
+
+def _validate_credentials(db: Session, provider_id: Optional[int], credentials: Optional[dict]):
+    """Reject credential payloads missing keys the adapter requires."""
+    if not provider_id or credentials is None:
+        return
+    ip = db.query(IntegrationProvider).filter(IntegrationProvider.id == provider_id).first()
+    if not ip:
+        return
+    missing = missing_required_credentials(ip.code, credentials)
+    if missing:
+        raise HTTPException(
+            422,
+            f"Missing required credential(s) for {ip.name}: {', '.join(missing)}",
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -152,12 +169,17 @@ def upsert_global_default(
     if gd:
         for k, v in body.model_dump(exclude_unset=True).items():
             if k == "credentials" and v:
-                setattr(gd, k, encrypt_credentials(v))
+                # Merge into stored credentials so partial updates keep other keys
+                provided = {ck: cv for ck, cv in v.items() if str(cv or "").strip()}
+                merged = {**(decrypt_credentials(gd.credentials) or {}), **provided}
+                _validate_credentials(db, body.provider_id or gd.provider_id, merged)
+                setattr(gd, k, encrypt_credentials(merged))
             else:
                 setattr(gd, k, v)
     else:
         data = body.model_dump()
         if data.get("credentials"):
+            _validate_credentials(db, data.get("provider_id"), data["credentials"])
             data["credentials"] = encrypt_credentials(data["credentials"])
         gd = GlobalIntegrationDefault(**data)
         db.add(gd)
@@ -181,6 +203,19 @@ def upsert_global_default(
         provider_name=pname, fallback_provider_name=fbname,
         created_at=gd.created_at, updated_at=gd.updated_at,
     )
+
+
+@router.get("/global-defaults/{category}/credentials")
+def get_global_default_credentials(
+    category: str,
+    current_user: User = Depends(require_master),
+    db: Session = Depends(get_db),
+):
+    """Masked view of stored credentials — shows which keys are set, never full values."""
+    gd = db.query(GlobalIntegrationDefault).filter(GlobalIntegrationDefault.category == category).first()
+    if not gd:
+        raise HTTPException(404, "Global default not found")
+    return {"credentials": mask_credentials(decrypt_credentials(gd.credentials)) or {}}
 
 
 @router.delete("/global-defaults/{category}", status_code=204)
@@ -251,6 +286,8 @@ def create_company_integration(
     if not ip:
         raise HTTPException(404, "Provider not found")
 
+    _validate_credentials(db, body.provider_id, body.credentials)
+
     data = body.model_dump()
     data["company_id"] = company_id
     if data.get("credentials"):
@@ -302,7 +339,11 @@ def update_company_integration(
 
     updates = body.model_dump(exclude_unset=True)
     if "credentials" in updates and updates["credentials"]:
-        updates["credentials"] = encrypt_credentials(updates["credentials"])
+        # Merge into stored credentials so partial updates keep other keys
+        provided = {ck: cv for ck, cv in updates["credentials"].items() if str(cv or "").strip()}
+        merged = {**(decrypt_credentials(ci.credentials) or {}), **provided}
+        _validate_credentials(db, ci.provider_id, merged)
+        updates["credentials"] = encrypt_credentials(merged)
 
     # If setting as default, unset others
     if updates.get("is_default"):
@@ -330,6 +371,26 @@ def update_company_integration(
         provider_name=ip.name if ip else None,
         provider_code=ip.code if ip else None,
     )
+
+
+@router.get("/company/{company_id}/{integration_id}/credentials")
+def get_company_integration_credentials(
+    company_id: int,
+    integration_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Masked view of stored credentials — shows which keys are set, never full values."""
+    if current_user.role not in ("master", "admin"):
+        raise HTTPException(403, "Admin or master access required")
+    if current_user.role != "master" and current_user.company_id != company_id:
+        raise HTTPException(403, "Access denied")
+    ci = db.query(CompanyIntegration).filter(
+        CompanyIntegration.id == integration_id, CompanyIntegration.company_id == company_id,
+    ).first()
+    if not ci:
+        raise HTTPException(404, "Integration not found")
+    return {"credentials": mask_credentials(decrypt_credentials(ci.credentials)) or {}}
 
 
 @router.delete("/company/{company_id}/{integration_id}", status_code=204)

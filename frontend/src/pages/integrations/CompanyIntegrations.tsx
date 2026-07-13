@@ -8,8 +8,10 @@ import {
   createCompanyIntegration,
   updateCompanyIntegration,
   deleteCompanyIntegration,
+  getCompanyIntegrationCredentials,
   testConnection,
 } from "../../api/integrationApi";
+import CredentialFields from "../../components/integrations/CredentialFields";
 import { getCompanies } from "../../api/companyApi";
 import type {
   IntegrationProvider,
@@ -56,13 +58,12 @@ export default function CompanyIntegrations() {
   const [addQuotaDaily, setAddQuotaDaily] = useState<string>("");
   const [addQuotaMonthly, setAddQuotaMonthly] = useState<string>("");
   const [addRateLimit, setAddRateLimit] = useState<string>("");
-  const [addCredentials, setAddCredentials] = useState<{ key: string; value: string }[]>([
-    { key: "", value: "" },
-  ]);
+  const [addCredentials, setAddCredentials] = useState<Record<string, string>>({});
 
   // Edit credentials
   const [editCreds, setEditCreds] = useState<number | null>(null);
-  const [editCredFields, setEditCredFields] = useState<{ key: string; value: string }[]>([{ key: "", value: "" }]);
+  const [editCredValues, setEditCredValues] = useState<Record<string, string>>({});
+  const [editCredMasked, setEditCredMasked] = useState<Record<string, string>>({});
 
   // Test
   const [testing, setTesting] = useState<number | null>(null);
@@ -99,8 +100,9 @@ export default function CompanyIntegrations() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCompany || !addProviderId) return;
-    const creds: Record<string, string> = {};
-    addCredentials.filter(c => c.key.trim()).forEach(c => { creds[c.key.trim()] = c.value; });
+    const creds = Object.fromEntries(
+      Object.entries(addCredentials).filter(([k, v]) => k.trim() && v.trim() !== "")
+    );
     const body: CompanyIntegrationCreate = {
       provider_id: addProviderId as number,
       category: addCategory,
@@ -116,7 +118,7 @@ export default function CompanyIntegrations() {
       await createCompanyIntegration(selectedCompany, body);
       setAlert({ type: "success", message: "Integration added" });
       setShowAdd(false);
-      setAddCredentials([{ key: "", value: "" }]);
+      setAddCredentials({});
       const iRes = await getCompanyIntegrations(selectedCompany);
       setIntegrations(iRes.data);
     } catch (err: any) {
@@ -135,8 +137,9 @@ export default function CompanyIntegrations() {
   };
 
   const handleSaveCreds = async (integrationId: number) => {
-    const creds: Record<string, string> = {};
-    editCredFields.filter(c => c.key.trim()).forEach(c => { creds[c.key.trim()] = c.value; });
+    const creds = Object.fromEntries(
+      Object.entries(editCredValues).filter(([k, v]) => k.trim() && v.trim() !== "")
+    );
     try {
       await updateCompanyIntegration(selectedCompany, integrationId, {
         credentials: Object.keys(creds).length > 0 ? creds : undefined,
@@ -199,7 +202,7 @@ export default function CompanyIntegrations() {
             </select>
           )}
           {selectedCompany > 0 && (
-            <button className="btn btn-sm btn-primary" onClick={() => { setShowAdd(true); setAddCredentials([{ key: "", value: "" }]); }}>
+            <button className="btn btn-sm btn-primary" onClick={() => { setShowAdd(true); setAddCredentials({}); }}>
               + Add Integration
             </button>
           )}
@@ -237,7 +240,7 @@ export default function CompanyIntegrations() {
                 <div className="col-md-3">
                   <label className="form-label fw-semibold">Provider</label>
                   <select className="form-select" value={addProviderId} required
-                    onChange={e => setAddProviderId(parseInt(e.target.value))}>
+                    onChange={e => { setAddProviderId(parseInt(e.target.value)); setAddCredentials({}); }}>
                     <option value="">Select...</option>
                     {providers.filter(p => p.category === addCategory && p.is_active).map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
@@ -284,36 +287,13 @@ export default function CompanyIntegrations() {
 
               {/* Credentials */}
               <div className="mt-3">
-                <label className="form-label fw-semibold">Credentials <small className="text-muted">(encrypted)</small></label>
-                {addCredentials.map((c, i) => (
-                  <div className="row g-2 mb-2" key={i}>
-                    <div className="col-md-4">
-                      <input className="form-control form-control-sm" placeholder="Key (e.g. api_key)"
-                        value={c.key} onChange={e => {
-                          const arr = [...addCredentials];
-                          arr[i] = { ...arr[i], key: e.target.value };
-                          setAddCredentials(arr);
-                        }} />
-                    </div>
-                    <div className="col-md-6">
-                      <input className="form-control form-control-sm" placeholder="Value" type="password"
-                        value={c.value} onChange={e => {
-                          const arr = [...addCredentials];
-                          arr[i] = { ...arr[i], value: e.target.value };
-                          setAddCredentials(arr);
-                        }} />
-                    </div>
-                    <div className="col-md-2">
-                      {i === addCredentials.length - 1 ? (
-                        <button type="button" className="btn btn-sm btn-outline-primary"
-                          onClick={() => setAddCredentials([...addCredentials, { key: "", value: "" }])}>+</button>
-                      ) : (
-                        <button type="button" className="btn btn-sm btn-outline-danger"
-                          onClick={() => setAddCredentials(addCredentials.filter((_, j) => j !== i))}>-</button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                <label className="form-label fw-semibold">API Keys / Credentials <small className="text-muted">(encrypted at rest)</small></label>
+                <CredentialFields
+                  schema={providers.find(p => p.id === addProviderId)?.config_schema}
+                  values={addCredentials}
+                  onChange={setAddCredentials}
+                  resetKey={addProviderId}
+                />
               </div>
 
               <div className="mt-3 text-end">
@@ -381,7 +361,17 @@ export default function CompanyIntegrations() {
                           )}
                           {(isMaster || auth?.role === "admin") && (
                             <button className="btn btn-link btn-sm p-0 ms-2"
-                              onClick={() => { setEditCreds(editCreds === ci.id ? null : ci.id); setEditCredFields([{ key: "", value: "" }]); }}>
+                              onClick={() => {
+                                if (editCreds === ci.id) { setEditCreds(null); return; }
+                                setEditCreds(ci.id);
+                                setEditCredValues({});
+                                setEditCredMasked({});
+                                if (ci.credentials_set) {
+                                  getCompanyIntegrationCredentials(selectedCompany, ci.id)
+                                    .then(r => setEditCredMasked(r.data.credentials))
+                                    .catch(() => {});
+                                }
+                              }}>
                               {editCreds === ci.id ? "Cancel" : "Edit"}
                             </button>
                           )}
@@ -414,37 +404,18 @@ export default function CompanyIntegrations() {
                         <tr key={`creds-${ci.id}`}>
                           <td colSpan={8} className="bg-light">
                             <div className="p-2">
-                              <strong className="d-block mb-2">Update Credentials (values encrypted)</strong>
-                              {editCredFields.map((f, i) => (
-                                <div className="row g-2 mb-2" key={i}>
-                                  <div className="col-4">
-                                    <input className="form-control form-control-sm" placeholder="Key"
-                                      value={f.key} onChange={e => {
-                                        const arr = [...editCredFields];
-                                        arr[i] = { ...arr[i], key: e.target.value };
-                                        setEditCredFields(arr);
-                                      }} />
-                                  </div>
-                                  <div className="col-5">
-                                    <input className="form-control form-control-sm" placeholder="Value" type="password"
-                                      value={f.value} onChange={e => {
-                                        const arr = [...editCredFields];
-                                        arr[i] = { ...arr[i], value: e.target.value };
-                                        setEditCredFields(arr);
-                                      }} />
-                                  </div>
-                                  <div className="col-3">
-                                    {i === editCredFields.length - 1 ? (
-                                      <button type="button" className="btn btn-sm btn-outline-primary"
-                                        onClick={() => setEditCredFields([...editCredFields, { key: "", value: "" }])}>+ Add</button>
-                                    ) : (
-                                      <button type="button" className="btn btn-sm btn-outline-danger"
-                                        onClick={() => setEditCredFields(editCredFields.filter((_, j) => j !== i))}>Remove</button>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                              <button className="btn btn-sm btn-warning mt-1" onClick={() => handleSaveCreds(ci.id)}>
+                              <strong className="d-block mb-2">Update API Keys / Credentials</strong>
+                              <p className="text-muted mb-2"><small>
+                                Values are encrypted at rest. Leave a field blank to keep its saved value.
+                              </small></p>
+                              <CredentialFields
+                                schema={providers.find(p => p.id === ci.provider_id)?.config_schema}
+                                values={editCredValues}
+                                onChange={setEditCredValues}
+                                masked={editCredMasked}
+                                resetKey={ci.id}
+                              />
+                              <button className="btn btn-sm btn-warning mt-2" onClick={() => handleSaveCreds(ci.id)}>
                                 Save Credentials
                               </button>
                             </div>

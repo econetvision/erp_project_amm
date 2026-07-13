@@ -9,8 +9,10 @@ import {
   getGlobalDefaults,
   upsertGlobalDefault,
   deleteGlobalDefault,
+  getGlobalDefaultCredentials,
   testConnection,
 } from "../../api/integrationApi";
+import CredentialFields from "../../components/integrations/CredentialFields";
 import type {
   IntegrationProvider,
   IntegrationProviderCreate,
@@ -63,6 +65,7 @@ export default function ProviderManagement() {
   const [defaultProviderId, setDefaultProviderId] = useState<number | "">("");
   const [defaultFallbackId, setDefaultFallbackId] = useState<number | "">("");
   const [defaultCredentials, setDefaultCredentials] = useState<Record<string, string>>({});
+  const [defaultMasked, setDefaultMasked] = useState<Record<string, string>>({});
   const [defaultEnabled, setDefaultEnabled] = useState(true);
 
   // Testing
@@ -137,12 +140,17 @@ export default function ProviderManagement() {
 
   const handleSaveDefault = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Only send keys the user actually filled in; the backend merges them
+    // into the stored (encrypted) credentials.
+    const creds = Object.fromEntries(
+      Object.entries(defaultCredentials).filter(([, v]) => v.trim() !== "")
+    );
     try {
       await upsertGlobalDefault({
         category: defaultCategory,
         provider_id: defaultProviderId || undefined,
         fallback_provider_id: defaultFallbackId || undefined,
-        credentials: Object.keys(defaultCredentials).length > 0 ? defaultCredentials : undefined,
+        credentials: Object.keys(creds).length > 0 ? creds : undefined,
         is_enabled: defaultEnabled,
       });
       setAlert({ type: "success", message: `Global default for ${defaultCategory} saved` });
@@ -161,6 +169,12 @@ export default function ProviderManagement() {
     setDefaultFallbackId(existing?.fallback_provider_id || "");
     setDefaultEnabled(existing?.is_enabled ?? true);
     setDefaultCredentials({});
+    setDefaultMasked({});
+    if (existing?.credentials_set) {
+      getGlobalDefaultCredentials(cat)
+        .then(r => setDefaultMasked(r.data.credentials))
+        .catch(() => {});
+    }
     setShowDefaultEditor(true);
   };
 
@@ -274,7 +288,10 @@ export default function ProviderManagement() {
                 <div className="col-md-4">
                   <label className="form-label fw-semibold">Primary Provider</label>
                   <select className="form-select" value={defaultProviderId}
-                    onChange={e => setDefaultProviderId(e.target.value ? parseInt(e.target.value) : "")}>
+                    onChange={e => {
+                      setDefaultProviderId(e.target.value ? parseInt(e.target.value) : "");
+                      setDefaultCredentials({});
+                    }}>
                     <option value="">— None —</option>
                     {providers.filter(p => p.category === defaultCategory).map(p => (
                       <option key={p.id} value={p.id}>{p.name}</option>
@@ -300,32 +317,17 @@ export default function ProviderManagement() {
                 </div>
               </div>
               <div className="mt-3">
-                <p className="text-muted mb-2"><small>Enter credentials (key=value). Values are encrypted before storage.</small></p>
-                <div className="row g-2">
-                  {["key_1", "key_2", "key_3"].map((k, i) => (
-                    <div className="col-md-4" key={i}>
-                      <div className="input-group input-group-sm">
-                        <input className="form-control" placeholder={`Key ${i + 1}`}
-                          value={Object.keys(defaultCredentials)[i] || ""}
-                          onChange={e => {
-                            const entries = Object.entries(defaultCredentials);
-                            const oldKey = entries[i]?.[0];
-                            const val = entries[i]?.[1] || "";
-                            const newCreds = { ...defaultCredentials };
-                            if (oldKey) delete newCreds[oldKey];
-                            if (e.target.value) newCreds[e.target.value] = val;
-                            setDefaultCredentials(newCreds);
-                          }} />
-                        <input className="form-control" placeholder="Value" type="password"
-                          value={Object.values(defaultCredentials)[i] || ""}
-                          onChange={e => {
-                            const key = Object.keys(defaultCredentials)[i];
-                            if (key) setDefaultCredentials(c => ({ ...c, [key]: e.target.value }));
-                          }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <p className="text-muted mb-2"><small>
+                  API keys / credentials — values are encrypted before storage.
+                  Leave a field blank to keep its saved value.
+                </small></p>
+                <CredentialFields
+                  schema={providers.find(p => p.id === defaultProviderId)?.config_schema}
+                  values={defaultCredentials}
+                  onChange={setDefaultCredentials}
+                  masked={defaultMasked}
+                  resetKey={defaultProviderId}
+                />
               </div>
               <div className="mt-3 text-end">
                 <button type="submit" className="btn btn-warning">Save Default</button>

@@ -60,6 +60,14 @@ export const updateCompanyIntegration = (companyId: number, integrationId: numbe
 export const deleteCompanyIntegration = (companyId: number, integrationId: number): Promise<AxiosResponse<void>> =>
   api.delete(`${BASE}/company/${companyId}/${integrationId}`);
 
+// ── Masked credentials (which keys are set; values are masked) ──────
+
+export const getCompanyIntegrationCredentials = (companyId: number, integrationId: number): Promise<AxiosResponse<{ credentials: Record<string, string> }>> =>
+  api.get(`${BASE}/company/${companyId}/${integrationId}/credentials`);
+
+export const getGlobalDefaultCredentials = (category: string): Promise<AxiosResponse<{ credentials: Record<string, string> }>> =>
+  api.get(`${BASE}/global-defaults/${category}/credentials`);
+
 // ── Connection testing ──────────────────────────────────────────────
 
 export const testConnection = (

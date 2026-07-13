@@ -2,26 +2,6 @@ import httpx
 from fastapi import HTTPException
 
 
-async def lookup_ifsc(ifsc_code: str) -> dict:
-    """Look up bank details from IFSC code using public Razorpay API."""
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(f"https://ifsc.razorpay.com/{ifsc_code}")
-            if resp.status_code == 404:
-                raise HTTPException(status_code=400, detail=f"Invalid IFSC code: {ifsc_code}")
-            resp.raise_for_status()
-            data = resp.json()
-            return {
-                "bank": data.get("BANK", ""),
-                "branch": data.get("BRANCH", ""),
-                "address": data.get("ADDRESS", ""),
-                "city": data.get("CITY", ""),
-                "state": data.get("STATE", ""),
-            }
-    except httpx.HTTPError:
-        raise HTTPException(status_code=502, detail="Could not reach IFSC lookup service")
-
-
 async def verify_bank_account(
     bank_account: str,
     ifsc_code: str,

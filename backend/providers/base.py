@@ -116,6 +116,16 @@ class KycProvider(BaseProvider):
         raise NotImplementedError
 
 
+class OtpProvider(BaseProvider):
+    CATEGORY = "otp"
+
+    @abstractmethod
+    def send_otp(self, to: str, channel: str = "sms", **kwargs) -> ProviderResult: ...
+
+    @abstractmethod
+    def verify_otp(self, to: str, code: str, **kwargs) -> ProviderResult: ...
+
+
 class BankProvider(BaseProvider):
     CATEGORY = "bank"
 
@@ -126,4 +136,9 @@ class BankProvider(BaseProvider):
         raise NotImplementedError
 
     def validate_ifsc(self, ifsc: str) -> ProviderResult:
-        raise NotImplementedError
+        """IFSC validation is provider-independent: served from the local
+        Razorpay IFSC dataset (with live-API fallback for new codes)."""
+        def _call():
+            from services.ifsc_service import lookup_ifsc_raw_sync
+            return lookup_ifsc_raw_sync(ifsc)
+        return self._timed(_call)

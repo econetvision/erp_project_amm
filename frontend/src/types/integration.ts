@@ -7,6 +7,20 @@ export type IntegrationCategory =
 export type HealthStatus = "healthy" | "degraded" | "down" | "unknown";
 export type LogStatus    = "pending" | "success" | "failed" | "retrying";
 
+// ── Provider config schema (which credential/config keys a provider needs) ──
+
+export interface CredentialFieldSpec {
+  label: string;
+  required?: boolean;
+  secret?: boolean;
+  help?: string;
+}
+
+export interface ProviderConfigSchema {
+  credentials?: Record<string, CredentialFieldSpec>;
+  config?: Record<string, CredentialFieldSpec>;
+}
+
 // ── Provider catalogue ──────────────────────────────────────────────
 
 export interface IntegrationProvider {
@@ -16,7 +30,7 @@ export interface IntegrationProvider {
   name: string;
   description: string | null;
   logo_url: string | null;
-  config_schema: Record<string, any> | null;
+  config_schema: ProviderConfigSchema | null;
   is_active: boolean;
   version: string | null;
   created_at: string;

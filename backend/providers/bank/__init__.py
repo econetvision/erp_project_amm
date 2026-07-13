@@ -53,14 +53,6 @@ class RazorpayxBankProvider(BankProvider):
             return resp.json()
         return self._timed(_call)
 
-    def validate_ifsc(self, ifsc: str) -> ProviderResult:
-        import httpx
-        def _call():
-            resp = httpx.get(f"https://ifsc.razorpay.com/{ifsc}", timeout=10)
-            resp.raise_for_status()
-            return resp.json()
-        return self._timed(_call)
-
     def test_connection(self) -> ProviderResult:
         import httpx
         def _test():
@@ -100,14 +92,6 @@ class CashfreeBankProvider(BankProvider):
                 },
                 timeout=15,
             )
-            resp.raise_for_status()
-            return resp.json()
-        return self._timed(_call)
-
-    def validate_ifsc(self, ifsc: str) -> ProviderResult:
-        import httpx
-        def _call():
-            resp = httpx.get(f"https://ifsc.razorpay.com/{ifsc}", timeout=10)
             resp.raise_for_status()
             return resp.json()
         return self._timed(_call)

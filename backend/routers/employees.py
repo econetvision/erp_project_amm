@@ -694,12 +694,12 @@ def register_face(employee_id: int, payload: FaceRegisterRequest, db: Session = 
 
 @router.get("/{employee_id}/ifsc-lookup")
 async def ifsc_lookup(employee_id: int, ifsc: str, db: Session = Depends(get_db), current_user: User = Depends(require_admin_or_supervisor)):
-    from services.kyc_service import lookup_ifsc
+    from services.ifsc_service import lookup_ifsc
     emp = db.query(User).filter(User.id == employee_id).first()
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current_user, emp.company_id)
-    return await lookup_ifsc(ifsc)
+    return await lookup_ifsc(ifsc, db)
 
 
 @router.post("/{employee_id}/verify-bank", response_model=EmployeeResponse)
@@ -748,7 +748,7 @@ def send_phone_verification(employee_id: int, db: Session = Depends(get_db), cur
     assert_tenant(current_user, emp.company_id)
     if not emp.phone:
         raise HTTPException(status_code=400, detail="Employee phone number is not set")
-    result = send_phone_otp(emp.phone)
+    result = send_phone_otp(emp.phone, db=db, company_id=emp.company_id)
     if result.get("status") == "error":
         raise HTTPException(status_code=502, detail=result.get("message", "Failed to send OTP"))
     return {"detail": "OTP sent to phone", "status": result["status"]}
@@ -764,7 +764,7 @@ def verify_phone(employee_id: int, payload: OTPRequest, db: Session = Depends(ge
     assert_tenant(current_user, emp.company_id)
     if not emp.phone:
         raise HTTPException(status_code=400, detail="Employee phone number is not set")
-    result = verify_phone_otp(emp.phone, payload.code)
+    result = verify_phone_otp(emp.phone, payload.code, db=db, company_id=emp.company_id)
     if not result.get("valid"):
         raise HTTPException(status_code=400, detail="Invalid or expired OTP")
     emp.phone_verified = "Y"
@@ -783,7 +783,7 @@ def send_email_verification(employee_id: int, db: Session = Depends(get_db), cur
     assert_tenant(current_user, emp.company_id)
     if not emp.email:
         raise HTTPException(status_code=400, detail="Employee email is not set")
-    result = send_email_otp(emp.email)
+    result = send_email_otp(emp.email, db=db, company_id=emp.company_id)
     if result.get("status") == "error":
         raise HTTPException(status_code=502, detail=result.get("message", "Failed to send OTP"))
     return {"detail": "OTP sent to email", "status": result["status"]}
@@ -799,7 +799,7 @@ def verify_email(employee_id: int, payload: OTPRequest, db: Session = Depends(ge
     assert_tenant(current_user, emp.company_id)
     if not emp.email:
         raise HTTPException(status_code=400, detail="Employee email is not set")
-    result = verify_email_otp(emp.email, payload.code)
+    result = verify_email_otp(emp.email, payload.code, db=db, company_id=emp.company_id)
     if not result.get("valid"):
         raise HTTPException(status_code=400, detail="Invalid or expired OTP")
     emp.email_verified = "Y"
