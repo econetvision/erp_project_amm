@@ -60,6 +60,23 @@ def _validate_credentials(db: Session, provider_id: Optional[int], credentials: 
         )
 
 
+def _require_provider_in_category(
+    db: Session, provider_id: Optional[int], category: str, label: str = "Provider"
+) -> Optional[IntegrationProvider]:
+    """Fetch a provider and ensure it belongs to the given category."""
+    if not provider_id:
+        return None
+    ip = db.query(IntegrationProvider).filter(IntegrationProvider.id == provider_id).first()
+    if not ip:
+        raise HTTPException(404, f"{label} not found")
+    if ip.category != category:
+        raise HTTPException(
+            422,
+            f"{label} '{ip.name}' belongs to category '{ip.category}', not '{category}'",
+        )
+    return ip
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 #  PROVIDER CATALOGUE (master)
 # ═══════════════════════════════════════════════════════════════════════════
@@ -165,6 +182,9 @@ def upsert_global_default(
     current_user: User = Depends(require_master),
     db: Session = Depends(get_db),
 ):
+    _require_provider_in_category(db, body.provider_id, body.category)
+    _require_provider_in_category(db, body.fallback_provider_id, body.category, label="Fallback provider")
+
     gd = db.query(GlobalIntegrationDefault).filter(GlobalIntegrationDefault.category == body.category).first()
     if gd:
         for k, v in body.model_dump(exclude_unset=True).items():
@@ -281,10 +301,15 @@ def create_company_integration(
     if current_user.role not in ("master", "admin"):
         raise HTTPException(403, "Admin or master access required")
 
-    # Validate provider exists
-    ip = db.query(IntegrationProvider).filter(IntegrationProvider.id == body.provider_id).first()
-    if not ip:
-        raise HTTPException(404, "Provider not found")
+    # Provider must exist and belong to the requested category
+    ip = _require_provider_in_category(db, body.provider_id, body.category)
+
+    existing = db.query(CompanyIntegration).filter(
+        CompanyIntegration.company_id == company_id,
+        CompanyIntegration.provider_id == body.provider_id,
+    ).first()
+    if existing:
+        raise HTTPException(409, f"'{ip.name}' is already configured for this company")
 
     _validate_credentials(db, body.provider_id, body.credentials)
 

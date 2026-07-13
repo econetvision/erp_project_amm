@@ -233,8 +233,9 @@ export default function CompanyIntegrations() {
                 <div className="col-md-3">
                   <label className="form-label fw-semibold">Category</label>
                   <select className="form-select" value={addCategory}
-                    onChange={e => { setAddCategory(e.target.value as IntegrationCategory); setAddProviderId(""); }}>
-                    {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.icon} {c.label}</option>)}
+                    onChange={e => { setAddCategory(e.target.value as IntegrationCategory); setAddProviderId(""); setAddCredentials({}); }}>
+                    {CATEGORIES.filter(c => providers.some(p => p.category === c.value && p.is_active))
+                      .map(c => <option key={c.value} value={c.value}>{c.icon} {c.label}</option>)}
                   </select>
                 </div>
                 <div className="col-md-3">

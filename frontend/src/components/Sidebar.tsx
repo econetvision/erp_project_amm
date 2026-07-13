@@ -140,7 +140,7 @@ export default function Sidebar() {
                 <NavLink
                   key={to}
                   to={to}
-                  end={to === "/attendance"}
+                  end={to === "/attendance" || to === "/integrations"}
                   className={({ isActive }) =>
                     `erp-sidebar__link ${isActive ? "erp-sidebar__link--active" : ""}`
                   }

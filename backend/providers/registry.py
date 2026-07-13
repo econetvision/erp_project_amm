@@ -75,7 +75,7 @@ def resolve_provider(
             )
         )
         if fallback:
-            row = q.filter(CompanyIntegration.is_fallback == True).first()
+            row = q.filter(CompanyIntegration.is_fallback == True).order_by(CompanyIntegration.priority.asc()).first()
         else:
             row = q.filter(CompanyIntegration.is_default == True).first()
             if not row:
