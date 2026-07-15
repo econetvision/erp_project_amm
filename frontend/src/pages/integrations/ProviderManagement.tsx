@@ -76,7 +76,7 @@ export default function ProviderManagement() {
     try {
       setLoading(true);
       const [pRes, dRes] = await Promise.all([
-        getProviders(),
+        getProviders(undefined, isMaster),
         isMaster ? getGlobalDefaults() : Promise.resolve({ data: [] }),
       ]);
       setProviders(pRes.data);

@@ -84,10 +84,16 @@ def _require_provider_in_category(
 @router.get("/providers", response_model=list[IntegrationProviderResponse])
 def list_providers(
     category: Optional[str] = None,
-    current_user: User = Depends(require_master),
+    include_inactive: bool = Query(False),
+    current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
+    # Read-only catalogue: admins need it to configure their company's
+    # integrations. Inactive providers are hidden unless master explicitly
+    # asks for them (provider management screen).
     q = db.query(IntegrationProvider)
+    if not (include_inactive and current_user.role == "master"):
+        q = q.filter(IntegrationProvider.is_active.is_(True))
     if category:
         q = q.filter(IntegrationProvider.category == category)
     return q.order_by(IntegrationProvider.category, IntegrationProvider.name).all()

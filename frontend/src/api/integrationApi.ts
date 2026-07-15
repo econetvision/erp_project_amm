@@ -20,8 +20,16 @@ const BASE = "/api/integrations";
 
 // ── Provider catalogue ──────────────────────────────────────────────
 
-export const getProviders = (category?: string): Promise<AxiosResponse<IntegrationProvider[]>> =>
-  api.get(`${BASE}/providers`, { params: category ? { category } : {} });
+export const getProviders = (
+  category?: string,
+  includeInactive?: boolean,
+): Promise<AxiosResponse<IntegrationProvider[]>> =>
+  api.get(`${BASE}/providers`, {
+    params: {
+      ...(category ? { category } : {}),
+      ...(includeInactive ? { include_inactive: true } : {}),
+    },
+  });
 
 export const createProvider = (data: IntegrationProviderCreate): Promise<AxiosResponse<IntegrationProvider>> =>
   api.post(`${BASE}/providers`, data);
