@@ -1,11 +1,14 @@
 package com.econetvision.erp
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
-import com.econetvision.erp.databinding.ActivityMainBinding
+import com.econetvision.erp.data.api.RetrofitClient
 import com.econetvision.erp.data.local.SessionManager
+import com.econetvision.erp.databinding.ActivityMainBinding
+import com.econetvision.erp.ui.auth.LoginActivity
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -20,5 +23,24 @@ class MainActivity : AppCompatActivity() {
         val navController = navHostFragment.navController
 
         binding.bottomNav.setupWithNavController(navController)
+
+        val session = SessionManager(this)
+        RetrofitClient.onUnauthorized = {
+            session.clear()
+            runOnUiThread {
+                startActivity(
+                    Intent(this, LoginActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                )
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        // Revert to the base handler so a stale Activity reference isn't held.
+        val session = SessionManager(this)
+        RetrofitClient.onUnauthorized = { session.clear() }
+        super.onDestroy()
     }
 }

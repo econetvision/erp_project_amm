@@ -10,6 +10,9 @@ import java.util.concurrent.TimeUnit
 object RetrofitClient {
     private var authInterceptor: AuthInterceptor? = null
 
+    // Set by MainActivity to clear the session and redirect to login on 401.
+    var onUnauthorized: (() -> Unit)? = null
+
     fun init(interceptor: AuthInterceptor) {
         authInterceptor = interceptor
     }
@@ -28,6 +31,13 @@ object RetrofitClient {
 
         val client = OkHttpClient.Builder()
             .addInterceptor(authInterceptor ?: AuthInterceptor { null })
+            .addInterceptor { chain ->
+                val response = chain.proceed(chain.request())
+                if (response.code == 401) {
+                    onUnauthorized?.invoke()
+                }
+                response
+            }
             .addInterceptor(logging)
             .connectTimeout(20, TimeUnit.SECONDS)
             // Face clock-in/out uploads a base64 JPEG and the backend then runs

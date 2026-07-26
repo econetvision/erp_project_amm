@@ -19,5 +19,9 @@ class ErpApplication : Application() {
         // Initialize Retrofit with auth interceptor EARLY
         // This ensures the token provider is set before any API call
         RetrofitClient.init(AuthInterceptor { sessionManager.getToken() })
+
+        // Base 401 handler: clear the stored session so isLoggedIn() returns false.
+        // MainActivity overrides this with a full redirect to LoginActivity.
+        RetrofitClient.onUnauthorized = { sessionManager.clear() }
     }
 }
