@@ -11,6 +11,8 @@ import com.econetvision.erp.data.model.MyAssignment
 import com.econetvision.erp.data.model.MyWorkLocation
 import com.econetvision.erp.data.repository.AttendanceRepository
 import com.econetvision.erp.data.repository.TrackingRepository
+import com.econetvision.erp.util.Event
+import com.econetvision.erp.util.emit
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -31,11 +33,13 @@ class AttendanceViewModel : ViewModel() {
     private val _attendanceStatus = MutableLiveData<Attendance?>()
     val attendanceStatus: LiveData<Attendance?> = _attendanceStatus
 
-    private val _clockInOutResult = MutableLiveData<Result<Attendance>>()
-    val clockInOutResult: LiveData<Result<Attendance>> = _clockInOutResult
+    // One-shot: a replayed result would re-toast "Attendance recorded" every time
+    // the fragment's view is recreated (rotation, returning to the tab).
+    private val _clockInOutResult = MutableLiveData<Event<Result<Attendance>>>()
+    val clockInOutResult: LiveData<Event<Result<Attendance>>> = _clockInOutResult
 
-    private val _faceScanResult = MutableLiveData<Result<FaceScanResponse>>()
-    val faceScanResult: LiveData<Result<FaceScanResponse>> = _faceScanResult
+    private val _faceScanResult = MutableLiveData<Event<Result<FaceScanResponse>>>()
+    val faceScanResult: LiveData<Event<Result<FaceScanResponse>>> = _faceScanResult
 
     private val _isLoading = MutableLiveData(false)
     val isLoading: LiveData<Boolean> = _isLoading
@@ -135,7 +139,7 @@ class AttendanceViewModel : ViewModel() {
                 latitude = latitude,
                 longitude = longitude
             )
-            _clockInOutResult.value = result
+            _clockInOutResult.emit(result)
             if (result.isSuccess) {
                 _attendanceStatus.value = result.getOrNull()
             }
@@ -154,7 +158,7 @@ class AttendanceViewModel : ViewModel() {
                 latitude = latitude,
                 longitude = longitude
             )
-            _clockInOutResult.value = result
+            _clockInOutResult.emit(result)
             if (result.isSuccess) {
                 _attendanceStatus.value = result.getOrNull()
             }
@@ -175,7 +179,7 @@ class AttendanceViewModel : ViewModel() {
                 latitude = latitude,
                 longitude = longitude
             )
-            _clockInOutResult.value = result
+            _clockInOutResult.emit(result)
             if (result.isSuccess) {
                 _attendanceStatus.value = result.getOrNull()
             }
@@ -193,7 +197,7 @@ class AttendanceViewModel : ViewModel() {
                 latitude = latitude,
                 longitude = longitude
             )
-            _clockInOutResult.value = result
+            _clockInOutResult.emit(result)
             if (result.isSuccess) {
                 _attendanceStatus.value = result.getOrNull()
             }
@@ -205,7 +209,7 @@ class AttendanceViewModel : ViewModel() {
         _isLoading.value = true
         viewModelScope.launch {
             val result = repository.faceScan(image, latitude, longitude)
-            _faceScanResult.value = result
+            _faceScanResult.emit(result)
             if (result.isSuccess) {
                 _attendanceStatus.value = result.getOrNull()?.attendance
             }

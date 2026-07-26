@@ -2,21 +2,26 @@ package com.econetvision.erp.ui.users
 
 import android.app.Dialog
 import android.os.Bundle
-import android.view.LayoutInflater
 import android.widget.ArrayAdapter
 import android.widget.Toast
+import android.os.Build
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.ViewModelProvider
 import com.econetvision.erp.data.model.AdminUser
 import com.econetvision.erp.data.model.AdminUserCreate
 import com.econetvision.erp.data.model.AdminUserUpdate
+import com.econetvision.erp.data.local.SessionManager
 import com.econetvision.erp.databinding.DialogUserFormBinding
+import com.econetvision.erp.util.observeEvent
 
 class UserFormDialogFragment : DialogFragment() {
 
     companion object {
         private const val ARG_USER = "arg_user"
-        private val ROLES = listOf("master", "admin", "supervisor", "worker")
+        private val ASSIGNABLE_ROLES = listOf("admin", "supervisor", "worker")
+        // Only a master may create or grant the master role — the backend rejects
+        // it from anyone else, so offering it to an admin is a dead option.
+        private val MASTER_ASSIGNABLE_ROLES = listOf("master") + ASSIGNABLE_ROLES
 
         fun newInstance(user: AdminUser? = null): UserFormDialogFragment {
             val fragment = UserFormDialogFragment()
@@ -33,10 +38,15 @@ class UserFormDialogFragment : DialogFragment() {
     private var editingUser: AdminUser? = null
     var onSaved: (() -> Unit)? = null
 
+    /** Roles this caller is actually permitted to assign, per the backend guards. */
+    private val roles: List<String> by lazy {
+        if (SessionManager(requireContext()).isMaster()) MASTER_ASSIGNABLE_ROLES else ASSIGNABLE_ROLES
+    }
+
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        _binding = DialogUserFormBinding.inflate(LayoutInflater.from(requireContext()))
+        _binding = DialogUserFormBinding.inflate(layoutInflater)
         viewModel = ViewModelProvider(requireParentFragment())[UsersViewModel::class.java]
-        editingUser = arguments?.getSerializable(ARG_USER) as? AdminUser
+        editingUser = arguments?.adminUser(ARG_USER)
 
         setupForm()
         observeViewModel()
@@ -47,7 +57,7 @@ class UserFormDialogFragment : DialogFragment() {
     }
 
     private fun setupForm() {
-        val roleAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, ROLES)
+        val roleAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, roles)
         binding.spinnerRole.adapter = roleAdapter
 
         val user = editingUser
@@ -59,7 +69,7 @@ class UserFormDialogFragment : DialogFragment() {
             binding.etDisplayName.setText(user.displayName)
             binding.etEmail.setText(user.email)
             binding.etPhone.setText(user.phone)
-            val roleIndex = ROLES.indexOf(user.role)
+            val roleIndex = roles.indexOf(user.role)
             if (roleIndex >= 0) binding.spinnerRole.setSelection(roleIndex)
         } else {
             binding.tvDialogTitle.text = "Add User"
@@ -80,7 +90,7 @@ class UserFormDialogFragment : DialogFragment() {
         val displayName = binding.etDisplayName.text.toString().trim().ifBlank { null }
         val email = binding.etEmail.text.toString().trim().ifBlank { null }
         val phone = binding.etPhone.text.toString().trim().ifBlank { null }
-        val role = ROLES[binding.spinnerRole.selectedItemPosition]
+        val role = roles[binding.spinnerRole.selectedItemPosition]
 
         val user = editingUser
         if (user == null) {
@@ -113,7 +123,12 @@ class UserFormDialogFragment : DialogFragment() {
     }
 
     private fun observeViewModel() {
-        viewModel.saveResult.observe(this) { result ->
+        // The ViewModel is scoped to the parent fragment, so it outlives this dialog.
+        // Results must therefore be one-shot events — a replayed success would dismiss
+        // the dialog the moment it is reopened. Observers are bound to the fragment
+        // (not view) lifecycle because onCreateDialog leaves no view lifecycle owner,
+        // so every binding access is null-guarded against the onDestroyView window.
+        viewModel.saveResult.observeEvent(this) { result ->
             if (result.isSuccess) {
                 Toast.makeText(requireContext(), "User saved", Toast.LENGTH_SHORT).show()
                 onSaved?.invoke()
@@ -124,8 +139,9 @@ class UserFormDialogFragment : DialogFragment() {
         }
 
         viewModel.isLoading.observe(this) { isLoading ->
-            binding.progressBar.visibility = if (isLoading) android.view.View.VISIBLE else android.view.View.GONE
-            binding.btnSubmit.isEnabled = !isLoading
+            val b = _binding ?: return@observe
+            b.progressBar.visibility = if (isLoading) android.view.View.VISIBLE else android.view.View.GONE
+            b.btnSubmit.isEnabled = !isLoading
         }
     }
 
@@ -134,3 +150,16 @@ class UserFormDialogFragment : DialogFragment() {
         _binding = null
     }
 }
+
+/**
+ * Type-safe [AdminUser] read from a bundle. The single-argument
+ * `getSerializable` is deprecated from API 33; androidx `BundleCompat` only grew
+ * a Serializable overload in core 1.13, which this module is not on yet.
+ */
+private fun Bundle.adminUser(key: String): AdminUser? =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        getSerializable(key, AdminUser::class.java)
+    } else {
+        @Suppress("DEPRECATION")
+        getSerializable(key) as? AdminUser
+    }

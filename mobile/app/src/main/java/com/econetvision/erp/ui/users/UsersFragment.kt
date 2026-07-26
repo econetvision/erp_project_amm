@@ -9,8 +9,10 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.econetvision.erp.data.local.SessionManager
 import com.econetvision.erp.data.model.AdminUser
 import com.econetvision.erp.databinding.FragmentUsersBinding
+import com.econetvision.erp.util.observeEvent
 
 class UsersFragment : Fragment() {
     private var _binding: FragmentUsersBinding? = null
@@ -37,6 +39,7 @@ class UsersFragment : Fragment() {
     private fun setupRecyclerView() {
         adapter = UserAdapter(
             emptyList(),
+            currentUsername = SessionManager(requireContext()).getUsername(),
             onEdit = { user -> showUserForm(user) },
             onDelete = { user -> confirmDelete(user) }
         )
@@ -71,13 +74,11 @@ class UsersFragment : Fragment() {
             binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
         }
 
-        viewModel.error.observe(viewLifecycleOwner) { error ->
-            error?.let {
-                Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
-            }
+        viewModel.error.observeEvent(viewLifecycleOwner) { error ->
+            Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show()
         }
 
-        viewModel.deleteResult.observe(viewLifecycleOwner) { result ->
+        viewModel.deleteResult.observeEvent(viewLifecycleOwner) { result ->
             if (result.isSuccess) {
                 Toast.makeText(requireContext(), "User deleted", Toast.LENGTH_SHORT).show()
                 viewModel.loadUsers()

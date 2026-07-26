@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.econetvision.erp.data.model.WorkLocation
 import com.econetvision.erp.data.repository.LocationRepository
+import com.econetvision.erp.util.Event
+import com.econetvision.erp.util.emit
 import kotlinx.coroutines.launch
 
 class WorkLocationsViewModel : ViewModel() {
@@ -17,18 +19,17 @@ class WorkLocationsViewModel : ViewModel() {
     private val _isLoading = MutableLiveData(false)
     val isLoading: LiveData<Boolean> = _isLoading
 
-    private val _error = MutableLiveData<String?>()
-    val error: LiveData<String?> = _error
+    private val _error = MutableLiveData<Event<String>>()
+    val error: LiveData<Event<String>> = _error
 
     fun loadWorkLocations() {
         _isLoading.value = true
-        _error.value = null
         viewModelScope.launch {
             val result = repository.getWorkLocations()
             if (result.isSuccess) {
                 _locations.value = result.getOrNull() ?: emptyList()
             } else {
-                _error.value = result.exceptionOrNull()?.message
+                _error.emit(result.exceptionOrNull()?.message ?: "Failed to load work locations")
             }
             _isLoading.value = false
         }

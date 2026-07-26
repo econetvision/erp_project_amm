@@ -1,6 +1,7 @@
 package com.econetvision.erp.ui
 
 import android.os.Bundle
+import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 import com.econetvision.erp.databinding.ActivitySecurityBinding
 import kotlin.system.exitProcess
@@ -13,14 +14,15 @@ class SecurityActivity : AppCompatActivity() {
         binding = ActivitySecurityBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.btnExit.setOnClickListener {
-            finishAffinity()
-            exitProcess(0)
-        }
+        binding.btnExit.setOnClickListener { exitApp() }
+
+        // Back must not fall through to the app behind this screen. The overridden
+        // onBackPressed() this replaces is deprecated and is skipped entirely once
+        // predictive back is enabled, which would have defeated the gate.
+        onBackPressedDispatcher.addCallback(this) { exitApp() }
     }
 
-    override fun onBackPressed() {
-        super.onBackPressed()
+    private fun exitApp() {
         finishAffinity()
         exitProcess(0)
     }

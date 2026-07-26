@@ -8,6 +8,8 @@ import com.econetvision.erp.data.model.AdminUser
 import com.econetvision.erp.data.model.AdminUserCreate
 import com.econetvision.erp.data.model.AdminUserUpdate
 import com.econetvision.erp.data.repository.UserRepository
+import com.econetvision.erp.util.Event
+import com.econetvision.erp.util.emit
 import kotlinx.coroutines.launch
 
 class UsersViewModel : ViewModel() {
@@ -19,24 +21,23 @@ class UsersViewModel : ViewModel() {
     private val _isLoading = MutableLiveData(false)
     val isLoading: LiveData<Boolean> = _isLoading
 
-    private val _error = MutableLiveData<String?>()
-    val error: LiveData<String?> = _error
+    private val _error = MutableLiveData<Event<String>>()
+    val error: LiveData<Event<String>> = _error
 
-    private val _saveResult = MutableLiveData<Result<AdminUser>>()
-    val saveResult: LiveData<Result<AdminUser>> = _saveResult
+    private val _saveResult = MutableLiveData<Event<Result<AdminUser>>>()
+    val saveResult: LiveData<Event<Result<AdminUser>>> = _saveResult
 
-    private val _deleteResult = MutableLiveData<Result<Unit>>()
-    val deleteResult: LiveData<Result<Unit>> = _deleteResult
+    private val _deleteResult = MutableLiveData<Event<Result<Unit>>>()
+    val deleteResult: LiveData<Event<Result<Unit>>> = _deleteResult
 
     fun loadUsers() {
         _isLoading.value = true
-        _error.value = null
         viewModelScope.launch {
             val result = repository.getUsers()
             if (result.isSuccess) {
                 _users.value = result.getOrNull()?.items ?: emptyList()
             } else {
-                _error.value = result.exceptionOrNull()?.message
+                _error.emit(result.exceptionOrNull()?.message ?: "Failed to load users")
             }
             _isLoading.value = false
         }
@@ -45,7 +46,7 @@ class UsersViewModel : ViewModel() {
     fun createUser(request: AdminUserCreate) {
         _isLoading.value = true
         viewModelScope.launch {
-            _saveResult.value = repository.createUser(request)
+            _saveResult.emit(repository.createUser(request))
             _isLoading.value = false
         }
     }
@@ -53,7 +54,7 @@ class UsersViewModel : ViewModel() {
     fun updateUser(id: Int, request: AdminUserUpdate) {
         _isLoading.value = true
         viewModelScope.launch {
-            _saveResult.value = repository.updateUser(id, request)
+            _saveResult.emit(repository.updateUser(id, request))
             _isLoading.value = false
         }
     }
@@ -61,7 +62,7 @@ class UsersViewModel : ViewModel() {
     fun deleteUser(id: Int) {
         _isLoading.value = true
         viewModelScope.launch {
-            _deleteResult.value = repository.deleteUser(id)
+            _deleteResult.emit(repository.deleteUser(id))
             _isLoading.value = false
         }
     }

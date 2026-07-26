@@ -51,6 +51,8 @@ class SettingsFragment : Fragment() {
         }
 
         binding.cardManagement.visibility = if (session.canManage()) View.VISIBLE else View.GONE
+        // Employees/locations allow supervisors; user administration is admin-only.
+        binding.btnManageUsers.visibility = if (session.canManageUsers()) View.VISIBLE else View.GONE
 
         binding.btnManageEmployees.setOnClickListener {
             findNavController().navigate(R.id.action_settingsFragment_to_employeesFragment)

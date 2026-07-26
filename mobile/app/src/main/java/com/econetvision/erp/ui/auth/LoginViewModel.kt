@@ -6,16 +6,21 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.econetvision.erp.data.model.TokenResponse
 import com.econetvision.erp.data.repository.AuthRepository
+import com.econetvision.erp.util.Event
+import com.econetvision.erp.util.emit
 import kotlinx.coroutines.launch
 
 class LoginViewModel : ViewModel() {
     private val repository = AuthRepository()
 
-    private val _loginResult = MutableLiveData<Result<TokenResponse>>()
-    val loginResult: LiveData<Result<TokenResponse>> = _loginResult
+    // One-shot: on a configuration change a replayed result would re-run the whole
+    // post-login flow (save token, offer fingerprint enrollment) or re-toast a
+    // stale failure.
+    private val _loginResult = MutableLiveData<Event<Result<TokenResponse>>>()
+    val loginResult: LiveData<Event<Result<TokenResponse>>> = _loginResult
 
-    private val _faceLoginResult = MutableLiveData<Result<TokenResponse>>()
-    val faceLoginResult: LiveData<Result<TokenResponse>> = _faceLoginResult
+    private val _faceLoginResult = MutableLiveData<Event<Result<TokenResponse>>>()
+    val faceLoginResult: LiveData<Event<Result<TokenResponse>>> = _faceLoginResult
 
     private val _isLoading = MutableLiveData(false)
     val isLoading: LiveData<Boolean> = _isLoading
@@ -23,8 +28,7 @@ class LoginViewModel : ViewModel() {
     fun login(username: String, password: String) {
         _isLoading.value = true
         viewModelScope.launch {
-            val result = repository.login(username, password)
-            _loginResult.value = result
+            _loginResult.emit(repository.login(username, password))
             _isLoading.value = false
         }
     }
@@ -32,8 +36,7 @@ class LoginViewModel : ViewModel() {
     fun faceLogin(image: String) {
         _isLoading.value = true
         viewModelScope.launch {
-            val result = repository.faceLogin(image)
-            _faceLoginResult.value = result
+            _faceLoginResult.emit(repository.faceLogin(image))
             _isLoading.value = false
         }
     }

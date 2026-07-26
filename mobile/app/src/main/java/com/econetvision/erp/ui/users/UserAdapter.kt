@@ -1,6 +1,7 @@
 package com.econetvision.erp.ui.users
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.econetvision.erp.data.model.AdminUser
@@ -8,6 +9,7 @@ import com.econetvision.erp.databinding.ItemUserBinding
 
 class UserAdapter(
     private var users: List<AdminUser>,
+    private val currentUsername: String?,
     private val onEdit: (AdminUser) -> Unit,
     private val onDelete: (AdminUser) -> Unit
 ) : RecyclerView.Adapter<UserAdapter.ViewHolder>() {
@@ -32,6 +34,10 @@ class UserAdapter(
         holder.binding.tvActiveStatus.text = if (isActive) "Active" else "Inactive"
 
         holder.binding.btnEdit.setOnClickListener { onEdit(user) }
+
+        // The backend refuses self-deletion with a 400; don't offer the action.
+        val isSelf = currentUsername != null && user.username == currentUsername
+        holder.binding.btnDelete.visibility = if (isSelf) View.GONE else View.VISIBLE
         holder.binding.btnDelete.setOnClickListener { onDelete(user) }
     }
 

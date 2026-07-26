@@ -39,7 +39,20 @@ class SessionManager(context: Context) {
 
     fun isLoggedIn(): Boolean = getToken() != null
 
+    fun isMaster(): Boolean = getRole() == "master"
+
+    /**
+     * Employee and work-location screens: the backend guards these with
+     * `require_admin_or_supervisor`.
+     */
     fun canManage(): Boolean = getRole() in setOf("master", "admin", "supervisor")
+
+    /**
+     * User administration: every /api/auth/users endpoint is guarded by
+     * `require_admin`, which excludes supervisors. Gating this with [canManage]
+     * showed supervisors a screen where every call came back 403.
+     */
+    fun canManageUsers(): Boolean = getRole() in setOf("master", "admin")
 
     fun clear() {
         prefs.edit().clear().apply()

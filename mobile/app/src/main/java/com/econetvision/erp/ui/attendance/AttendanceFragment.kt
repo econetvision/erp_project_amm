@@ -24,6 +24,7 @@ import com.econetvision.erp.databinding.FragmentAttendanceBinding
 import com.econetvision.erp.service.VehicleTrackingService
 import com.econetvision.erp.util.Constants
 import com.econetvision.erp.util.ToastType
+import com.econetvision.erp.util.observeEvent
 import com.econetvision.erp.util.showToast
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
@@ -591,7 +592,7 @@ class AttendanceFragment : Fragment() {
             updateMap()
         }
 
-        viewModel.clockInOutResult.observe(viewLifecycleOwner) { result ->
+        viewModel.clockInOutResult.observeEvent(viewLifecycleOwner) { result ->
             if (result.isSuccess) {
                 showToast("Attendance recorded successfully", ToastType.SUCCESS)
             } else {
@@ -602,7 +603,7 @@ class AttendanceFragment : Fragment() {
             }
         }
 
-        viewModel.faceScanResult.observe(viewLifecycleOwner) { result ->
+        viewModel.faceScanResult.observeEvent(viewLifecycleOwner) { result ->
             if (result.isSuccess) {
                 val response = result.getOrNull()
                 val action = if (response?.action == "clock_in") "Clocked In" else "Clocked Out"
@@ -624,6 +625,11 @@ class AttendanceFragment : Fragment() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        _binding?.mapView?.onStart()
+    }
+
     override fun onResume() {
         super.onResume()
         _binding?.mapView?.onResume()
@@ -632,6 +638,11 @@ class AttendanceFragment : Fragment() {
     override fun onPause() {
         _binding?.mapView?.onPause()
         super.onPause()
+    }
+
+    override fun onStop() {
+        _binding?.mapView?.onStop()
+        super.onStop()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

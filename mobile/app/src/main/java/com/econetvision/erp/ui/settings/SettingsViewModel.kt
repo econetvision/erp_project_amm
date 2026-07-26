@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.econetvision.erp.data.model.User
 import com.econetvision.erp.data.repository.AuthRepository
+import com.econetvision.erp.util.Event
+import com.econetvision.erp.util.emit
 import kotlinx.coroutines.launch
 
 class SettingsViewModel : ViewModel() {
@@ -14,11 +16,13 @@ class SettingsViewModel : ViewModel() {
     private val _user = MutableLiveData<User>()
     val user: LiveData<User> = _user
 
-    private val _updateResult = MutableLiveData<Result<User>>()
-    val updateResult: LiveData<Result<User>> = _updateResult
+    // One-shot: otherwise returning to Edit Profile re-toasts the previous save and
+    // re-clears the password fields.
+    private val _updateResult = MutableLiveData<Event<Result<User>>>()
+    val updateResult: LiveData<Event<Result<User>>> = _updateResult
 
-    private val _passwordResult = MutableLiveData<Result<String>>()
-    val passwordResult: LiveData<Result<String>> = _passwordResult
+    private val _passwordResult = MutableLiveData<Event<Result<String>>>()
+    val passwordResult: LiveData<Event<Result<String>>> = _passwordResult
 
     private val _isLoading = MutableLiveData(false)
     val isLoading: LiveData<Boolean> = _isLoading
@@ -38,7 +42,7 @@ class SettingsViewModel : ViewModel() {
         _isLoading.value = true
         viewModelScope.launch {
             val result = repository.updateProfile(displayName, email, phone)
-            _updateResult.value = result
+            _updateResult.emit(result)
             if (result.isSuccess) {
                 _user.value = result.getOrNull()
             }
@@ -49,8 +53,7 @@ class SettingsViewModel : ViewModel() {
     fun changePassword(currentPassword: String, newPassword: String) {
         _isLoading.value = true
         viewModelScope.launch {
-            val result = repository.changePassword(currentPassword, newPassword)
-            _passwordResult.value = result
+            _passwordResult.emit(repository.changePassword(currentPassword, newPassword))
             _isLoading.value = false
         }
     }

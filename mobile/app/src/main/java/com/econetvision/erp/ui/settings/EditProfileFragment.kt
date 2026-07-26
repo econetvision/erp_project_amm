@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.econetvision.erp.data.local.SessionManager
 import com.econetvision.erp.databinding.FragmentEditProfileBinding
+import com.econetvision.erp.util.observeEvent
 
 class EditProfileFragment : Fragment() {
     private var _binding: FragmentEditProfileBinding? = null
@@ -67,7 +68,7 @@ class EditProfileFragment : Fragment() {
             session.saveUser(user)
         }
 
-        viewModel.updateResult.observe(viewLifecycleOwner) { result ->
+        viewModel.updateResult.observeEvent(viewLifecycleOwner) { result ->
             if (result.isSuccess) {
                 Toast.makeText(requireContext(), "Profile updated", Toast.LENGTH_SHORT).show()
             } else {
@@ -75,7 +76,7 @@ class EditProfileFragment : Fragment() {
             }
         }
 
-        viewModel.passwordResult.observe(viewLifecycleOwner) { result ->
+        viewModel.passwordResult.observeEvent(viewLifecycleOwner) { result ->
             if (result.isSuccess) {
                 Toast.makeText(requireContext(), "Password changed successfully", Toast.LENGTH_SHORT).show()
                 binding.etCurrentPassword.text?.clear()

@@ -8,6 +8,8 @@ import com.econetvision.erp.data.model.Holiday
 import com.econetvision.erp.data.model.MonthlyReport
 import com.econetvision.erp.data.repository.AttendanceRepository
 import com.econetvision.erp.data.repository.HolidayRepository
+import com.econetvision.erp.util.Event
+import com.econetvision.erp.util.emit
 import kotlinx.coroutines.launch
 import java.util.*
 
@@ -24,12 +26,11 @@ class DashboardViewModel : ViewModel() {
     private val _isLoading = MutableLiveData(false)
     val isLoading: LiveData<Boolean> = _isLoading
 
-    private val _error = MutableLiveData<String?>()
-    val error: LiveData<String?> = _error
+    private val _error = MutableLiveData<Event<String>>()
+    val error: LiveData<Event<String>> = _error
 
     fun loadDashboardData(employeeId: Int) {
         _isLoading.value = true
-        _error.value = null
         val calendar = Calendar.getInstance()
         val month = calendar.get(Calendar.MONTH) + 1
         val year = calendar.get(Calendar.YEAR)
@@ -39,7 +40,7 @@ class DashboardViewModel : ViewModel() {
             if (result.isSuccess) {
                 _monthlyReport.value = result.getOrNull()
             } else {
-                _error.value = result.exceptionOrNull()?.message
+                _error.emit(result.exceptionOrNull()?.message ?: "Failed to load dashboard")
             }
             _isLoading.value = false
         }

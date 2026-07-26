@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.econetvision.erp.data.model.Notification
 import com.econetvision.erp.data.repository.NotificationRepository
+import com.econetvision.erp.util.Event
+import com.econetvision.erp.util.emit
 import kotlinx.coroutines.launch
 
 class NotificationsViewModel : ViewModel() {
@@ -27,8 +29,8 @@ class NotificationsViewModel : ViewModel() {
     private val _isLoading = MutableLiveData(false)
     val isLoading: LiveData<Boolean> = _isLoading
 
-    private val _error = MutableLiveData<String?>()
-    val error: LiveData<String?> = _error
+    private val _error = MutableLiveData<Event<String>>()
+    val error: LiveData<Event<String>> = _error
 
     fun setArchiveMode(archive: Boolean) {
         _showArchive.value = archive
@@ -44,14 +46,13 @@ class NotificationsViewModel : ViewModel() {
 
     fun loadNotifications() {
         _isLoading.value = true
-        _error.value = null
         viewModelScope.launch {
             val result = repository.getNotifications()
             if (result.isSuccess) {
                 _allNotifications.value = result.getOrNull() ?: emptyList()
                 applyFilter()
             } else {
-                _error.value = result.exceptionOrNull()?.message
+                _error.emit(result.exceptionOrNull()?.message ?: "Failed to load notifications")
             }
             _isLoading.value = false
         }

@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.econetvision.erp.databinding.FragmentEmployeesBinding
+import com.econetvision.erp.util.observeEvent
 
 class EmployeesFragment : Fragment() {
     private var _binding: FragmentEmployeesBinding? = null
@@ -44,10 +45,8 @@ class EmployeesFragment : Fragment() {
             binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
         }
 
-        viewModel.error.observe(viewLifecycleOwner) { error ->
-            error?.let {
-                Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
-            }
+        viewModel.error.observeEvent(viewLifecycleOwner) { error ->
+            Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show()
         }
     }
 

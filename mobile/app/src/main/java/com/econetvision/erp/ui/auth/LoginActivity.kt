@@ -23,6 +23,7 @@ import com.econetvision.erp.databinding.ActivityLoginBinding
 import com.econetvision.erp.ui.SecurityActivity
 import com.econetvision.erp.util.BiometricCredentialStore
 import com.econetvision.erp.util.SecurityUtils
+import com.econetvision.erp.util.observeEvent
 import java.io.ByteArrayOutputStream
 
 class LoginActivity : AppCompatActivity() {
@@ -55,7 +56,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        val splashScreen = installSplashScreen()
+        installSplashScreen()
         super.onCreate(savedInstanceState)
 
         // Security Check: Developer Options
@@ -106,7 +107,7 @@ class LoginActivity : AppCompatActivity() {
             startFingerprintLogin()
         }
 
-        viewModel.loginResult.observe(this) { result ->
+        viewModel.loginResult.observeEvent(this) { result ->
             result.onSuccess { token ->
                 sessionManager.saveToken(token)
                 maybeOfferFingerprintEnrollment()
@@ -115,7 +116,7 @@ class LoginActivity : AppCompatActivity() {
             }
         }
 
-        viewModel.faceLoginResult.observe(this) { result ->
+        viewModel.faceLoginResult.observeEvent(this) { result ->
             result.onSuccess { token ->
                 sessionManager.saveToken(token)
                 navigateToMain()

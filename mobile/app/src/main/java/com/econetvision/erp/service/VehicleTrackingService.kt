@@ -7,10 +7,10 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.location.Location
-import android.os.Build
+import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import com.econetvision.erp.R
+import androidx.core.app.ServiceCompat
 import com.econetvision.erp.data.repository.TrackingRepository
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
@@ -21,6 +21,7 @@ import com.google.android.gms.location.Priority
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 class VehicleTrackingService : Service() {
@@ -74,9 +75,24 @@ class VehicleTrackingService : Service() {
             return START_NOT_STICKY
         }
 
-        startForeground(NOTIFICATION_ID, buildNotification())
+        // Android 14+ requires the foreground service type to be declared at
+        // startForeground() time, and throws if the app is no longer allowed to
+        // start a location FGS (e.g. it was backgrounded during the permission flow).
+        try {
+            ServiceCompat.startForeground(
+                this,
+                NOTIFICATION_ID,
+                buildNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION,
+            )
+        } catch (e: Exception) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         startLocationUpdates()
-        return START_STICKY
+        // The tracked vehicle id lives only in the start intent, so a redelivery
+        // without it could not resume tracking anyway.
+        return START_NOT_STICKY
     }
 
     private fun startLocationUpdates() {
@@ -97,12 +113,11 @@ class VehicleTrackingService : Service() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID, "Vehicle Tracking", NotificationManager.IMPORTANCE_LOW
-            ).apply { description = "Shows when vehicle trip tracking is active" }
-            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
-        }
+        // minSdk is 26, so notification channels are always available.
+        val channel = NotificationChannel(
+            CHANNEL_ID, "Vehicle Tracking", NotificationManager.IMPORTANCE_LOW
+        ).apply { description = "Shows when vehicle trip tracking is active" }
+        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
     private fun buildNotification(): Notification {
@@ -123,6 +138,9 @@ class VehicleTrackingService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         fusedLocationClient.removeLocationUpdates(locationCallback)
+        // Without this the scope's SupervisorJob keeps any in-flight location
+        // uploads (and the service instance they capture) alive after teardown.
+        scope.cancel()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.econetvision.erp.data.local.SessionManager
 import com.econetvision.erp.databinding.FragmentDashboardBinding
 import com.econetvision.erp.ui.attendance.AttendanceAdapter
+import com.econetvision.erp.util.observeEvent
 import java.util.Locale
 
 class DashboardFragment : Fragment() {
@@ -28,9 +29,12 @@ class DashboardFragment : Fragment() {
 
         val session = SessionManager(requireContext())
         val empId = session.getEmployeeId()
-        val displayName = session.getDisplayName()
+        // display_name is optional on the backend — fall back to the username rather
+        // than rendering "Welcome back, null!".
+        val displayName = session.getDisplayName()?.takeIf { it.isNotBlank() }
+            ?: session.getUsername()?.takeIf { it.isNotBlank() }
 
-        binding.tvWelcome.text = "Welcome back, $displayName!"
+        binding.tvWelcome.text = if (displayName != null) "Welcome back, $displayName!" else "Welcome back!"
 
         if (empId != -1) {
             viewModel.loadDashboardData(empId)
@@ -74,10 +78,8 @@ class DashboardFragment : Fragment() {
             binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
         }
 
-        viewModel.error.observe(viewLifecycleOwner) { error ->
-            error?.let {
-                Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
-            }
+        viewModel.error.observeEvent(viewLifecycleOwner) { error ->
+            Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show()
         }
     }
 
