@@ -1,7 +1,7 @@
 Latest development APK
 ----------------------
-Commit:    c20626bd760207a6902bfea57b4d3bc9f7184c9a
-Short SHA: c20626b
+Commit:    bbe60fd9d6b47f4985d10123b9647654ba17ddb6
+Short SHA: bbe60fd
 Branch:    master
-Built at:  2026-07-23 06:09:14 UTC
-Run:       https://github.com/econetvision/erp_project_amm/actions/runs/29984038273
+Built at:  2026-07-26 04:44:33 UTC
+Run:       https://github.com/econetvision/erp_project_amm/actions/runs/30188225643
