@@ -20,7 +20,7 @@ class EmployeeBase(BaseModel):
     bank_account_number: str          = Field(..., min_length=8, max_length=18)
     ifsc_code:           Optional[str] = None
     hourly_rate:         Decimal = Field(..., ge=0, decimal_places=2)
-    monthly_salary:      Decimal = Field(..., ge=0, decimal_places=2)
+    monthly_salary:      Decimal = Field(Decimal("0"), ge=0, decimal_places=2)
     shift:               Literal["SHIFT_A", "SHIFT_B"] = "SHIFT_A"
     work_location_name:  Optional[str] = Field(None, max_length=255)
     work_latitude:       Optional[float] = None

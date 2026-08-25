@@ -250,7 +250,7 @@ IMPORT_COLUMNS = [
     ("address",             True,  "Residential address",                                "12 MG Road, Pune"),
     ("aadhar_number",       True,  "Exactly 12 digits",                                  "234567890123"),
     ("bank_account_number", True,  "8-18 digits",                                        "12345678901"),
-    ("monthly_salary",      True,  "Monthly salary, number >= 0",                        "26000.00"),
+    ("monthly_salary",      False, "Monthly salary, number >= 0 (falls back to hourly rate if blank)", "26000.00"),
     ("hourly_rate",         True,  "Hourly wage (used for overtime), number >= 0",       "150.50"),
     ("gender",              False, "male / female / other",                              "male"),
     ("date_of_birth",       False, "YYYY-MM-DD",                                         "1995-04-23"),
