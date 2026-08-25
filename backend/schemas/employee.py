@@ -20,6 +20,7 @@ class EmployeeBase(BaseModel):
     bank_account_number: str          = Field(..., min_length=8, max_length=18)
     ifsc_code:           Optional[str] = None
     hourly_rate:         Decimal = Field(..., ge=0, decimal_places=2)
+    monthly_salary:      Decimal = Field(..., ge=0, decimal_places=2)
     shift:               Literal["SHIFT_A", "SHIFT_B"] = "SHIFT_A"
     work_location_name:  Optional[str] = Field(None, max_length=255)
     work_latitude:       Optional[float] = None
@@ -71,6 +72,7 @@ class EmployeeUpdate(BaseModel):
     bank_account_number: Optional[str]     = Field(None, min_length=8, max_length=18)
     ifsc_code:           Optional[str] = None
     hourly_rate:         Optional[Decimal] = Field(None, ge=0)
+    monthly_salary:      Optional[Decimal] = Field(None, ge=0)
     shift:               Optional[Literal["SHIFT_A", "SHIFT_B"]] = None
     work_location_name:  Optional[str] = Field(None, max_length=255)
     work_latitude:       Optional[float] = None
@@ -118,6 +120,7 @@ class EmployeeResponse(BaseModel):
     kyc_status:          Optional[str] = None
     kyc_verified_name:   Optional[str] = None
     hourly_rate:         Optional[Decimal] = None
+    monthly_salary:      Optional[Decimal] = None
     shift:               Optional[str] = None
     photo:               Optional[str] = None
     work_location_name:  Optional[str] = None

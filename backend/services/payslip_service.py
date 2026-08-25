@@ -6,11 +6,9 @@ from models.attendance import Attendance
 from models.payslip    import Payslip
 from schemas.payslip   import PayslipGenerateRequest
 from services.attendance_service import get_monthly_hours, get_monthly_days
+from services.payroll_service import resolve_payroll_config, resolve_monthly_salary
 from sqlalchemy import extract
 from config.shifts import SHIFTS, WORKING_DAYS_PER_MONTH
-
-ESI_RATE = Decimal("0.0075")
-PF_RATE  = Decimal("0.12")
 
 
 def generate_or_regenerate_payslip(db: Session, request: PayslipGenerateRequest) -> Payslip:
@@ -36,18 +34,28 @@ def generate_or_regenerate_payslip(db: Session, request: PayslipGenerateRequest)
             detail=f"Cannot generate payslip: exit time not recorded for {dates}",
         )
 
-    # Salary calculation: days-based over 26 working days
-    shift        = SHIFTS.get(employee.shift, SHIFTS["SHIFT_A"])
-    hourly_rate  = Decimal(str(employee.hourly_rate))
-    daily_rate   = (hourly_rate * shift["effective_hours"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    # Salary calculation: monthly salary pro-rated over the company's working days.
+    # Rates come from the company's payroll config so payslips and payroll runs
+    # agree (both fall back to the system defaults when unconfigured).
+    pcfg           = resolve_payroll_config(db, employee.company_id)
+    working_days   = int(pcfg["working_days"]) or WORKING_DAYS_PER_MONTH
+    monthly_salary = resolve_monthly_salary(employee)
+    hourly_rate    = Decimal(str(employee.hourly_rate or 0))
+
+    daily_rate  = (monthly_salary / Decimal(working_days)).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
 
     days_worked  = get_monthly_days(db, request.employee_id, request.month, request.year)
     total_hours  = get_monthly_hours(db, request.employee_id, request.month, request.year)
 
-    gross_pay    = (daily_rate * Decimal(days_worked)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    esi          = (gross_pay * ESI_RATE).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    pf           = (gross_pay * PF_RATE).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    net_pay      = (gross_pay - esi - pf).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    # Never pay beyond a full month, even if attendance exceeds the working-day count.
+    payable_days = min(days_worked, working_days)
+
+    gross_pay = (daily_rate * Decimal(payable_days)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    esi       = (gross_pay * pcfg["esi_rate"] / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    pf        = (gross_pay * pcfg["pf_rate"] / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    net_pay   = (gross_pay - esi - pf).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     existing = (
         db.query(Payslip)
@@ -60,14 +68,16 @@ def generate_or_regenerate_payslip(db: Session, request: PayslipGenerateRequest)
     )
 
     if existing:
-        existing.days_worked = days_worked
-        existing.total_hours = total_hours
-        existing.hourly_rate = hourly_rate
-        existing.daily_rate  = daily_rate
-        existing.gross_pay   = gross_pay
-        existing.esi         = esi
-        existing.pf          = pf
-        existing.net_pay     = net_pay
+        existing.days_worked    = days_worked
+        existing.total_hours    = total_hours
+        existing.hourly_rate    = hourly_rate
+        existing.monthly_salary = monthly_salary
+        existing.working_days   = working_days
+        existing.daily_rate     = daily_rate
+        existing.gross_pay      = gross_pay
+        existing.esi            = esi
+        existing.pf             = pf
+        existing.net_pay        = net_pay
         db.commit()
         db.refresh(existing)
         return existing
@@ -79,6 +89,8 @@ def generate_or_regenerate_payslip(db: Session, request: PayslipGenerateRequest)
         days_worked=days_worked,
         total_hours=total_hours,
         hourly_rate=hourly_rate,
+        monthly_salary=monthly_salary,
+        working_days=working_days,
         daily_rate=daily_rate,
         gross_pay=gross_pay,
         esi=esi,

@@ -109,3 +109,38 @@ class DailyEmployeeStatus(BaseModel):
     is_late:        bool
     overtime_hours: float
 
+
+
+# ── Missed attendance schemas ────────────────────────────────────────────────
+
+class MissedDayDetail(BaseModel):
+    date:       date
+    reason:     str   # "absent" | "incomplete" | "late"
+    entry_time: Optional[time] = None
+    exit_time:  Optional[time] = None
+
+
+class MissedAttendanceEntry(BaseModel):
+    employee_id:     int
+    employee_code:   Optional[str] = None
+    name:            Optional[str] = None
+    shift:           Optional[str] = None
+    missed_days:     int
+    absent_days:     int
+    incomplete_days: int
+    late_days:       int
+    details:         list[MissedDayDetail]
+
+
+class MissedAttendanceResponse(BaseModel):
+    period:                str   # "daily" | "weekly" | "monthly"
+    start_date:            date
+    end_date:              date
+    working_days:          int
+    total_employees:       int
+    employees_with_misses: int
+    total_absent:          int
+    total_incomplete:      int
+    total_late:            int
+    total_missed:          int
+    employees:             list[MissedAttendanceEntry]

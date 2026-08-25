@@ -63,3 +63,38 @@ export interface FaceScanResult {
   action: string;
   attendance: Attendance;
 }
+
+export type MissedReason = "absent" | "incomplete" | "late";
+
+export interface MissedDayDetail {
+  date: string;
+  reason: MissedReason;
+  entry_time: string | null;
+  exit_time: string | null;
+}
+
+export interface MissedAttendanceEntry {
+  employee_id: number;
+  employee_code: string | null;
+  name: string | null;
+  shift: string | null;
+  missed_days: number;
+  absent_days: number;
+  incomplete_days: number;
+  late_days: number;
+  details: MissedDayDetail[];
+}
+
+export interface MissedAttendanceResponse {
+  period: "daily" | "weekly" | "monthly";
+  start_date: string;
+  end_date: string;
+  working_days: number;
+  total_employees: number;
+  employees_with_misses: number;
+  total_absent: number;
+  total_incomplete: number;
+  total_late: number;
+  total_missed: number;
+  employees: MissedAttendanceEntry[];
+}

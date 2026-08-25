@@ -36,6 +36,22 @@ def resolve_payroll_config(db: Session, company_id: int | None) -> dict:
     }
 
 
+def resolve_monthly_salary(emp: User) -> Decimal:
+    """The employee's monthly salary, falling back to the legacy daily formula.
+
+    Employees created before the monthly-pay migration may still sit on 0, so
+    derive from hourly_rate rather than paying them nothing.
+    """
+    monthly = Decimal(str(emp.monthly_salary or 0))
+    if monthly > 0:
+        return monthly
+    shift  = SHIFTS.get(emp.shift, SHIFTS["SHIFT_A"])
+    hourly = Decimal(str(emp.hourly_rate or 0))
+    return (hourly * shift["effective_hours"] * Decimal(WORKING_DAYS_PER_MONTH)).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+
+
 def create_payroll_run(db: Session, month: int, year: int, user_id: int,
                        company_id: int | None = None) -> PayrollRun:
     # Check for an existing draft/completed run for this company + period.
@@ -104,9 +120,6 @@ def _calculate_employee_payroll(
     days_worked = get_monthly_days(db, emp.id, month, year)
     total_hours = get_monthly_hours(db, emp.id, month, year)
     overtime_hrs = Decimal("0")
-
-    shift = SHIFTS.get(emp.shift, SHIFTS["SHIFT_A"])
-    effective_hours = shift["effective_hours"]
 
     # Calculate overtime for each day
     day_records = (
@@ -179,10 +192,10 @@ def _calculate_employee_payroll(
         total_ded = sum(Decimal(str(v)) for v in deductions.values())
 
     else:
-        # Fallback: legacy hourly-rate based calculation
-        hourly_rate = Decimal(str(emp.hourly_rate))
-        daily_rate = (hourly_rate * effective_hours).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        basic_pay = daily_rate * working_days
+        # Fallback (no salary structure assigned): pro-rate the employee's monthly
+        # salary over the company's working days — the same basis payslips use.
+        basic_pay = resolve_monthly_salary(emp)
+        daily_rate = (basic_pay / working_days).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         prorated_basic = (daily_rate * Decimal(str(days_worked))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         gross = prorated_basic
 

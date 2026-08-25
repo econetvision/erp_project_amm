@@ -82,7 +82,10 @@ In CI, `LICENSE_KEY` and `LICENSE_SERVER_URL` are GitHub Actions secrets that th
 - **Employee code format**: `COMPANY-SITE-ID` (e.g., `ECONE-HQ-001`) — auto-generated, admin-editable
 - Attendance: manual clock-in/out, face-scan auto clock-in/out, fingerprint and face login on mobile
 - Geofenced check-in — work locations have a configurable radius (meters, default 50); the Android app shows a Google Maps view of the live position, geofence radius, and recorded clock-in/out pins
-- Payslips, payroll runs, and templated PDF generation
+- Payslips, payroll runs, and templated PDF generation — pay is **monthly**: an employee's
+  `monthly_salary` pro-rated over the company's working days (`hourly_rate` is kept for overtime)
+- Dashboard **missed-attendance** panel with daily / weekly / monthly views, breaking down
+  absences, missing clock-outs and late arrivals per employee
 - Vehicle fleet assignment and live GPS tracking, fed by hardware GPS trackers (via `gateway/`) with the Android app as a backup location source
 - Holidays, notifications, multi-company/multi-tenant support
 

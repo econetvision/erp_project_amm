@@ -62,8 +62,9 @@ export default function PayslipView() {
     email: (employee as any).email ?? "—",
     month_year: `${MONTHS[payslip.month - 1]} ${payslip.year}`,
     generated_at: new Date(payslip.generated_at).toLocaleDateString(),
-    days_worked: `${payslip.days_worked} / 26 days`,
+    days_worked: `${payslip.days_worked} / ${payslip.working_days} days`,
     total_hours: `${fmt(payslip.total_hours)} hrs`,
+    monthly_salary: `₹${fmt(payslip.monthly_salary)} / month`,
     hourly_rate: `₹${fmt(payslip.hourly_rate)} / hr`,
     daily_rate: `₹${fmt(payslip.daily_rate)} / day`,
     overtime_hours: "—",
@@ -139,12 +140,13 @@ export default function PayslipView() {
                 <tr><th>Description</th><th className="text-end">Amount</th></tr>
               </thead>
               <tbody>
-                <tr><td>Days Worked</td><td className="text-end">{payslip.days_worked} / 26 days</td></tr>
+                <tr><td>Days Worked</td><td className="text-end">{payslip.days_worked} / {payslip.working_days} days</td></tr>
                 <tr><td>Total Hours Worked</td><td className="text-end">{fmt(payslip.total_hours)} hrs</td></tr>
-                <tr><td>Hourly Rate</td><td className="text-end">₹{fmt(payslip.hourly_rate)} / hr</td></tr>
+                <tr className="fw-semibold"><td>Monthly Salary</td><td className="text-end">₹{fmt(payslip.monthly_salary)} / month</td></tr>
+                <tr><td>Hourly Rate <span className="text-muted fw-normal small">(overtime)</span></td><td className="text-end">₹{fmt(payslip.hourly_rate)} / hr</td></tr>
                 <tr><td>Daily Rate</td><td className="text-end">₹{fmt(payslip.daily_rate)} / day</td></tr>
                 <tr className="fw-semibold">
-                  <td>Gross Pay <span className="text-muted fw-normal small">(Days Worked × Daily Rate)</span></td>
+                  <td>Gross Pay <span className="text-muted fw-normal small">(Monthly Salary ÷ Working Days × Days Worked)</span></td>
                   <td className="text-end">₹{fmt(payslip.gross_pay)}</td>
                 </tr>
               </tbody>
@@ -160,7 +162,7 @@ export default function PayslipView() {
               </tfoot>
             </table>
             <p className="text-muted small text-center mt-3">
-              Gross Pay = {payslip.days_worked} days × ₹{fmt(payslip.daily_rate)} = ₹{fmt(payslip.gross_pay)}
+              Gross Pay = ₹{fmt(payslip.monthly_salary)} ÷ {payslip.working_days} days × {payslip.days_worked} days = ₹{fmt(payslip.gross_pay)}
               &nbsp;|&nbsp;
               Net Pay = ₹{fmt(payslip.gross_pay)} − ₹{fmt(payslip.esi)} − ₹{fmt(payslip.pf)} = ₹{fmt(payslip.net_pay)}
             </p>
@@ -270,7 +272,7 @@ export default function PayslipView() {
     return (
       <div key={_sec.id} style={{ padding: "8px 24px" }}>
         <p style={{ fontSize: 11, color: "#6c757d", textAlign: "center", margin: 0 }}>
-          Gross Pay = {payslip!.days_worked} days × ₹{fmt(payslip!.daily_rate)} = ₹{fmt(payslip!.gross_pay)}
+          Gross Pay = ₹{fmt(payslip!.monthly_salary)} ÷ {payslip!.working_days} days × {payslip!.days_worked} days = ₹{fmt(payslip!.gross_pay)}
           &nbsp;|&nbsp;
           Net Pay = ₹{fmt(payslip!.gross_pay)} − ₹{fmt(payslip!.esi)} − ₹{fmt(payslip!.pf)} = ₹{fmt(payslip!.net_pay)}
         </p>

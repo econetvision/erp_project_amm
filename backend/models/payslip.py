@@ -14,6 +14,8 @@ class Payslip(Base):
     days_worked  = Column(SmallInteger, nullable=False, default=0)
     total_hours  = Column(Numeric(7, 2), nullable=False, default=0.00)
     hourly_rate  = Column(Numeric(10, 2), nullable=False)
+    monthly_salary = Column(Numeric(12, 2), nullable=False, default=0.00)
+    working_days = Column(SmallInteger, nullable=False, default=26)
     daily_rate   = Column(Numeric(12, 2), nullable=False, default=0.00)
     gross_pay    = Column(Numeric(12, 2), nullable=False)
     esi          = Column(Numeric(12, 2), nullable=False, default=0.00)

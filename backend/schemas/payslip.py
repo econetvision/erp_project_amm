@@ -17,6 +17,8 @@ class PayslipResponse(BaseModel):
     days_worked:   int
     total_hours:   Decimal
     hourly_rate:   Decimal
+    monthly_salary: Decimal
+    working_days:  int
     daily_rate:    Decimal
     gross_pay:     Decimal
     esi:           Decimal

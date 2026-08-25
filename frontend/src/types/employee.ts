@@ -22,6 +22,7 @@ export interface Employee {
   kyc_status: string | null;
   kyc_verified_name: string | null;
   hourly_rate: number | string;
+  monthly_salary: number | string;
   shift: string;
   photo: string | null;
   work_location_name: string | null;
@@ -50,6 +51,7 @@ export interface EmployeeCreate {
   bank_account_number: string;
   ifsc_code?: string;
   hourly_rate: number;
+  monthly_salary: number;
   shift: string;
   work_location_name?: string;
   work_latitude?: number;
@@ -72,6 +74,7 @@ export interface EmployeeUpdate {
   bank_account_number?: string;
   ifsc_code?: string;
   hourly_rate?: number;
+  monthly_salary?: number;
   shift?: string;
   work_location_name?: string;
   work_latitude?: number;
