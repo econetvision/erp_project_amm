@@ -20,6 +20,8 @@ def _to_response(payslip: Payslip, db: Session) -> PayslipResponse:
         days_worked=payslip.days_worked,
         total_hours=payslip.total_hours,
         hourly_rate=payslip.hourly_rate,
+        monthly_salary=payslip.monthly_salary,
+        working_days=payslip.working_days,
         daily_rate=payslip.daily_rate,
         gross_pay=payslip.gross_pay,
         esi=payslip.esi,

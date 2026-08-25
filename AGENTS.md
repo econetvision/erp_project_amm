@@ -78,6 +78,7 @@ REACT_APP_API_URL=http://localhost:8088 npm start
 
 ## Domain Logic
 
+- **Missed attendance**: `GET /api/attendance/dashboard/missed?period=daily|weekly|monthly&date=…` (`get_missed_attendance` in `backend/services/attendance_service.py`). A working day counts as missed when the employee has no record (`absent`), never clocked out (`incomplete`), or arrived past `LATE_GRACE_MINUTES` (`late`) — one reason per day, so counts never double-up. The range is capped at today so an in-progress week/month doesn't report future days as absences.
 - **Shifts** defined in [backend/config/shifts.py](backend/config/shifts.py): SHIFT_A (6:30–14:00), SHIFT_B (9:00–17:00), each with 20-min break. 26 working days/month.
-- **Payslip**: daily rate × days worked, deductions: ESI 0.75%, PF 12%.
+- **Payslip**: monthly salary pro-rated over the company's working days — `monthly_salary ÷ working_days × days_worked`, capped at a full month. `users.monthly_salary` is the pay basis; `users.hourly_rate` is retained and prices overtime only. Deduction rates (ESI 0.75%, PF 12%) and `working_days` (26) are defaults that a company's `payroll_config` overrides — both `payslip_service` and `payroll_service` read them via `resolve_payroll_config`.
 - **Face recognition**: base64 image → 128-d encoding via `face_recognition` lib, stored as JSONB.

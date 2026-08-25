@@ -87,7 +87,7 @@ export default function PayslipGenerate() {
           <div className="table-responsive">
             <table className="table table-hover mb-0">
               <thead className="table-dark">
-                <tr><th>Month</th><th>Year</th><th>Hours</th><th>Rate</th><th>Gross Pay</th><th></th></tr>
+                <tr><th>Month</th><th>Year</th><th>Hours</th><th>Monthly Salary</th><th>Gross Pay</th><th></th></tr>
               </thead>
               <tbody>
                 {history.map((p) => (
@@ -95,7 +95,7 @@ export default function PayslipGenerate() {
                     <td>{MONTHS[p.month - 1]}</td>
                     <td>{p.year}</td>
                     <td>{p.total_hours}</td>
-                    <td>₹{parseFloat(String(p.hourly_rate)).toFixed(2)}</td>
+                    <td>₹{parseFloat(String(p.monthly_salary ?? 0)).toFixed(2)}</td>
                     <td className="fw-bold text-success">₹{parseFloat(String(p.gross_pay)).toFixed(2)}</td>
                     <td>
                       <button className="btn btn-sm btn-outline-primary"

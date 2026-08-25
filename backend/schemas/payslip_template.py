@@ -64,6 +64,7 @@ DEFAULT_LAYOUT: dict = {
             "fields": [
                 {"key": "days_worked", "label": "Days Worked", "enabled": True},
                 {"key": "total_hours", "label": "Total Hours", "enabled": True},
+                {"key": "monthly_salary", "label": "Monthly Salary", "enabled": True},
                 {"key": "hourly_rate", "label": "Hourly Rate", "enabled": True},
                 {"key": "daily_rate", "label": "Daily Rate", "enabled": True},
                 {"key": "overtime_hours", "label": "Overtime Hours", "enabled": True},

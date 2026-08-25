@@ -196,6 +196,7 @@ export default function EmployeeList() {
                 <th>Name</th>
                 <th>Gender</th>
                 <th>Aadhar</th>
+                <th>Monthly (₹)</th>
                 <th>Rate (₹)</th>
                 <th>Shift</th>
                 <th>KYC</th>
@@ -223,6 +224,7 @@ export default function EmployeeList() {
                     <td className="fw-semibold">{emp.name || "—"}</td>
                     <td className="text-capitalize">{emp.gender || "—"}</td>
                     <td><code>{maskAadhar(emp.aadhar_number)}</code></td>
+                    <td className="fw-semibold">₹{parseFloat(String(emp.monthly_salary ?? 0)).toFixed(2)}</td>
                     <td>₹{parseFloat(String(emp.hourly_rate)).toFixed(2)}</td>
                     <td><span className="badge bg-secondary">{emp.shift === "SHIFT_A" ? "A" : "B"}</span></td>
                     <td>

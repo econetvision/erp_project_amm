@@ -7,7 +7,7 @@ import ValidatedInput from "../../components/ValidatedInput";
 import { useAuth } from "../../context/AuthContext";
 import { useFormValidation, required, pattern, minLength, minValue } from "../../hooks/useFormValidation";
 
-const EMPTY = { employee_code: "", name: "", address: "", aadhar_number: "", bank_account_number: "", ifsc_code: "", hourly_rate: "", shift: "SHIFT_A", gender: "", date_of_birth: "", blood_group: "", marital_status: "", emergency_contact: "", emergency_name: "", username: "", password: "", work_location_name: "", role: "worker" };
+const EMPTY = { employee_code: "", name: "", address: "", aadhar_number: "", bank_account_number: "", ifsc_code: "", monthly_salary: "", hourly_rate: "", shift: "SHIFT_A", gender: "", date_of_birth: "", blood_group: "", marital_status: "", emergency_contact: "", emergency_name: "", username: "", password: "", work_location_name: "", role: "worker" };
 const STEPS = [
   { title: "Login & Personal", icon: "👤" },
   { title: "Bank Details", icon: "🏦" },
@@ -60,6 +60,7 @@ export default function EmployeeForm() {
     address: [required(), minLength(5, "Address too short")],
     aadhar_number: [required(), pattern(/^\d{12}$/, "Must be exactly 12 digits")],
     bank_account_number: [required(), pattern(/^\d{8,18}$/, "Must be 8-18 digits")],
+    monthly_salary: [required(), minValue(0, "Salary cannot be negative")],
     hourly_rate: [required(), minValue(0, "Rate cannot be negative")],
     emergency_contact: [pattern(/^\+?\d[\d\s-]{7,14}\d$/, "Enter a valid phone number (digits only, 9-15 digits)")],
   });
@@ -96,6 +97,7 @@ export default function EmployeeForm() {
           setForm({
           ...res.data,
           hourly_rate: res.data.hourly_rate.toString(),
+          monthly_salary: (res.data.monthly_salary ?? 0).toString(),
           ifsc_code: res.data.ifsc_code || "",
           gender: res.data.gender || "",
           date_of_birth: res.data.date_of_birth || "",
@@ -175,7 +177,11 @@ export default function EmployeeForm() {
     }
     setLoading(true);
     try {
-      const payload = { ...form, hourly_rate: parseFloat(form.hourly_rate) };
+      const payload = {
+        ...form,
+        hourly_rate: parseFloat(form.hourly_rate),
+        monthly_salary: parseFloat(form.monthly_salary),
+      };
       if (isEdit) {
         await updateEmployee(id!, payload);
         setAlert({ type: "success", message: "Employee updated. You can now register/update the face below." });
@@ -450,10 +456,15 @@ export default function EmployeeForm() {
                 {/* Step 2: Employment */}
                 {step === 2 && (
                   <div>
-                    <ValidatedInput label="Hourly Rate (₹)" name="hourly_rate" value={form.hourly_rate}
+                    <ValidatedInput label="Monthly Salary (₹)" name="monthly_salary" value={form.monthly_salary}
+                      onChange={handleChange} onBlur={() => touch("monthly_salary", form.monthly_salary)}
+                      validation={getFieldProps("monthly_salary")} type="number" step="0.01" min={0}
+                      icon="💰" required />
+
+                    <ValidatedInput label="Hourly Rate (₹) — used for overtime" name="hourly_rate" value={form.hourly_rate}
                       onChange={handleChange} onBlur={() => touch("hourly_rate", form.hourly_rate)}
                       validation={getFieldProps("hourly_rate")} type="number" step="0.01" min={0}
-                      icon="💰" required />
+                      icon="⏱️" required />
 
                     <ValidatedInput label="Shift" name="shift" value={form.shift}
                       onChange={handleChange} as="select">

@@ -250,7 +250,8 @@ IMPORT_COLUMNS = [
     ("address",             True,  "Residential address",                                "12 MG Road, Pune"),
     ("aadhar_number",       True,  "Exactly 12 digits",                                  "234567890123"),
     ("bank_account_number", True,  "8-18 digits",                                        "12345678901"),
-    ("hourly_rate",         True,  "Hourly wage, number >= 0",                           "150.50"),
+    ("monthly_salary",      False, "Monthly salary, number >= 0 (falls back to hourly rate if blank)", "26000.00"),
+    ("hourly_rate",         True,  "Hourly wage (used for overtime), number >= 0",       "150.50"),
     ("gender",              False, "male / female / other",                              "male"),
     ("date_of_birth",       False, "YYYY-MM-DD",                                         "1995-04-23"),
     ("blood_group",         False, "e.g. O+, AB-",                                       "O+"),
@@ -271,7 +272,7 @@ EXPORT_COLUMNS = [
     "employee_code", "username", "role", "name", "gender", "date_of_birth",
     "blood_group", "marital_status", "emergency_name", "emergency_contact",
     "phone", "email", "address", "aadhar_number", "bank_account_number",
-    "ifsc_code", "bank_name", "kyc_status", "hourly_rate", "shift",
+    "ifsc_code", "bank_name", "kyc_status", "monthly_salary", "hourly_rate", "shift",
     "work_location_name", "work_latitude", "work_longitude",
     "attendance_radius_m", "onboarding_complete", "created_at",
 ]
@@ -384,7 +385,7 @@ def export_employees(
                 value = value.strftime("%Y-%m-%d %H:%M:%S")
             elif isinstance(value, date):
                 value = value.isoformat()
-            elif value is not None and key == "hourly_rate":
+            elif value is not None and key in ("hourly_rate", "monthly_salary"):
                 value = float(value)
             cell = ws.cell(row=row, column=col, value=value)
             if key in ("aadhar_number", "bank_account_number", "phone", "emergency_contact"):
@@ -410,7 +411,7 @@ def _parse_import_row(raw: dict) -> dict:
         value = raw.get(key)
         if value is None or (isinstance(value, str) and not value.strip()):
             continue
-        if key in ("hourly_rate", "work_latitude", "work_longitude", "attendance_radius_m"):
+        if key in ("hourly_rate", "monthly_salary", "work_latitude", "work_longitude", "attendance_radius_m"):
             data[key] = float(value)
         elif key == "date_of_birth":
             if isinstance(value, datetime):

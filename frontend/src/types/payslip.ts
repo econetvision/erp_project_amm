@@ -6,6 +6,8 @@ export interface Payslip {
   days_worked: number;
   total_hours: number | string;
   hourly_rate: number | string;
+  monthly_salary: number | string;
+  working_days: number;
   daily_rate: number | string;
   gross_pay: number | string;
   esi: number | string;

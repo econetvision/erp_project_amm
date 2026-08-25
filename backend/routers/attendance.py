@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import extract, or_
-from datetime import date
+from datetime import date, timedelta
+import calendar as _calendar
 from database import get_db
 from models.attendance import Attendance
 from models.holiday import PublicHoliday
@@ -13,10 +14,12 @@ from schemas.attendance import (
     AttendanceResponse, MonthlyAttendanceSummary,
     DailyOverviewEntry, DashboardOverviewResponse,
     EmployeeStatEntry, DailyEmployeeStatus,
+    MissedAttendanceResponse,
 )
 from services.attendance_service import (
     calculate_hours_worked, get_dashboard_overview, get_employee_stats,
     get_working_days_in_month, is_late_arrival, calc_overtime,
+    get_missed_attendance,
 )
 from services.face_service import identify_employee, verify_employee_face
 from auth.dependencies import require_any, require_admin_or_supervisor, assert_tenant, tenant_scope
@@ -240,6 +243,52 @@ def daily_summary(
             overtime_hours = ot,
         ))
     return result
+
+
+def _resolve_period_range(period: str, ref: date) -> tuple[date, date]:
+    """Map a period + reference date onto an inclusive [start, end] date range."""
+    if period == "daily":
+        return ref, ref
+    if period == "weekly":
+        start = ref - timedelta(days=ref.weekday())   # Monday of ref's week
+        return start, start + timedelta(days=6)       # …through Sunday
+    # monthly
+    _, days_in_month = _calendar.monthrange(ref.year, ref.month)
+    return date(ref.year, ref.month, 1), date(ref.year, ref.month, days_in_month)
+
+
+@router.get("/dashboard/missed", response_model=MissedAttendanceResponse)
+def dashboard_missed_attendance(
+    period:     str  = Query("daily", pattern="^(daily|weekly|monthly)$"),
+    date_param: date | None = Query(None, alias="date"),
+    db:         Session = Depends(get_db),
+    current:    User    = Depends(require_admin_or_supervisor),
+):
+    """Employees who missed attendance over the requested period.
+
+    A working day is 'missed' when the employee has no record (absent), never
+    clocked out (incomplete), or arrived past the grace window (late).
+    """
+    ref = date_param or date.today()
+    start, end = _resolve_period_range(period, ref)
+
+    holiday_q = db.query(PublicHoliday).filter(
+        PublicHoliday.date >= start,
+        PublicHoliday.date <= end,
+    )
+    # Non-master: only this company's holidays plus global (NULL-company) ones.
+    if current.role != "master":
+        holiday_q = holiday_q.filter(
+            or_(PublicHoliday.company_id == current.company_id, PublicHoliday.company_id.is_(None))
+        )
+    holiday_dates = {h.date for h in holiday_q.all()}
+
+    # Tenant isolation is enforced in the service via company_id (None for master).
+    result = get_missed_attendance(
+        db, start, end, holiday_dates,
+        company_id=None if current.role == "master" else current.company_id,
+    )
+    return MissedAttendanceResponse(period=period, **result)
 
 
 @router.post("/clock-in", response_model=AttendanceResponse, status_code=201)

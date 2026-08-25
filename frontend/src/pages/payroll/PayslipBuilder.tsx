@@ -27,7 +27,7 @@ const SAMPLE: Record<string, string> = {
   month_year: `${MONTHS[new Date().getMonth()]} ${new Date().getFullYear()}`,
   generated_at: new Date().toLocaleDateString(),
   days_worked: "24 / 26 days", total_hours: "180.00 hrs",
-  hourly_rate: "₹125.00 / hr", daily_rate: "₹937.50 / day",
+  monthly_salary: "₹26,000.00 / month", hourly_rate: "₹125.00 / hr", daily_rate: "₹1,000.00 / day",
   overtime_hours: "8.50 hrs", overtime_pay: "₹1,062.50",
   gross_pay: "₹23,562.50", esi: "- ₹176.72", pf: "- ₹2,827.50",
   professional_tax: "- ₹200.00", advance_deduction: "- ₹2,000.00",

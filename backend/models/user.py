@@ -39,6 +39,7 @@ class User(Base):
     kyc_status          = Column(String(20), nullable=True, default="pending")
     kyc_verified_name   = Column(String(255), nullable=True)
     hourly_rate         = Column(Numeric(10, 2), nullable=True, default=0.00)
+    monthly_salary      = Column(Numeric(12, 2), nullable=True, default=0.00)
     shift               = Column(String(10), nullable=True, default="SHIFT_A")
     face_encoding       = Column(JSONB, nullable=True)
     photo               = Column(Text, nullable=True)

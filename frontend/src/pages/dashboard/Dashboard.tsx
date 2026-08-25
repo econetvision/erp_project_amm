@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import MissedAttendancePanel from "./MissedAttendancePanel";
 import {
   AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -185,6 +186,14 @@ export default function Dashboard() {
     ? (empStats.reduce((s, e) => s + e.attendance_rate, 0) / empStats.length).toFixed(1)
     : "—";
 
+  // Anchor for the missed-attendance panel: today when the dashboard is showing the
+  // current month, otherwise the last day of the selected month (the backend caps
+  // the range at today, so a past month still reports its full period).
+  const isCurrentMonth = month === now.getMonth() + 1 && year === now.getFullYear();
+  const missedAnchor = isCurrentMonth
+    ? today
+    : `${year}-${String(month).padStart(2, "0")}-${String(new Date(year, month, 0).getDate()).padStart(2, "0")}`;
+
   // Bar chart data: date labels as MM-DD
   const barData = (overview?.daily_entries ?? []).map((e: DailyEntry) => ({
     date:    e.date.slice(5),
@@ -311,6 +320,9 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Missed attendance — daily / weekly / monthly */}
+      <MissedAttendancePanel anchorDate={missedAnchor} />
 
       {/* Employee stats table */}
       {empStats.length > 0 && (

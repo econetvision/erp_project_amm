@@ -427,6 +427,7 @@ export default function Profile() {
                           <tr><td className="text-muted">Aadhar</td><td>{employee.aadhar_number ? `****${employee.aadhar_number.slice(-4)}` : "—"}</td></tr>
                           <tr><td className="text-muted">Bank Acct</td><td>{employee.bank_account_number ? `****${employee.bank_account_number.slice(-4)}` : "—"}</td></tr>
                           <tr><td className="text-muted">Bank/IFSC</td><td>{[employee.bank_name, employee.ifsc_code].filter(Boolean).join(" / ") || "—"}</td></tr>
+                          <tr><td className="text-muted">Monthly Salary</td><td>₹{employee.monthly_salary ?? 0}</td></tr>
                           <tr><td className="text-muted">Hourly Rate</td><td>₹{employee.hourly_rate}</td></tr>
                         </tbody></table>
                       </div>
