@@ -28,7 +28,8 @@ import models.company           # noqa: F401
 import models.rbac              # noqa: F401
 import models.integration       # noqa: F401
 import models.payslip_template  # noqa: F401
-import models.license            # noqa: F401
+import models.subscription       # noqa: F401
+import models.invoice            # noqa: F401
 import models.device_token       # noqa: F401
 import models.geofence           # noqa: F401
 
