@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Every schema change touches three places: the SQLAlchemy model, a new Alembic migration, and `db/init.sql` (AGENTS.md).
-- Migration revision id is `0031_subscriptions_licenses_invoices`, `down_revision = "0030_geofence_exit_alerts"` (the spec's `0030` number is already taken by the geofence migration).
+- Migration revision id is `0031_subscription_licensing`, `down_revision = "0030_geofence_exit_alerts"` (the spec's `0030` number is already taken by the geofence migration).
 - Seat maths: `capacity = NULL (unlimited) if any active licence has max_users IS NULL else Σ max_users`; `admin_cap = Σ max_admins`; `seats_used = COUNT(users WHERE company_id=? AND role != 'master' AND is_active IS NOT FALSE)`; `admins_used` = same AND `role='admin'`.
 - D7: `LICENSE_KEY` / `LICENSE_ENFORCE=false` bypass skips ONLY subscription validity (missing / suspended / expired / no licence). Seat and admin caps are always enforced, except when bypass is active AND the company has no subscription AND no licence at all (then unmetered).
 - D6: revoke is soft; existing users keep working; only new user creation is blocked while over capacity.
@@ -34,7 +34,7 @@
 **Backend — create**
 - `backend/models/subscription.py` — `Subscription`, `License` models.
 - `backend/models/invoice.py` — `Invoice`, `InvoiceLine` models.
-- `backend/alembic/versions/0031_subscriptions_licenses_invoices.py` — create 4 tables, migrate `company_licenses` rows, drop it; downgrade reverses.
+- `backend/alembic/versions/0031_subscription_licensing.py` — create 4 tables, migrate `company_licenses` rows, drop it; downgrade reverses.
 - `backend/services/subscription_service.py` — pure seat maths + enforcement (`evaluate_state`), `LicenseError`, DB wrappers (`validate_company_license`, `enforce_seat_limit`, `company_usage`), activation email.
 - `backend/services/invoice_service.py` — pure line/total/number helpers + `generate_invoice`.
 - `backend/schemas/subscription.py` — subscription + licence schemas.
@@ -70,7 +70,7 @@
 ### Task 1: Models, migration, init.sql
 
 **Files:**
-- Create: `backend/models/subscription.py`, `backend/models/invoice.py`, `backend/alembic/versions/0031_subscriptions_licenses_invoices.py`
+- Create: `backend/models/subscription.py`, `backend/models/invoice.py`, `backend/alembic/versions/0031_subscription_licensing.py`
 - Delete: `backend/models/license.py`
 - Modify: `backend/models/__init__.py`, `backend/main.py:31`, `db/init.sql` (append at end)
 
@@ -221,12 +221,12 @@ python -c "import models; from models import Subscription, License, Invoice, Inv
 ```
 Expected: `ok`
 
-- [ ] **Step 5: Write the migration `backend/alembic/versions/0031_subscriptions_licenses_invoices.py`**
+- [ ] **Step 5: Write the migration `backend/alembic/versions/0031_subscription_licensing.py`**
 
 ```python
 """Subscriptions, site licences and invoices (replaces company_licenses).
 
-Revision ID: 0031_subscriptions_licenses_invoices
+Revision ID: 0031_subscription_licensing
 Revises: 0030_geofence_exit_alerts
 Create Date: 2026-09-12
 """
@@ -237,7 +237,7 @@ import sqlalchemy as sa
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.dialects.postgresql import JSONB
 
-revision = "0031_subscriptions_licenses_invoices"
+revision = "0031_subscription_licensing"
 down_revision = "0030_geofence_exit_alerts"
 branch_labels = None
 depends_on = None
@@ -495,15 +495,15 @@ CREATE INDEX IF NOT EXISTS ix_invoice_lines_invoice_id ON invoice_lines(invoice_
 
 Run from `backend/`:
 ```bash
-python -c "import ast,sys; ast.parse(open('alembic/versions/0031_subscriptions_licenses_invoices.py').read()); print('syntax ok')"
+python -c "import ast,sys; ast.parse(open('alembic/versions/0031_subscription_licensing.py').read()); print('syntax ok')"
 python -c "from alembic.config import Config; from alembic.script import ScriptDirectory; s=ScriptDirectory.from_config(Config('alembic.ini')); print(s.get_heads())"
 ```
-Expected: `syntax ok` and `['0031_subscriptions_licenses_invoices']`.
+Expected: `syntax ok` and `['0031_subscription_licensing']`.
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add backend/models/subscription.py backend/models/invoice.py backend/models/__init__.py backend/main.py backend/alembic/versions/0031_subscriptions_licenses_invoices.py db/init.sql
+git add backend/models/subscription.py backend/models/invoice.py backend/models/__init__.py backend/main.py backend/alembic/versions/0031_subscription_licensing.py db/init.sql
 git rm -q backend/models/license.py
 git commit -m "feat(licensing): subscriptions, site licences and invoice tables with data migration" -m "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```

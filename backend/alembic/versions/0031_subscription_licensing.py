@@ -1,6 +1,6 @@
 """Subscriptions, site licences and invoices (replaces company_licenses).
 
-Revision ID: 0031_subscriptions_licenses_invoices
+Revision ID: 0031_subscription_licensing
 Revises: 0030_geofence_exit_alerts
 Create Date: 2026-09-12
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.dialects.postgresql import JSONB
 
-revision = "0031_subscriptions_licenses_invoices"
+revision = "0031_subscription_licensing"
 down_revision = "0030_geofence_exit_alerts"
 branch_labels = None
 depends_on = None
