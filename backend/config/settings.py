@@ -51,6 +51,20 @@ class Settings(BaseSettings):
     # validating attendance, to absorb GPS drift. Keep in sync with the mobile
     # app's Constants.GEOFENCE_BUFFER_M (default 25).
     geofence_buffer_m: float = 25.0
+    # Number of consecutive background pings that must land outside every
+    # assigned location before an "employee left work location" alert fires.
+    # Absorbs single-sample GPS jumps.
+    geofence_exit_consecutive_pings: int = 3
+    # How often (seconds) the mobile app should send a background ping while
+    # the employee is clocked in. Returned to the app on every ping.
+    geofence_ping_interval_s: int = 60
+
+    # --- Push notifications (Firebase Cloud Messaging) -----------------------
+    # Either the full service-account JSON (FIREBASE_CREDENTIALS_JSON, handy on
+    # Railway) or a path to the file (FIREBASE_CREDENTIALS_FILE). Leave both
+    # empty to disable push; in-app notifications still work.
+    firebase_credentials_json: str = ""
+    firebase_credentials_file: str = ""
 
     # ─── File storage (photos / logos) ───────────────────────────────────────
     # "local"  → write to `upload_root`. Point that at a mounted Railway volume

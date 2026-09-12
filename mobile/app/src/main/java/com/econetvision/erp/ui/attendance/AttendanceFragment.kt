@@ -22,6 +22,7 @@ import com.econetvision.erp.data.model.MyAssignment
 import com.econetvision.erp.data.model.MyWorkLocation
 import com.econetvision.erp.databinding.FragmentAttendanceBinding
 import com.econetvision.erp.service.VehicleTrackingService
+import com.econetvision.erp.service.WorkLocationTrackingService
 import com.econetvision.erp.util.Constants
 import com.econetvision.erp.util.ToastType
 import com.econetvision.erp.util.observeEvent
@@ -52,6 +53,16 @@ class AttendanceFragment : Fragment() {
     private var currentAssignment: MyAssignment? = null
     private var isTrackingTrip = false
     private var googleMap: GoogleMap? = null
+    // Prompt for background-location/notification consent at most once per screen.
+    private var askedWorkTrackingPermissions = false
+
+    private val workTrackingPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        // Start either way: with "while using" only, the service still reports
+        // while the app is open; with background consent it keeps going.
+        WorkLocationTrackingService.start(requireContext())
+    }
 
     private val trackingPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -211,6 +222,32 @@ class AttendanceFragment : Fragment() {
         ContextCompat.startForegroundService(requireContext(), intent)
         isTrackingTrip = true
         binding.btnToggleTracking.text = "Stop Trip Tracking"
+    }
+
+    /**
+     * Share location with the backend while clocked in so a supervisor is
+     * alerted if the employee leaves the assigned work location.
+     */
+    private fun ensureWorkLocationTracking() {
+        if (WorkLocationTrackingService.isRunning) return
+        if (!hasLocationPermission()) return
+
+        val needed = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            != PackageManager.PERMISSION_GRANTED
+        ) needed.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) needed.add(Manifest.permission.POST_NOTIFICATIONS)
+
+        if (needed.isEmpty() || askedWorkTrackingPermissions) {
+            WorkLocationTrackingService.start(requireContext())
+        } else {
+            askedWorkTrackingPermissions = true
+            workTrackingPermissionLauncher.launch(needed.toTypedArray())
+        }
     }
 
     private fun stopVehicleTracking() {
@@ -563,6 +600,7 @@ class AttendanceFragment : Fragment() {
                 binding.tvLocationStatus.visibility = View.GONE
                 currentAttendanceId = null
                 canClockOut = false
+                WorkLocationTrackingService.stop(requireContext())
             } else {
                 currentAttendanceId = attendance.id
                 if (attendance.exitTime == null) {
@@ -570,11 +608,13 @@ class AttendanceFragment : Fragment() {
                     binding.btnClockIn.visibility = View.GONE
                     binding.btnClockOut.visibility = View.VISIBLE
                     canClockOut = true
+                    ensureWorkLocationTracking()
                 } else {
                     binding.tvStatus.text = "Status: Clocked Out"
                     binding.btnClockIn.visibility = View.GONE
                     binding.btnClockOut.visibility = View.GONE
                     canClockOut = false
+                    WorkLocationTrackingService.stop(requireContext())
                 }
                 binding.tvLastEntry.text = "Entry: ${attendance.entryTime}"
 

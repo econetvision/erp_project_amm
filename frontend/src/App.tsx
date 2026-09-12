@@ -18,6 +18,7 @@ import VehicleList      from "./pages/vehicles/VehicleList";
 import VehicleForm      from "./pages/vehicles/VehicleForm";
 import AssignVehicle    from "./pages/tracking/AssignVehicle";
 import LiveTracking     from "./pages/tracking/LiveTracking";
+import GeofenceAlerts   from "./pages/tracking/GeofenceAlerts";
 import LandingPage      from "./pages/landing/LandingPage";
 import JobList          from "./pages/jobs/JobList";
 import JobForm          from "./pages/jobs/JobForm";
@@ -177,6 +178,9 @@ function AppRoutes() {
         } />
         <Route path="tracking/live" element={
           <RequireAuth roles={["master","admin","supervisor"]}><LiveTracking /></RequireAuth>
+        } />
+        <Route path="tracking/alerts" element={
+          <RequireAuth roles={["master","admin","supervisor"]}><GeofenceAlerts /></RequireAuth>
         } />
 
         {/* All roles */}

@@ -26,7 +26,7 @@ export default function CompanySettings() {
   const [selectedCoId, setSelectedCoId] = useState<number | null>(null);
   const companyId = id ? parseInt(id) : (selectedCoId ?? auth?.company_id ?? null);
   // Logos are stored as backend-relative paths (/uploads/...); prefix with the API origin.
-  const apiBase = process.env.REACT_APP_API_URL || "http://localhost:8088";
+  const apiBase = process.env.REACT_APP_API_URL ?? "http://localhost:8088";
 
   useEffect(() => {
     // For master users without company_id, load all companies for selection

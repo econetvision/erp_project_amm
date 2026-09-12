@@ -91,6 +91,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: "/vehicles",        label: "Vehicles",   icon: "vehicles", roles: ["master","admin","supervisor"] },
       { to: "/tracking/assign", label: "Assign",     icon: "assign",   roles: ["master","admin","supervisor"] },
       { to: "/tracking/live",   label: "Live Track", icon: "tracking", roles: ["master","admin","supervisor"] },
+      { to: "/tracking/alerts", label: "Location Alerts", icon: "tracking", roles: ["master","admin","supervisor"] },
     ],
   },
   {

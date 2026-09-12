@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModelProvider
 import com.econetvision.erp.MainActivity
+import com.econetvision.erp.push.PushTokenManager
 import com.econetvision.erp.data.api.AuthInterceptor
 import com.econetvision.erp.data.api.RetrofitClient
 import com.econetvision.erp.data.local.SessionManager
@@ -276,6 +277,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun navigateToMain() {
+        PushTokenManager.registerIfLoggedIn(this)
         startActivity(Intent(this, MainActivity::class.java))
         finish()
     }

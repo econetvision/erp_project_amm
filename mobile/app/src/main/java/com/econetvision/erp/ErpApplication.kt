@@ -4,6 +4,7 @@ import android.app.Application
 import com.econetvision.erp.data.api.AuthInterceptor
 import com.econetvision.erp.data.api.RetrofitClient
 import com.econetvision.erp.data.local.SessionManager
+import com.econetvision.erp.push.ErpFirebaseMessagingService
 
 class ErpApplication : Application() {
 
@@ -23,5 +24,9 @@ class ErpApplication : Application() {
         // Base 401 handler: clear the stored session so isLoggedIn() returns false.
         // MainActivity overrides this with a full redirect to LoginActivity.
         RetrofitClient.onUnauthorized = { sessionManager.clear() }
+
+        // Channel for push alerts (supervisor/admin "employee left location").
+        // Created up front so FCM has it before the first message arrives.
+        ErpFirebaseMessagingService.ensureAlertsChannel(this)
     }
 }

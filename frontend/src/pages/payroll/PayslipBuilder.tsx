@@ -105,7 +105,7 @@ export default function PayslipBuilder() {
   const [canvasDrag, setCanvasDrag] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const loadRef = useRef(false);
-  const apiBase = process.env.REACT_APP_API_URL || "http://localhost:8088";
+  const apiBase = process.env.REACT_APP_API_URL ?? "http://localhost:8088";
 
   /* ── load ──────────────────────────────────────────────────────── */
   useEffect(() => {

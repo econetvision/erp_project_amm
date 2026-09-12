@@ -85,12 +85,12 @@ export default function NotificationBell() {
             items.map(n => (
               <div
                 key={n.id}
-                className={`px-3 py-2 border-bottom ${!n.is_read ? "bg-light" : ""}`}
+                className={`px-3 py-2 border-bottom ${!n.is_read ? "bg-light" : ""} ${n.type === "alert" ? "border-start border-danger border-3" : ""}`}
                 style={{ cursor: n.is_read ? "default" : "pointer" }}
                 onClick={() => !n.is_read && handleMarkRead(n.id)}
               >
                 <div className="d-flex justify-content-between">
-                  <strong className="small">{n.title}</strong>
+                  <strong className={`small ${n.type === "alert" ? "text-danger" : ""}`}>{n.title}</strong>
                   {!n.is_read && <span className="badge bg-primary" style={{ fontSize: "0.6rem" }}>NEW</span>}
                 </div>
                 {n.body && <div className="small text-muted">{n.body}</div>}

@@ -112,4 +112,15 @@ interface ApiService {
 
     @POST("/api/tracking/push")
     suspend fun pushLocation(@Body data: LocationPushRequest): Response<Map<String, Any>>
+
+    // Work-location geofence (employee pings while clocked in)
+    @POST("/api/geofence/ping")
+    suspend fun geofencePing(@Body data: GeofencePingRequest): Response<GeofencePingResponse>
+
+    // Push device tokens
+    @POST("/api/notifications/device-token")
+    suspend fun registerDeviceToken(@Body data: DeviceTokenRequest): Response<Map<String, Any>>
+
+    @HTTP(method = "DELETE", path = "/api/notifications/device-token", hasBody = true)
+    suspend fun unregisterDeviceToken(@Body data: DeviceTokenDeleteRequest): Response<Map<String, Any>>
 }
