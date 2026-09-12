@@ -19,7 +19,7 @@ from auth.dependencies import (
     require_admin, get_current_user, require_any,
 )
 from services.face_service import identify_employee
-from services.license_service import validate_company_license, enforce_seat_limit
+from services.subscription_service import validate_company_license, enforce_seat_limit
 from services import storage
 
 router = APIRouter()
@@ -206,7 +206,7 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db), _: User = De
 
     # Enforce the company seat limit when adding a seat-consuming (non-master) user.
     if payload.role != "master":
-        enforce_seat_limit(db, company_id)
+        enforce_seat_limit(db, company_id, payload.role)
     user = User(
         username=payload.username,
         password_hash=hash_password(payload.password),

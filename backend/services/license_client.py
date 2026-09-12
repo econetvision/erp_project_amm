@@ -12,7 +12,7 @@ The ``base`` is ``settings.license_server_url + settings.license_api_base``.
 
 This client is only used when license enforcement is NOT bypassed — a configured
 static ``LICENSE_KEY`` (or ``LICENSE_ENFORCE=false``) makes the backend skip the
-server entirely (see ``license_service.license_bypass_active``).
+server entirely (see ``subscription_service.license_bypass_active``).
 
 Device / OS / browser info is carried in the contract's ``hostname`` and ``platform``
 fields; web and mobile clients can pass their own ``platform`` descriptor
