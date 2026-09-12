@@ -54,24 +54,14 @@ Values come from environment variables (or a local `.env`); field names map to `
 
 ### Licensing
 
-Each company has a license validated at login and per request (`backend/services/license_service.py`). Two enforcement modes:
+Licensing is per company + site (`backend/services/subscription_service.py`). Master creates a **subscription** (plan, billing cycle, price, GST) and grants **site licences** (26 seats + 1 admin each, stackable) from *Billing → Subscriptions*. Seats are metered company-wide; new users are rejected with `Seat limit exceeded (n/n)` or `Admin limit exceeded (n/n)`. Revoking a licence never locks out existing users. Invoices are generated from *Billing → Invoices* and printed from the browser.
 
 | Mode | Trigger | Behaviour |
 |---|---|---|
-| **Local DB** (default) | no `LICENSE_KEY` set | Validates against the `company_licenses` table (status/expiry/seats). |
-| **Static bypass** | `LICENSE_KEY` set, or `LICENSE_ENFORCE=false` | Every company is treated as licensed; the external license server is **not** called. Used for our own deployments — inject `LICENSE_KEY` via a CI/deploy secret. |
+| **Enforced** (default) | no `LICENSE_KEY` set | Login and every business request require a `trial`/`active` subscription that has not passed `ends_at` and has at least one active licence. |
+| **Static bypass** | `LICENSE_KEY` set, or `LICENSE_ENFORCE=false` | Validity checks are skipped, but seat and admin caps are **still enforced** once a company has any subscription or licence. Used for our own deployments — inject `LICENSE_KEY` via a CI/deploy secret. |
 
-**External license server** — when configured (`LICENSE_SERVER_URL`) and not bypassed, `backend/services/license_client.py` talks to the server's public API (`LICENSE_API_BASE`, default `/api/v1`; auth = `licenseKey` in the body):
-
-| Method | Path | Body | Purpose |
-|---|---|---|---|
-| POST | `/validate` | `{licenseKey}` | Check status, no seat consumed |
-| POST | `/activate` | `{licenseKey, deviceId, hostname?, platform?}` | Claim a device seat (idempotent) |
-| POST | `/heartbeat` | `{licenseKey, deviceId}` | Keep the seat alive (< 30 min) |
-| POST | `/deactivate` | `{licenseKey, deviceId}` | Release the seat |
-| GET | `/public-key` | — | PEM for offline verification |
-
-Device / OS / browser info is reported via the `hostname` and `platform` fields; web and mobile clients can pass their own `platform` descriptor (e.g. `web:Chrome/120`, `android:Pixel7/Android14`).
+`backend/services/license_client.py` (external licence server client) keeps its contract but is not called by the current flow.
 
 In CI, `LICENSE_KEY` and `LICENSE_SERVER_URL` are GitHub Actions secrets that the Railway deploy workflow syncs to the service's runtime variables.
 
