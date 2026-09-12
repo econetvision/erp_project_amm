@@ -52,6 +52,14 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    title: "BILLING",
+    items: [
+      { to: "/master/subscriptions", label: "Subscriptions", icon: "settings", roles: ["master"] },
+      { to: "/master/invoices",      label: "Invoices",      icon: "reports",  roles: ["master"] },
+      { to: "/subscription",         label: "Subscription",  icon: "settings", roles: ["admin"] },
+    ],
+  },
+  {
     title: "MAIN",
     items: [
       { to: "/dashboard",        label: "Dashboard",   icon: "dashboard",  roles: ["master","admin","supervisor"] },
