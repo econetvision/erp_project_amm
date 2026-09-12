@@ -6,7 +6,7 @@ from services import storage
 from database import engine, Base
 from routers import employees, attendance, payslips, auth, holidays, vehicles, assignments, tracking, jobs, notifications, payroll, locations
 from routers import companies, rbac, master as master_router, integrations as integrations_router
-from routers import payslip_templates, licenses, geofence
+from routers import payslip_templates, licenses, geofence, subscriptions, invoices
 from auth.dependencies import require_valid_license
 from config.settings import settings
 from logging_config import setup_logging, get_logger
@@ -100,7 +100,9 @@ app.include_router(rbac.router, prefix="/api/rbac", tags=["RBAC"], dependencies=
 app.include_router(master_router.router, prefix="/api/master", tags=["Master"])
 app.include_router(integrations_router.router, prefix="/api/integrations", tags=["Integrations"], dependencies=_licensed)
 app.include_router(payslip_templates.router, prefix="/api/payslip-templates", tags=["Payslip Templates"], dependencies=_licensed)
+app.include_router(subscriptions.router, prefix="/api/subscriptions", tags=["Subscriptions"])
 app.include_router(licenses.router, prefix="/api/licenses", tags=["Licenses"])
+app.include_router(invoices.router, prefix="/api/invoices", tags=["Invoices"])
 app.include_router(geofence.router, prefix="/api/geofence", tags=["Geofence"], dependencies=_licensed)
 
 
