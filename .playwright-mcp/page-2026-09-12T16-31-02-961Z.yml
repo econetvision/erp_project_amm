@@ -1,0 +1,159 @@
+- generic [ref=f7e3]:
+  - complementary [ref=f7e4]:
+    - generic [ref=f7e16] [cursor=pointer]:
+      - generic [ref=f7e17]: ERP System
+      - generic [ref=f7e18]: ECONETVISION
+    - navigation [ref=f7e19]:
+      - generic [ref=f7e20]:
+        - generic [ref=f7e21]: MASTER
+        - link "Overview" [ref=f7e22] [cursor=pointer]:
+          - /url: /master
+        - link "Companies" [ref=f7e26] [cursor=pointer]:
+          - /url: /companies
+        - link "Roles" [ref=f7e30] [cursor=pointer]:
+          - /url: /roles-permissions
+        - link "Audit Logs" [ref=f7e34] [cursor=pointer]:
+          - /url: /audit-logs
+      - generic [ref=f7e38]:
+        - generic [ref=f7e39]: BILLING
+        - link "Subscriptions" [ref=f7e40] [cursor=pointer]:
+          - /url: /master/subscriptions
+        - link "Invoices" [ref=f7e44] [cursor=pointer]:
+          - /url: /master/invoices
+      - generic [ref=f7e48]:
+        - generic [ref=f7e49]: MAIN
+        - link "Dashboard" [ref=f7e50] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Attendance" [ref=f7e54] [cursor=pointer]:
+          - /url: /attendance
+        - link "Reports" [ref=f7e58] [cursor=pointer]:
+          - /url: /attendance/report
+      - generic [ref=f7e62]:
+        - generic [ref=f7e63]: WORKFORCE
+        - link "Employees" [ref=f7e64] [cursor=pointer]:
+          - /url: /employees
+        - link "Work Locations" [ref=f7e68] [cursor=pointer]:
+          - /url: /work-locations
+      - generic [ref=f7e72]:
+        - generic [ref=f7e73]: PAYROLL
+        - link "Payslips" [ref=f7e74] [cursor=pointer]:
+          - /url: /payslips
+        - link "Payroll" [ref=f7e78] [cursor=pointer]:
+          - /url: /payroll/runs
+        - link "Structures" [ref=f7e82] [cursor=pointer]:
+          - /url: /payroll/structures
+        - link "Advances" [ref=f7e86] [cursor=pointer]:
+          - /url: /payroll/advances
+        - link "Templates" [ref=f7e90] [cursor=pointer]:
+          - /url: /payroll/templates
+        - link "Settings" [ref=f7e94] [cursor=pointer]:
+          - /url: /payroll/settings
+      - generic [ref=f7e98]:
+        - generic [ref=f7e99]: INTEGRATIONS
+        - link "Dashboard" [ref=f7e100] [cursor=pointer]:
+          - /url: /integrations
+        - link "Providers" [ref=f7e104] [cursor=pointer]:
+          - /url: /integrations/providers
+        - link "Company" [ref=f7e108] [cursor=pointer]:
+          - /url: /integrations/company
+      - generic [ref=f7e112]:
+        - generic [ref=f7e113]: FLEET
+        - link "Vehicles" [ref=f7e114] [cursor=pointer]:
+          - /url: /vehicles
+        - link "Assign" [ref=f7e118] [cursor=pointer]:
+          - /url: /tracking/assign
+        - link "Live Track" [ref=f7e122] [cursor=pointer]:
+          - /url: /tracking/live
+        - link "Location Alerts" [ref=f7e126] [cursor=pointer]:
+          - /url: /tracking/alerts
+      - generic [ref=f7e130]:
+        - generic [ref=f7e131]: SYSTEM
+        - link "Users" [ref=f7e132] [cursor=pointer]:
+          - /url: /users
+        - link "Jobs" [ref=f7e136] [cursor=pointer]:
+          - /url: /jobs
+        - link "Company" [ref=f7e140] [cursor=pointer]:
+          - /url: /company-settings
+        - link "Roles" [ref=f7e144] [cursor=pointer]:
+          - /url: /roles-permissions
+        - link "Profile & Settings" [ref=f7e148] [cursor=pointer]:
+          - /url: /profile
+    - button "Collapse" [ref=f7e152] [cursor=pointer]
+  - generic [ref=f7e155]:
+    - banner [ref=f7e156]:
+      - generic:
+        - heading [level=1]
+      - generic [ref=f7e157]:
+        - button "🔔" [ref=f7e159] [cursor=pointer]
+        - link "Settings" [ref=f7e160] [cursor=pointer]:
+          - /url: /settings
+        - button "Lock Screen" [ref=f7e163] [cursor=pointer]
+        - generic [ref=f7e167]: S
+        - button "Logout" [ref=f7e169] [cursor=pointer]
+    - generic [ref=f7e174]:
+      - heading "Analytics Dashboard" [level=3] [ref=f7e175]
+      - generic [ref=f7e178]:
+        - generic [ref=f7e179]:
+          - generic [ref=f7e180]: Month
+          - combobox [ref=f7e181]:
+            - option "January"
+            - option "February"
+            - option "March"
+            - option "April"
+            - option "May"
+            - option "June"
+            - option "July"
+            - option "August"
+            - option "September" [selected]
+            - option "October"
+            - option "November"
+            - option "December"
+        - generic [ref=f7e182]:
+          - generic [ref=f7e183]: Year
+          - spinbutton [ref=f7e184]: "2026"
+        - generic [ref=f7e185]:
+          - button "Loading…" [disabled]
+      - generic [ref=f7e186]:
+        - generic [ref=f7e189]:
+          - generic [ref=f7e190]: —
+          - generic [ref=f7e191]: Today Present
+          - generic [ref=f7e192]: employees clocked in
+        - generic [ref=f7e195]:
+          - generic [ref=f7e196]: —
+          - generic [ref=f7e197]: Today Absent
+          - generic [ref=f7e198]: not clocked in
+        - generic [ref=f7e201]:
+          - generic [ref=f7e202]: —
+          - generic [ref=f7e203]: Today Late
+          - generic [ref=f7e204]: ">10 min past shift"
+        - generic [ref=f7e207]:
+          - generic [ref=f7e208]: —
+          - generic [ref=f7e209]: Monthly Avg Attendance
+          - generic [ref=f7e210]: September 2026
+      - generic [ref=f7e211]:
+        - generic [ref=f7e212]:
+          - generic [ref=f7e213]: Missed Attendance
+          - list [ref=f7e214]:
+            - listitem [ref=f7e215]:
+              - button "Daily" [ref=f7e216] [cursor=pointer]
+            - listitem [ref=f7e217]:
+              - button "Weekly" [ref=f7e218] [cursor=pointer]
+            - listitem [ref=f7e219]:
+              - button "Monthly" [ref=f7e220] [cursor=pointer]
+        - generic [ref=f7e222]:
+          - status [ref=f7e223]
+          - text: Loading…
+      - generic [ref=f7e225] [cursor=pointer]:
+        - generic [ref=f7e226]: System & Deployment Info
+        - generic [ref=f7e227]:
+          - generic [ref=f7e228]: Backend Offline
+          - generic [ref=f7e229]: DB Error
+          - generic [ref=f7e230]: ▼
+    - contentinfo [ref=f7e231]:
+      - generic [ref=f7e232]:
+        - text: Supported by
+        - strong [ref=f7e233]: EcoNetVision Pvt. Ltd.
+      - generic [ref=f7e234]: "|"
+      - generic [ref=f7e235]: +91 9790840313
+      - generic [ref=f7e238]: "|"
+      - generic [ref=f7e239]: © 2026 All rights reserved

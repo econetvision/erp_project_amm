@@ -1,0 +1,109 @@
+- generic [ref=f10e3]:
+  - complementary [ref=f10e4]:
+    - generic [ref=f10e16] [cursor=pointer]:
+      - generic [ref=f10e17]: ERP System
+      - generic [ref=f10e18]: ECONETVISION
+    - navigation [ref=f10e19]:
+      - generic [ref=f10e20]:
+        - generic [ref=f10e21]: MAIN
+        - link "Dashboard" [ref=f10e22] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Attendance" [ref=f10e26] [cursor=pointer]:
+          - /url: /attendance
+        - link "Reports" [ref=f10e30] [cursor=pointer]:
+          - /url: /attendance/report
+      - generic [ref=f10e34]:
+        - generic [ref=f10e35]: WORKFORCE
+        - link "Employees" [ref=f10e36] [cursor=pointer]:
+          - /url: /employees
+        - link "Work Locations" [ref=f10e40] [cursor=pointer]:
+          - /url: /work-locations
+      - generic [ref=f10e44]:
+        - generic [ref=f10e45]: PAYROLL
+        - link "Payslips" [ref=f10e46] [cursor=pointer]:
+          - /url: /payslips
+        - link "Payroll" [ref=f10e50] [cursor=pointer]:
+          - /url: /payroll/runs
+        - link "Structures" [ref=f10e54] [cursor=pointer]:
+          - /url: /payroll/structures
+        - link "Advances" [ref=f10e58] [cursor=pointer]:
+          - /url: /payroll/advances
+        - link "Templates" [ref=f10e62] [cursor=pointer]:
+          - /url: /payroll/templates
+        - link "Settings" [ref=f10e66] [cursor=pointer]:
+          - /url: /payroll/settings
+      - generic [ref=f10e70]:
+        - generic [ref=f10e71]: INTEGRATIONS
+        - link "Dashboard" [ref=f10e72] [cursor=pointer]:
+          - /url: /integrations
+        - link "Company" [ref=f10e76] [cursor=pointer]:
+          - /url: /integrations/company
+      - generic [ref=f10e80]:
+        - generic [ref=f10e81]: FLEET
+        - link "Vehicles" [ref=f10e82] [cursor=pointer]:
+          - /url: /vehicles
+        - link "Assign" [ref=f10e86] [cursor=pointer]:
+          - /url: /tracking/assign
+        - link "Live Track" [ref=f10e90] [cursor=pointer]:
+          - /url: /tracking/live
+      - generic [ref=f10e94]:
+        - generic [ref=f10e95]: SYSTEM
+        - link "Users" [ref=f10e96] [cursor=pointer]:
+          - /url: /users
+        - link "Jobs" [ref=f10e100] [cursor=pointer]:
+          - /url: /jobs
+        - link "Company" [ref=f10e104] [cursor=pointer]:
+          - /url: /company-settings
+        - link "Roles" [ref=f10e108] [cursor=pointer]:
+          - /url: /roles-permissions
+        - link "Profile & Settings" [ref=f10e112] [cursor=pointer]:
+          - /url: /profile
+    - button "Collapse" [ref=f10e116] [cursor=pointer]
+  - generic [ref=f10e119]:
+    - banner [ref=f10e120]:
+      - generic:
+        - heading [level=1]
+      - generic [ref=f10e121]:
+        - button "🔔" [ref=f10e123] [cursor=pointer]
+        - link "Settings" [ref=f10e124] [cursor=pointer]:
+          - /url: /settings
+        - button "Lock Screen" [ref=f10e127] [cursor=pointer]
+        - generic [ref=f10e131]: A
+        - button "Logout" [ref=f10e133] [cursor=pointer]
+    - generic [ref=f10e138]:
+      - heading "Generate Payslip" [level=3] [ref=f10e139]
+      - generic [ref=f10e142]:
+        - generic [ref=f10e143]:
+          - generic [ref=f10e144]: Employee
+          - combobox [ref=f10e145]:
+            - option "-- Select --" [selected]
+            - option "Regress One"
+            - option "Bulk 1"
+            - option "Bulk 2"
+        - generic [ref=f10e146]:
+          - generic [ref=f10e147]: Month
+          - combobox [ref=f10e148]:
+            - option "Jan"
+            - option "Feb"
+            - option "Mar"
+            - option "Apr"
+            - option "May"
+            - option "Jun"
+            - option "Jul"
+            - option "Aug" [selected]
+            - option "Sep"
+            - option "Oct"
+            - option "Nov"
+            - option "Dec"
+        - generic [ref=f10e149]:
+          - generic [ref=f10e150]: Year
+          - spinbutton [ref=f10e151]: "2026"
+        - button "Generate Payslip" [ref=f10e153] [cursor=pointer]
+    - contentinfo [ref=f10e154]:
+      - generic [ref=f10e155]:
+        - text: Supported by
+        - strong [ref=f10e156]: EcoNetVision Pvt. Ltd.
+      - generic [ref=f10e157]: "|"
+      - generic [ref=f10e158]: +91 9790840313
+      - generic [ref=f10e161]: "|"
+      - generic [ref=f10e162]: © 2026 All rights reserved

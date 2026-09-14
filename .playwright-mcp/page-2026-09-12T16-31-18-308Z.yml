@@ -1,0 +1,15 @@
+- generic [ref=f7e1]:
+  - generic [ref=f7e242]:
+    - generic [ref=f7e243]:
+      - heading "ERP System" [level=5] [ref=f7e254]
+      - paragraph [ref=f7e255]: by EcoNetVision Pvt. Ltd.
+    - heading "Sign in to your account" [level=6] [ref=f7e256]
+    - generic [ref=f7e257]:
+      - generic [ref=f7e258]:
+        - generic [ref=f7e259]: Username
+        - textbox [active] [ref=f7e260]: admin
+      - generic [ref=f7e261]:
+        - generic [ref=f7e262]: Password
+        - textbox [ref=f7e263]: admin123
+      - button "Sign In" [ref=f7e264] [cursor=pointer]
+  - generic [aria-hidden] [ref=f7e265]: "0"

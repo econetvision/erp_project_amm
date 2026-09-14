@@ -1,0 +1,155 @@
+- generic [ref=f6e3]:
+  - complementary [ref=f6e4]:
+    - generic [ref=f6e16] [cursor=pointer]:
+      - generic [ref=f6e17]: ERP System
+      - generic [ref=f6e18]: ECONETVISION
+    - navigation [ref=f6e19]:
+      - generic [ref=f6e20]:
+        - generic [ref=f6e21]: MASTER
+        - link "Overview" [ref=f6e22] [cursor=pointer]:
+          - /url: /master
+        - link "Companies" [ref=f6e26] [cursor=pointer]:
+          - /url: /companies
+        - link "Roles" [ref=f6e30] [cursor=pointer]:
+          - /url: /roles-permissions
+        - link "Audit Logs" [ref=f6e34] [cursor=pointer]:
+          - /url: /audit-logs
+      - generic [ref=f6e38]:
+        - generic [ref=f6e39]: BILLING
+        - link "Subscriptions" [ref=f6e40] [cursor=pointer]:
+          - /url: /master/subscriptions
+        - link "Invoices" [ref=f6e44] [cursor=pointer]:
+          - /url: /master/invoices
+      - generic [ref=f6e48]:
+        - generic [ref=f6e49]: MAIN
+        - link "Dashboard" [ref=f6e50] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Attendance" [ref=f6e54] [cursor=pointer]:
+          - /url: /attendance
+        - link "Reports" [ref=f6e58] [cursor=pointer]:
+          - /url: /attendance/report
+      - generic [ref=f6e62]:
+        - generic [ref=f6e63]: WORKFORCE
+        - link "Employees" [ref=f6e64] [cursor=pointer]:
+          - /url: /employees
+        - link "Work Locations" [ref=f6e68] [cursor=pointer]:
+          - /url: /work-locations
+      - generic [ref=f6e72]:
+        - generic [ref=f6e73]: PAYROLL
+        - link "Payslips" [ref=f6e74] [cursor=pointer]:
+          - /url: /payslips
+        - link "Payroll" [ref=f6e78] [cursor=pointer]:
+          - /url: /payroll/runs
+        - link "Structures" [ref=f6e82] [cursor=pointer]:
+          - /url: /payroll/structures
+        - link "Advances" [ref=f6e86] [cursor=pointer]:
+          - /url: /payroll/advances
+        - link "Templates" [ref=f6e90] [cursor=pointer]:
+          - /url: /payroll/templates
+        - link "Settings" [ref=f6e94] [cursor=pointer]:
+          - /url: /payroll/settings
+      - generic [ref=f6e98]:
+        - generic [ref=f6e99]: INTEGRATIONS
+        - link "Dashboard" [ref=f6e100] [cursor=pointer]:
+          - /url: /integrations
+        - link "Providers" [ref=f6e104] [cursor=pointer]:
+          - /url: /integrations/providers
+        - link "Company" [ref=f6e108] [cursor=pointer]:
+          - /url: /integrations/company
+      - generic [ref=f6e112]:
+        - generic [ref=f6e113]: FLEET
+        - link "Vehicles" [ref=f6e114] [cursor=pointer]:
+          - /url: /vehicles
+        - link "Assign" [ref=f6e118] [cursor=pointer]:
+          - /url: /tracking/assign
+        - link "Live Track" [ref=f6e122] [cursor=pointer]:
+          - /url: /tracking/live
+        - link "Location Alerts" [ref=f6e126] [cursor=pointer]:
+          - /url: /tracking/alerts
+      - generic [ref=f6e130]:
+        - generic [ref=f6e131]: SYSTEM
+        - link "Users" [ref=f6e132] [cursor=pointer]:
+          - /url: /users
+        - link "Jobs" [ref=f6e136] [cursor=pointer]:
+          - /url: /jobs
+        - link "Company" [ref=f6e140] [cursor=pointer]:
+          - /url: /company-settings
+        - link "Roles" [ref=f6e144] [cursor=pointer]:
+          - /url: /roles-permissions
+        - link "Profile & Settings" [ref=f6e148] [cursor=pointer]:
+          - /url: /profile
+    - button "Collapse" [ref=f6e152] [cursor=pointer]
+  - generic [ref=f6e155]:
+    - banner [ref=f6e156]:
+      - generic:
+        - heading [level=1]
+      - generic [ref=f6e157]:
+        - button "All Companies" [ref=f6e220] [cursor=pointer]
+        - button "🔔" [ref=f6e159] [cursor=pointer]
+        - link "Settings" [ref=f6e160] [cursor=pointer]:
+          - /url: /settings
+        - button "Lock Screen" [ref=f6e163] [cursor=pointer]
+        - generic [ref=f6e167]: S
+        - button "Logout" [ref=f6e169] [cursor=pointer]
+    - generic [ref=f6e226]:
+      - generic [ref=f6e227]:
+        - button "Print" [ref=f6e228] [cursor=pointer]
+        - button "Back" [ref=f6e229] [cursor=pointer]
+      - generic [ref=f6e230]:
+        - generic [ref=f6e231]:
+          - generic [ref=f6e232]:
+            - heading "TAX INVOICE" [level=3] [ref=f6e233]
+            - generic [ref=f6e234]: INV-2026-0001
+          - generic [ref=f6e235]: DRAFT
+        - separator [ref=f6e236]
+        - generic [ref=f6e237]:
+          - generic [ref=f6e238]:
+            - generic [ref=f6e239]: Billed to
+            - generic [ref=f6e240]: Legacy Co
+          - generic [ref=f6e241]:
+            - generic [ref=f6e242]:
+              - text: "Issue date:"
+              - strong [ref=f6e243]: 2026-09-12
+            - generic [ref=f6e244]:
+              - text: "Due date:"
+              - strong [ref=f6e245]: 2026-09-27
+            - generic [ref=f6e246]:
+              - text: "Period:"
+              - strong [ref=f6e247]: 2026-08-31 → 2026-09-29
+        - table [ref=f6e248]:
+          - rowgroup [ref=f6e249]:
+            - row [ref=f6e250]:
+              - columnheader "Description" [ref=f6e251]
+              - columnheader "Qty" [ref=f6e252]
+              - columnheader "Unit price" [ref=f6e253]
+              - columnheader "Amount" [ref=f6e254]
+          - rowgroup [ref=f6e255]:
+            - row [ref=f6e256]:
+              - cell "Site licence — Company-wide (40 seats)" [ref=f6e257]
+              - cell "1" [ref=f6e258]
+              - cell "INR 0.00" [ref=f6e259]
+              - cell "INR 0.00" [ref=f6e260]
+            - row [ref=f6e261]:
+              - cell "Site licence — Company-wide (26 seats)" [ref=f6e262]
+              - cell "1" [ref=f6e263]
+              - cell "INR 0.00" [ref=f6e264]
+              - cell "INR 0.00" [ref=f6e265]
+          - rowgroup [ref=f6e266]:
+            - row [ref=f6e267]:
+              - cell "Subtotal" [ref=f6e268]
+              - cell "INR 0.00" [ref=f6e269]
+            - row [ref=f6e270]:
+              - cell "GST @ 18%" [ref=f6e271]
+              - cell "INR 0.00" [ref=f6e272]
+            - row [ref=f6e273]:
+              - cell "Total" [ref=f6e274]
+              - cell "INR 0.00" [ref=f6e275]
+        - paragraph [ref=f6e276]: Generated by EcoNetVision ERP. This is a computer-generated invoice.
+    - contentinfo [ref=f6e210]:
+      - generic [ref=f6e211]:
+        - text: Supported by
+        - strong [ref=f6e212]: EcoNetVision Pvt. Ltd.
+      - generic [ref=f6e213]: "|"
+      - generic [ref=f6e214]: +91 9790840313
+      - generic [ref=f6e217]: "|"
+      - generic [ref=f6e218]: © 2026 All rights reserved

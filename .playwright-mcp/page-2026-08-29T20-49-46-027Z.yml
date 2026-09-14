@@ -1,0 +1,103 @@
+- generic [ref=f12e3]:
+  - complementary [ref=f12e4]:
+    - generic [ref=f12e16] [cursor=pointer]:
+      - generic [ref=f12e17]: ERP System
+      - generic [ref=f12e18]: ECONETVISION
+    - navigation [ref=f12e19]:
+      - generic [ref=f12e20]:
+        - generic [ref=f12e21]: MAIN
+        - link "Dashboard" [ref=f12e22] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Attendance" [ref=f12e26] [cursor=pointer]:
+          - /url: /attendance
+        - link "Reports" [ref=f12e30] [cursor=pointer]:
+          - /url: /attendance/report
+      - generic [ref=f12e34]:
+        - generic [ref=f12e35]: WORKFORCE
+        - link "Employees" [ref=f12e36] [cursor=pointer]:
+          - /url: /employees
+        - link "Work Locations" [ref=f12e40] [cursor=pointer]:
+          - /url: /work-locations
+      - generic [ref=f12e44]:
+        - generic [ref=f12e45]: PAYROLL
+        - link "Payslips" [ref=f12e46] [cursor=pointer]:
+          - /url: /payslips
+        - link "Payroll" [ref=f12e50] [cursor=pointer]:
+          - /url: /payroll/runs
+        - link "Structures" [ref=f12e54] [cursor=pointer]:
+          - /url: /payroll/structures
+        - link "Advances" [ref=f12e58] [cursor=pointer]:
+          - /url: /payroll/advances
+        - link "Templates" [ref=f12e62] [cursor=pointer]:
+          - /url: /payroll/templates
+        - link "Settings" [ref=f12e66] [cursor=pointer]:
+          - /url: /payroll/settings
+      - generic [ref=f12e70]:
+        - generic [ref=f12e71]: INTEGRATIONS
+        - link "Dashboard" [ref=f12e72] [cursor=pointer]:
+          - /url: /integrations
+        - link "Company" [ref=f12e76] [cursor=pointer]:
+          - /url: /integrations/company
+      - generic [ref=f12e80]:
+        - generic [ref=f12e81]: FLEET
+        - link "Vehicles" [ref=f12e82] [cursor=pointer]:
+          - /url: /vehicles
+        - link "Assign" [ref=f12e86] [cursor=pointer]:
+          - /url: /tracking/assign
+        - link "Live Track" [ref=f12e90] [cursor=pointer]:
+          - /url: /tracking/live
+      - generic [ref=f12e94]:
+        - generic [ref=f12e95]: SYSTEM
+        - link "Users" [ref=f12e96] [cursor=pointer]:
+          - /url: /users
+        - link "Jobs" [ref=f12e100] [cursor=pointer]:
+          - /url: /jobs
+        - link "Company" [ref=f12e104] [cursor=pointer]:
+          - /url: /company-settings
+        - link "Roles" [ref=f12e108] [cursor=pointer]:
+          - /url: /roles-permissions
+        - link "Profile & Settings" [ref=f12e112] [cursor=pointer]:
+          - /url: /profile
+    - button "Collapse" [ref=f12e116] [cursor=pointer]
+  - generic [ref=f12e119]:
+    - banner [ref=f12e120]:
+      - generic:
+        - heading [level=1]
+      - generic [ref=f12e121]:
+        - button "🔔" [ref=f12e123] [cursor=pointer]
+        - link "Settings" [ref=f12e124] [cursor=pointer]:
+          - /url: /settings
+        - button "Lock Screen" [ref=f12e127] [cursor=pointer]
+        - generic [ref=f12e131]: A
+        - button "Logout" [ref=f12e133] [cursor=pointer]
+    - generic [ref=f12e138]:
+      - generic [ref=f12e139]:
+        - heading "User Management" [level=3] [ref=f12e140]
+        - button "+ New User" [ref=f12e141] [cursor=pointer]
+      - generic [ref=f12e142]:
+        - textbox "Search users…" [ref=f12e144]
+        - combobox [ref=f12e146]:
+          - option "5 / page"
+          - option "10 / page" [selected]
+          - option "25 / page"
+      - table [ref=f12e149]:
+        - rowgroup [ref=f12e150]:
+          - row [ref=f12e151]:
+            - columnheader "#" [ref=f12e152]
+            - columnheader "Username" [ref=f12e153]
+            - columnheader "Display Name" [ref=f12e154]
+            - columnheader "Email" [ref=f12e155]
+            - columnheader "Phone" [ref=f12e156]
+            - columnheader "Role" [ref=f12e157]
+            - columnheader [ref=f12e158]
+        - rowgroup [ref=f12e159]:
+          - row [ref=f12e160]:
+            - cell "No users found." [ref=f12e161]
+    - contentinfo [ref=f12e162]:
+      - generic [ref=f12e163]:
+        - text: Supported by
+        - strong [ref=f12e164]: EcoNetVision Pvt. Ltd.
+      - generic [ref=f12e165]: "|"
+      - generic [ref=f12e166]: +91 9790840313
+      - generic [ref=f12e169]: "|"
+      - generic [ref=f12e170]: © 2026 All rights reserved

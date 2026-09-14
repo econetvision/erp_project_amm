@@ -1,0 +1,80 @@
+- generic [ref=f11e3]:
+  - complementary [ref=f11e4]:
+    - generic [ref=f11e16] [cursor=pointer]:
+      - generic [ref=f11e17]: ERP System
+      - generic [ref=f11e18]: ECONETVISION
+    - navigation [ref=f11e19]:
+      - generic [ref=f11e20]:
+        - generic [ref=f11e21]: MAIN
+        - link "Dashboard" [ref=f11e22] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Attendance" [ref=f11e26] [cursor=pointer]:
+          - /url: /attendance
+        - link "Reports" [ref=f11e30] [cursor=pointer]:
+          - /url: /attendance/report
+      - generic [ref=f11e34]:
+        - generic [ref=f11e35]: WORKFORCE
+        - link "Employees" [ref=f11e36] [cursor=pointer]:
+          - /url: /employees
+        - link "Work Locations" [ref=f11e40] [cursor=pointer]:
+          - /url: /work-locations
+      - generic [ref=f11e44]:
+        - generic [ref=f11e45]: PAYROLL
+        - link "Payslips" [ref=f11e46] [cursor=pointer]:
+          - /url: /payslips
+        - link "Payroll" [ref=f11e50] [cursor=pointer]:
+          - /url: /payroll/runs
+        - link "Structures" [ref=f11e54] [cursor=pointer]:
+          - /url: /payroll/structures
+        - link "Advances" [ref=f11e58] [cursor=pointer]:
+          - /url: /payroll/advances
+        - link "Templates" [ref=f11e62] [cursor=pointer]:
+          - /url: /payroll/templates
+        - link "Settings" [ref=f11e66] [cursor=pointer]:
+          - /url: /payroll/settings
+      - generic [ref=f11e70]:
+        - generic [ref=f11e71]: INTEGRATIONS
+        - link "Dashboard" [ref=f11e72] [cursor=pointer]:
+          - /url: /integrations
+        - link "Company" [ref=f11e76] [cursor=pointer]:
+          - /url: /integrations/company
+      - generic [ref=f11e80]:
+        - generic [ref=f11e81]: FLEET
+        - link "Vehicles" [ref=f11e82] [cursor=pointer]:
+          - /url: /vehicles
+        - link "Assign" [ref=f11e86] [cursor=pointer]:
+          - /url: /tracking/assign
+        - link "Live Track" [ref=f11e90] [cursor=pointer]:
+          - /url: /tracking/live
+      - generic [ref=f11e94]:
+        - generic [ref=f11e95]: SYSTEM
+        - link "Users" [ref=f11e96] [cursor=pointer]:
+          - /url: /users
+        - link "Jobs" [ref=f11e100] [cursor=pointer]:
+          - /url: /jobs
+        - link "Company" [ref=f11e104] [cursor=pointer]:
+          - /url: /company-settings
+        - link "Roles" [ref=f11e108] [cursor=pointer]:
+          - /url: /roles-permissions
+        - link "Profile & Settings" [ref=f11e112] [cursor=pointer]:
+          - /url: /profile
+    - button "Collapse" [ref=f11e116] [cursor=pointer]
+  - generic [ref=f11e119]:
+    - banner [ref=f11e120]:
+      - generic:
+        - heading [level=1]
+      - generic [ref=f11e121]:
+        - button "🔔" [ref=f11e123] [cursor=pointer]
+        - link "Settings" [ref=f11e124] [cursor=pointer]:
+          - /url: /settings
+        - button "Lock Screen" [ref=f11e127] [cursor=pointer]
+        - generic [ref=f11e131]: A
+        - button "Logout" [ref=f11e133] [cursor=pointer]
+    - contentinfo [ref=f11e140]:
+      - generic [ref=f11e141]:
+        - text: Supported by
+        - strong [ref=f11e142]: EcoNetVision Pvt. Ltd.
+      - generic [ref=f11e143]: "|"
+      - generic [ref=f11e144]: +91 9790840313
+      - generic [ref=f11e147]: "|"
+      - generic [ref=f11e148]: © 2026 All rights reserved

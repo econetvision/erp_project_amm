@@ -1,0 +1,111 @@
+- generic [ref=f2e3]:
+  - complementary [ref=f2e4]:
+    - generic [ref=f2e16] [cursor=pointer]:
+      - generic [ref=f2e17]: ERP System
+      - generic [ref=f2e18]: ECONETVISION
+    - navigation [ref=f2e19]:
+      - generic [ref=f2e20]:
+        - generic [ref=f2e21]: MAIN
+        - link "Dashboard" [ref=f2e22] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Attendance" [ref=f2e26] [cursor=pointer]:
+          - /url: /attendance
+        - link "Reports" [ref=f2e30] [cursor=pointer]:
+          - /url: /attendance/report
+      - generic [ref=f2e34]:
+        - generic [ref=f2e35]: WORKFORCE
+        - link "Employees" [ref=f2e36] [cursor=pointer]:
+          - /url: /employees
+        - link "Work Locations" [ref=f2e40] [cursor=pointer]:
+          - /url: /work-locations
+      - generic [ref=f2e44]:
+        - generic [ref=f2e45]: PAYROLL
+        - link "Payslips" [ref=f2e46] [cursor=pointer]:
+          - /url: /payslips
+        - link "Payroll" [ref=f2e50] [cursor=pointer]:
+          - /url: /payroll/runs
+        - link "Structures" [ref=f2e54] [cursor=pointer]:
+          - /url: /payroll/structures
+        - link "Advances" [ref=f2e58] [cursor=pointer]:
+          - /url: /payroll/advances
+        - link "Templates" [ref=f2e62] [cursor=pointer]:
+          - /url: /payroll/templates
+        - link "Settings" [ref=f2e66] [cursor=pointer]:
+          - /url: /payroll/settings
+      - generic [ref=f2e70]:
+        - generic [ref=f2e71]: INTEGRATIONS
+        - link "Dashboard" [ref=f2e72] [cursor=pointer]:
+          - /url: /integrations
+        - link "Company" [ref=f2e76] [cursor=pointer]:
+          - /url: /integrations/company
+      - generic [ref=f2e80]:
+        - generic [ref=f2e81]: FLEET
+        - link "Vehicles" [ref=f2e82] [cursor=pointer]:
+          - /url: /vehicles
+        - link "Assign" [ref=f2e86] [cursor=pointer]:
+          - /url: /tracking/assign
+        - link "Live Track" [ref=f2e90] [cursor=pointer]:
+          - /url: /tracking/live
+      - generic [ref=f2e94]:
+        - generic [ref=f2e95]: SYSTEM
+        - link "Users" [ref=f2e96] [cursor=pointer]:
+          - /url: /users
+        - link "Jobs" [ref=f2e100] [cursor=pointer]:
+          - /url: /jobs
+        - link "Company" [ref=f2e104] [cursor=pointer]:
+          - /url: /company-settings
+        - link "Roles" [ref=f2e108] [cursor=pointer]:
+          - /url: /roles-permissions
+        - link "Profile & Settings" [ref=f2e112] [cursor=pointer]:
+          - /url: /profile
+    - button "Collapse" [ref=f2e116] [cursor=pointer]
+  - generic [ref=f2e119]:
+    - banner [ref=f2e120]:
+      - generic:
+        - heading [level=1]
+      - generic [ref=f2e121]:
+        - button "🔔" [ref=f2e123] [cursor=pointer]
+        - link "Settings" [ref=f2e124] [cursor=pointer]:
+          - /url: /settings
+        - button "Lock Screen" [ref=f2e127] [cursor=pointer]
+        - generic [ref=f2e131]: A
+        - button "Logout" [ref=f2e133] [cursor=pointer]
+    - generic [ref=f2e138]:
+      - generic [ref=f2e139]:
+        - heading "Employees" [level=3] [ref=f2e140]
+        - generic [ref=f2e141]:
+          - button "📄 Sample Template" [ref=f2e142] [cursor=pointer]
+          - button "⬇ Export Excel" [ref=f2e143] [cursor=pointer]
+          - button "⬆ Import Excel" [ref=f2e144] [cursor=pointer]
+          - button "+ Add Employee" [ref=f2e145] [cursor=pointer]
+      - generic [ref=f2e146]:
+        - textbox "Search by name, Aadhar, or bank account…" [ref=f2e148]
+        - combobox [ref=f2e150]:
+          - option "5 / page"
+          - option "10 / page" [selected]
+          - option "25 / page"
+          - option "50 / page"
+      - table [ref=f2e153]:
+        - rowgroup [ref=f2e154]:
+          - row [ref=f2e155]:
+            - columnheader "Photo" [ref=f2e156]
+            - columnheader "Emp ID" [ref=f2e157]
+            - columnheader "Name" [ref=f2e158]
+            - columnheader "Gender" [ref=f2e159]
+            - columnheader "Aadhar" [ref=f2e160]
+            - columnheader "Monthly (₹)" [ref=f2e161]
+            - columnheader "Rate (₹)" [ref=f2e162]
+            - columnheader "Shift" [ref=f2e163]
+            - columnheader "KYC" [ref=f2e164]
+            - columnheader "Actions" [ref=f2e165]
+        - rowgroup [ref=f2e166]:
+          - row [ref=f2e167]:
+            - cell "No employees found." [ref=f2e168]
+    - contentinfo [ref=f2e169]:
+      - generic [ref=f2e170]:
+        - text: Supported by
+        - strong [ref=f2e171]: EcoNetVision Pvt. Ltd.
+      - generic [ref=f2e172]: "|"
+      - generic [ref=f2e173]: +91 9790840313
+      - generic [ref=f2e176]: "|"
+      - generic [ref=f2e177]: © 2026 All rights reserved

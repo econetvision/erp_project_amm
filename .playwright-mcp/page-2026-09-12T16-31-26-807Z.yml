@@ -1,0 +1,305 @@
+- generic [active] [ref=f7e1]:
+  - generic [ref=f7e266]:
+    - complementary [ref=f7e267]:
+      - generic [ref=f7e279] [cursor=pointer]:
+        - generic [ref=f7e280]: ERP System
+        - generic [ref=f7e281]: ECONETVISION
+      - navigation [ref=f7e282]:
+        - generic [ref=f7e283]:
+          - generic [ref=f7e284]: BILLING
+          - link "Subscription" [ref=f7e285] [cursor=pointer]:
+            - /url: /subscription
+        - generic [ref=f7e289]:
+          - generic [ref=f7e290]: MAIN
+          - link "Dashboard" [ref=f7e291] [cursor=pointer]:
+            - /url: /dashboard
+          - link "Attendance" [ref=f7e295] [cursor=pointer]:
+            - /url: /attendance
+          - link "Reports" [ref=f7e299] [cursor=pointer]:
+            - /url: /attendance/report
+        - generic [ref=f7e303]:
+          - generic [ref=f7e304]: WORKFORCE
+          - link "Employees" [ref=f7e305] [cursor=pointer]:
+            - /url: /employees
+          - link "Work Locations" [ref=f7e309] [cursor=pointer]:
+            - /url: /work-locations
+        - generic [ref=f7e313]:
+          - generic [ref=f7e314]: PAYROLL
+          - link "Payslips" [ref=f7e315] [cursor=pointer]:
+            - /url: /payslips
+          - link "Payroll" [ref=f7e319] [cursor=pointer]:
+            - /url: /payroll/runs
+          - link "Structures" [ref=f7e323] [cursor=pointer]:
+            - /url: /payroll/structures
+          - link "Advances" [ref=f7e327] [cursor=pointer]:
+            - /url: /payroll/advances
+          - link "Templates" [ref=f7e331] [cursor=pointer]:
+            - /url: /payroll/templates
+          - link "Settings" [ref=f7e335] [cursor=pointer]:
+            - /url: /payroll/settings
+        - generic [ref=f7e339]:
+          - generic [ref=f7e340]: INTEGRATIONS
+          - link "Dashboard" [ref=f7e341] [cursor=pointer]:
+            - /url: /integrations
+          - link "Company" [ref=f7e345] [cursor=pointer]:
+            - /url: /integrations/company
+        - generic [ref=f7e349]:
+          - generic [ref=f7e350]: FLEET
+          - link "Vehicles" [ref=f7e351] [cursor=pointer]:
+            - /url: /vehicles
+          - link "Assign" [ref=f7e355] [cursor=pointer]:
+            - /url: /tracking/assign
+          - link "Live Track" [ref=f7e359] [cursor=pointer]:
+            - /url: /tracking/live
+          - link "Location Alerts" [ref=f7e363] [cursor=pointer]:
+            - /url: /tracking/alerts
+        - generic [ref=f7e367]:
+          - generic [ref=f7e368]: SYSTEM
+          - link "Users" [ref=f7e369] [cursor=pointer]:
+            - /url: /users
+          - link "Jobs" [ref=f7e373] [cursor=pointer]:
+            - /url: /jobs
+          - link "Company" [ref=f7e377] [cursor=pointer]:
+            - /url: /company-settings
+          - link "Roles" [ref=f7e381] [cursor=pointer]:
+            - /url: /roles-permissions
+          - link "Profile & Settings" [ref=f7e385] [cursor=pointer]:
+            - /url: /profile
+      - button "Collapse" [ref=f7e389] [cursor=pointer]
+    - generic [ref=f7e392]:
+      - banner [ref=f7e393]:
+        - generic:
+          - heading [level=1]
+        - generic [ref=f7e394]:
+          - button "🔔" [ref=f7e396] [cursor=pointer]
+          - link "Settings" [ref=f7e397] [cursor=pointer]:
+            - /url: /settings
+          - button "Lock Screen" [ref=f7e400] [cursor=pointer]
+          - generic [ref=f7e404]: A
+          - button "Logout" [ref=f7e406] [cursor=pointer]
+      - generic [ref=f7e411]:
+        - heading "Analytics Dashboard" [level=3] [ref=f7e412]
+        - generic [ref=f7e415]:
+          - generic [ref=f7e416]:
+            - generic [ref=f7e417]: Month
+            - combobox [ref=f7e418]:
+              - option "January"
+              - option "February"
+              - option "March"
+              - option "April"
+              - option "May"
+              - option "June"
+              - option "July"
+              - option "August"
+              - option "September" [selected]
+              - option "October"
+              - option "November"
+              - option "December"
+          - generic [ref=f7e419]:
+            - generic [ref=f7e420]: Year
+            - spinbutton [ref=f7e421]: "2026"
+          - button "Refresh" [ref=f7e423] [cursor=pointer]
+          - generic [ref=f7e424]: 3 employees · 26 working days
+        - generic [ref=f7e425]:
+          - generic [ref=f7e428]:
+            - generic [ref=f7e429]: "0"
+            - generic [ref=f7e430]: Today Present
+            - generic [ref=f7e431]: employees clocked in
+          - generic [ref=f7e434]:
+            - generic [ref=f7e435]: "3"
+            - generic [ref=f7e436]: Today Absent
+            - generic [ref=f7e437]: not clocked in
+          - generic [ref=f7e440]:
+            - generic [ref=f7e441]: "0"
+            - generic [ref=f7e442]: Today Late
+            - generic [ref=f7e443]: ">10 min past shift"
+          - generic [ref=f7e446]:
+            - generic [ref=f7e447]: 0.0%
+            - generic [ref=f7e448]: Monthly Avg Attendance
+            - generic [ref=f7e449]: September 2026
+        - generic [ref=f7e450]:
+          - generic [ref=f7e452]:
+            - generic [ref=f7e453]: Daily Attendance — September 2026
+            - generic [ref=f7e456]:
+              - img [ref=f7e457]:
+                - generic [ref=f7e462]:
+                  - generic [ref=f7e463]: 09-01
+                  - generic [ref=f7e465]: 09-02
+                  - generic [ref=f7e467]: 09-03
+                  - generic [ref=f7e469]: 09-04
+                  - generic [ref=f7e471]: 09-05
+                  - generic [ref=f7e473]: 09-07
+                  - generic [ref=f7e475]: 09-08
+                  - generic [ref=f7e477]: 09-09
+                  - generic [ref=f7e479]: 09-10
+                  - generic [ref=f7e481]: 09-11
+                  - generic [ref=f7e483]: 09-12
+                  - generic [ref=f7e485]: 09-14
+                  - generic [ref=f7e487]: 09-15
+                  - generic [ref=f7e489]: 09-16
+                  - generic [ref=f7e491]: 09-17
+                  - generic [ref=f7e493]: 09-18
+                  - generic [ref=f7e495]: 09-19
+                  - generic [ref=f7e497]: 09-21
+                  - generic [ref=f7e499]: 09-22
+                  - generic [ref=f7e501]: 09-23
+                  - generic [ref=f7e503]: 09-24
+                  - generic [ref=f7e505]: 09-25
+                  - generic [ref=f7e507]: 09-26
+                  - generic [ref=f7e509]: 09-28
+                  - generic [ref=f7e511]: 09-29
+                  - generic [ref=f7e513]: 09-30
+                - generic [ref=f7e516]:
+                  - generic [ref=f7e517]: "0"
+                  - generic [ref=f7e519]: "1"
+                  - generic [ref=f7e521]: "2"
+                  - generic [ref=f7e523]: "3"
+                  - generic [ref=f7e525]: "4"
+              - list [ref=f7e537]:
+                - listitem [ref=f7e538]: Present
+                - listitem [ref=f7e541]: Absent
+              - generic:
+                - generic:
+                  - paragraph: 09-15
+                  - list:
+                    - listitem: "Present : 0"
+                    - listitem: "Absent : 3"
+          - generic [ref=f7e545]:
+            - generic [ref=f7e546]: Today's Snapshot
+            - generic [ref=f7e555]:
+              - generic [ref=f7e556]:
+                - generic [ref=f7e557]: Present
+                - text: "0"
+              - generic [ref=f7e558]:
+                - generic [ref=f7e559]: Absent
+                - text: "3"
+              - generic [ref=f7e560]:
+                - generic [ref=f7e561]: Late
+                - text: "0"
+        - generic [ref=f7e562]:
+          - generic [ref=f7e563]:
+            - generic [ref=f7e564]:
+              - text: Missed Attendance
+              - generic [ref=f7e565]: Sep 12 · 1 working day
+            - list [ref=f7e566]:
+              - listitem [ref=f7e567]:
+                - button "Daily" [ref=f7e568] [cursor=pointer]
+              - listitem [ref=f7e569]:
+                - button "Weekly" [ref=f7e570] [cursor=pointer]
+              - listitem [ref=f7e571]:
+                - button "Monthly" [ref=f7e572] [cursor=pointer]
+          - generic [ref=f7e574]:
+            - generic [ref=f7e575]:
+              - generic [ref=f7e576]: Absent
+              - text: "3"
+            - generic [ref=f7e577]:
+              - generic [ref=f7e578]: No clock-out
+              - text: "0"
+            - generic [ref=f7e579]:
+              - generic [ref=f7e580]: Late
+              - text: "0"
+            - generic [ref=f7e581]: 3 of 3 employees affected
+          - table [ref=f7e583]:
+            - rowgroup [ref=f7e584]:
+              - row [ref=f7e585]:
+                - columnheader "Employee" [ref=f7e586]
+                - columnheader "Code" [ref=f7e587]
+                - columnheader "Shift" [ref=f7e588]
+                - columnheader "Missed" [ref=f7e589]
+                - columnheader "Absent" [ref=f7e590]
+                - columnheader "No clock-out" [ref=f7e591]
+                - columnheader "Late" [ref=f7e592]
+                - columnheader [ref=f7e593]
+            - rowgroup [ref=f7e594]:
+              - row [ref=f7e595]:
+                - cell "Bulk 1" [ref=f7e596]
+                - cell "DEFAU-HQ-002" [ref=f7e597]
+                - cell "Shift A" [ref=f7e598]
+                - cell "1" [ref=f7e600]
+                - cell "1" [ref=f7e602]
+                - cell "—" [ref=f7e603]
+                - cell "—" [ref=f7e604]
+                - cell [ref=f7e605]:
+                  - button "Dates" [ref=f7e606] [cursor=pointer]
+              - row [ref=f7e607]:
+                - cell "Bulk 2" [ref=f7e608]
+                - cell "DEFAU-HQ-003" [ref=f7e609]
+                - cell "Shift A" [ref=f7e610]
+                - cell "1" [ref=f7e612]
+                - cell "1" [ref=f7e614]
+                - cell "—" [ref=f7e615]
+                - cell "—" [ref=f7e616]
+                - cell [ref=f7e617]:
+                  - button "Dates" [ref=f7e618] [cursor=pointer]
+              - row [ref=f7e619]:
+                - cell "Regress One" [ref=f7e620]
+                - cell "DEFAU-HQ-001" [ref=f7e621]
+                - cell "Shift A" [ref=f7e622]
+                - cell "1" [ref=f7e624]
+                - cell "1" [ref=f7e626]
+                - cell "—" [ref=f7e627]
+                - cell "—" [ref=f7e628]
+                - cell [ref=f7e629]:
+                  - button "Dates" [ref=f7e630] [cursor=pointer]
+        - generic [ref=f7e631]:
+          - generic [ref=f7e632]: Employee Statistics — September 2026
+          - table [ref=f7e634]:
+            - rowgroup [ref=f7e635]:
+              - row [ref=f7e636]:
+                - columnheader "Employee" [ref=f7e637]
+                - columnheader "Shift" [ref=f7e638]
+                - columnheader "Days Present" [ref=f7e639]
+                - columnheader "Days Absent" [ref=f7e640]
+                - columnheader "Attendance Rate" [ref=f7e641]
+                - columnheader "Late Days" [ref=f7e642]
+                - columnheader "Overtime (hrs)" [ref=f7e643]
+            - rowgroup [ref=f7e644]:
+              - row [ref=f7e645]:
+                - cell "Regress One" [ref=f7e646]
+                - cell "Shift A" [ref=f7e647]
+                - cell "0" [ref=f7e649]
+                - cell "26" [ref=f7e650]
+                - cell "0%" [ref=f7e651]
+                - cell "0" [ref=f7e653]
+                - cell "0.00" [ref=f7e654]
+              - row [ref=f7e655]:
+                - cell "Bulk 1" [ref=f7e656]
+                - cell "Shift A" [ref=f7e657]
+                - cell "0" [ref=f7e659]
+                - cell "26" [ref=f7e660]
+                - cell "0%" [ref=f7e661]
+                - cell "0" [ref=f7e663]
+                - cell "0.00" [ref=f7e664]
+              - row [ref=f7e665]:
+                - cell "Bulk 2" [ref=f7e666]
+                - cell "Shift A" [ref=f7e667]
+                - cell "0" [ref=f7e669]
+                - cell "26" [ref=f7e670]
+                - cell "0%" [ref=f7e671]
+                - cell "0" [ref=f7e673]
+                - cell "0.00" [ref=f7e674]
+        - generic [ref=f7e676] [cursor=pointer]:
+          - generic [ref=f7e677]:
+            - generic [ref=f7e678]:
+              - generic [ref=f7e679]: Licensed seats
+              - generic [ref=f7e680]: 4 / 26 seats
+            - generic [ref=f7e681]: 1 / 1 admins · 1 licence
+          - progressbar [ref=f7e683]
+        - generic [ref=f7e685] [cursor=pointer]:
+          - generic [ref=f7e686]: System & Deployment Info
+          - generic [ref=f7e687]:
+            - generic [ref=f7e688]: Backend Online
+            - generic [ref=f7e689]: DB Connected
+            - generic [ref=f7e690]: ▼
+        - generic [ref=f7e692] [cursor=pointer]:
+          - generic [ref=f7e693]: Holidays — 2026
+          - generic [ref=f7e694]: ▼
+      - contentinfo [ref=f7e695]:
+        - generic [ref=f7e696]:
+          - text: Supported by
+          - strong [ref=f7e697]: EcoNetVision Pvt. Ltd.
+        - generic [ref=f7e698]: "|"
+        - generic [ref=f7e699]: +91 9790840313
+        - generic [ref=f7e702]: "|"
+        - generic [ref=f7e703]: © 2026 All rights reserved
+  - generic [aria-hidden] [ref=f7e265]: "0"
