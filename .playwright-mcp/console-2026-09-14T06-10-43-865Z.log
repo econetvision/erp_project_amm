@@ -1,0 +1,6 @@
+[     457ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8088/api/subscriptions/my:0
+[     458ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8088/api/attendance/dashboard/missed?period=daily&date=2026-09-14:0
+[     461ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8088/api/holidays?year=2026:0
+[     461ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8088/api/notifications/unread-count:0
+[     462ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8088/api/attendance/dashboard/overview?month=9&year=2026:0
+[     463ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8088/api/attendance/dashboard/employee-stats?month=9&year=2026:0
