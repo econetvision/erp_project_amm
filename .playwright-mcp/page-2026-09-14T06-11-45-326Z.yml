@@ -1,0 +1,220 @@
+- generic [ref=f3e3]:
+  - complementary [ref=f3e4]:
+    - generic [ref=f3e16] [cursor=pointer]:
+      - generic [ref=f3e17]: ERP System
+      - generic [ref=f3e18]: ECONETVISION
+    - navigation [ref=f3e19]:
+      - generic [ref=f3e20]:
+        - generic [ref=f3e21]: MASTER
+        - link "Overview" [ref=f3e22] [cursor=pointer]:
+          - /url: /master
+        - link "Companies" [ref=f3e26] [cursor=pointer]:
+          - /url: /companies
+        - link "Roles" [ref=f3e30] [cursor=pointer]:
+          - /url: /roles-permissions
+        - link "Audit Logs" [ref=f3e34] [cursor=pointer]:
+          - /url: /audit-logs
+      - generic [ref=f3e38]:
+        - generic [ref=f3e39]: BILLING
+        - link "Subscriptions" [ref=f3e40] [cursor=pointer]:
+          - /url: /master/subscriptions
+        - link "Invoices" [ref=f3e44] [cursor=pointer]:
+          - /url: /master/invoices
+      - generic [ref=f3e48]:
+        - generic [ref=f3e49]: MAIN
+        - link "Dashboard" [ref=f3e50] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Attendance" [ref=f3e54] [cursor=pointer]:
+          - /url: /attendance
+        - link "Reports" [ref=f3e58] [cursor=pointer]:
+          - /url: /attendance/report
+      - generic [ref=f3e62]:
+        - generic [ref=f3e63]: WORKFORCE
+        - link "Employees" [ref=f3e64] [cursor=pointer]:
+          - /url: /employees
+        - link "Work Locations" [ref=f3e68] [cursor=pointer]:
+          - /url: /work-locations
+      - generic [ref=f3e72]:
+        - generic [ref=f3e73]: PAYROLL
+        - link "Payslips" [ref=f3e74] [cursor=pointer]:
+          - /url: /payslips
+        - link "Payroll" [ref=f3e78] [cursor=pointer]:
+          - /url: /payroll/runs
+        - link "Structures" [ref=f3e82] [cursor=pointer]:
+          - /url: /payroll/structures
+        - link "Advances" [ref=f3e86] [cursor=pointer]:
+          - /url: /payroll/advances
+        - link "Templates" [ref=f3e90] [cursor=pointer]:
+          - /url: /payroll/templates
+        - link "Settings" [ref=f3e94] [cursor=pointer]:
+          - /url: /payroll/settings
+      - generic [ref=f3e98]:
+        - generic [ref=f3e99]: INTEGRATIONS
+        - link "Dashboard" [ref=f3e100] [cursor=pointer]:
+          - /url: /integrations
+        - link "Providers" [ref=f3e104] [cursor=pointer]:
+          - /url: /integrations/providers
+        - link "Company" [ref=f3e108] [cursor=pointer]:
+          - /url: /integrations/company
+      - generic [ref=f3e112]:
+        - generic [ref=f3e113]: FLEET
+        - link "Vehicles" [ref=f3e114] [cursor=pointer]:
+          - /url: /vehicles
+        - link "Assign" [ref=f3e118] [cursor=pointer]:
+          - /url: /tracking/assign
+        - link "Live Track" [ref=f3e122] [cursor=pointer]:
+          - /url: /tracking/live
+        - link "Location Alerts" [ref=f3e126] [cursor=pointer]:
+          - /url: /tracking/alerts
+      - generic [ref=f3e130]:
+        - generic [ref=f3e131]: SYSTEM
+        - link "Users" [ref=f3e132] [cursor=pointer]:
+          - /url: /users
+        - link "Jobs" [ref=f3e136] [cursor=pointer]:
+          - /url: /jobs
+        - link "Company" [ref=f3e140] [cursor=pointer]:
+          - /url: /company-settings
+        - link "Roles" [ref=f3e144] [cursor=pointer]:
+          - /url: /roles-permissions
+        - link "Profile & Settings" [ref=f3e148] [cursor=pointer]:
+          - /url: /profile
+    - button "Collapse" [ref=f3e152] [cursor=pointer]
+  - generic [ref=f3e155]:
+    - banner [ref=f3e156]:
+      - generic:
+        - heading [level=1]
+      - generic [ref=f3e157]:
+        - button "All Companies" [ref=f3e159] [cursor=pointer]
+        - button "🔔" [ref=f3e166] [cursor=pointer]
+        - link "Settings" [ref=f3e167] [cursor=pointer]:
+          - /url: /settings
+        - button "Lock Screen" [ref=f3e170] [cursor=pointer]
+        - generic [ref=f3e174]: S
+        - button "Logout" [ref=f3e176] [cursor=pointer]
+    - generic [ref=f3e230]:
+      - generic [ref=f3e231]:
+        - generic [ref=f3e232]:
+          - button "← Subscriptions" [ref=f3e233] [cursor=pointer]
+          - heading "Default Company active" [level=4] [ref=f3e234]:
+            - text: Default Company
+            - generic [ref=f3e235]: active
+        - button "Suspend" [ref=f3e237] [cursor=pointer]
+      - generic [ref=f3e238]:
+        - generic [ref=f3e241]:
+          - generic [ref=f3e242]: Seats
+          - generic [ref=f3e243]: 4 / 26
+        - generic [ref=f3e248]:
+          - generic [ref=f3e249]: Admins
+          - generic [ref=f3e250]: 1 / 1
+        - generic [ref=f3e253]:
+          - generic [ref=f3e254]: Active licences
+          - generic [ref=f3e255]: "1"
+        - generic [ref=f3e258]:
+          - generic [ref=f3e259]: Validity
+          - generic [ref=f3e260]: Valid
+      - generic [ref=f3e261]:
+        - generic [ref=f3e263]:
+          - generic [ref=f3e264]: Plan & billing
+          - generic [ref=f3e266]:
+            - generic [ref=f3e267]:
+              - generic [ref=f3e268]: Plan
+              - combobox [ref=f3e269]:
+                - option "Basic" [selected]
+                - option "Pro"
+                - option "Enterprise"
+            - generic [ref=f3e270]:
+              - generic [ref=f3e271]: Status
+              - combobox [ref=f3e272]:
+                - option "trial"
+                - option "active" [selected]
+                - option "past_due"
+                - option "suspended"
+                - option "cancelled"
+            - generic [ref=f3e273]:
+              - generic [ref=f3e274]: Billing cycle
+              - combobox [ref=f3e275]:
+                - option "Monthly"
+                - option "Yearly" [selected]
+            - generic [ref=f3e276]:
+              - generic [ref=f3e277]: Currency
+              - textbox [ref=f3e278]: INR
+            - generic [ref=f3e279]:
+              - generic [ref=f3e280]: Price / licence / cycle
+              - spinbutton [ref=f3e281]: "0.00"
+            - generic [ref=f3e282]:
+              - generic [ref=f3e283]: GST %
+              - spinbutton [ref=f3e284]: "18.00"
+            - generic [ref=f3e285]:
+              - generic [ref=f3e286]: Starts
+              - textbox [ref=f3e287]: 2026-09-12
+            - generic [ref=f3e288]:
+              - generic [ref=f3e289]: Ends
+              - textbox [ref=f3e290]
+            - generic [ref=f3e291]:
+              - generic [ref=f3e292]: Notes
+              - textbox [ref=f3e293]
+            - button "Save" [ref=f3e295] [cursor=pointer]
+        - generic [ref=f3e296]:
+          - generic [ref=f3e297]:
+            - generic [ref=f3e298]: Grant licences
+            - generic [ref=f3e300]:
+              - generic [ref=f3e301]:
+                - generic [ref=f3e302]: Site
+                - combobox [ref=f3e303]:
+                  - option "Company-wide" [selected]
+                  - option "HQ Yard"
+              - generic [ref=f3e304]:
+                - generic [ref=f3e305]: Qty
+                - spinbutton [ref=f3e306]: "1"
+              - generic [ref=f3e307]:
+                - generic [ref=f3e308]: Seats
+                - spinbutton [ref=f3e309]: "26"
+              - generic [ref=f3e310]:
+                - generic [ref=f3e311]: Admins
+                - spinbutton [ref=f3e312]: "1"
+              - generic [ref=f3e313]:
+                - generic [ref=f3e314]:
+                  - checkbox "Unlimited" [ref=f3e315]
+                  - generic [ref=f3e316]: Unlimited
+                - button "Grant" [ref=f3e317] [cursor=pointer]
+          - generic [ref=f3e318]:
+            - generic [ref=f3e319]: Licences
+            - table [ref=f3e321]:
+              - rowgroup [ref=f3e322]:
+                - row [ref=f3e323]:
+                  - columnheader "#" [ref=f3e324]
+                  - columnheader "Site" [ref=f3e325]
+                  - columnheader "Seats" [ref=f3e326]
+                  - columnheader "Admins" [ref=f3e327]
+                  - columnheader "Status" [ref=f3e328]
+                  - columnheader "Granted" [ref=f3e329]
+                  - columnheader "Revoked" [ref=f3e330]
+                  - columnheader [ref=f3e331]
+              - rowgroup [ref=f3e332]:
+                - row [ref=f3e333]:
+                  - cell "1" [ref=f3e334]
+                  - cell "Company-wide" [ref=f3e335]
+                  - cell "∞" [ref=f3e336]
+                  - cell "1" [ref=f3e337]
+                  - cell "revoked" [ref=f3e338]
+                  - cell "9/12/2026" [ref=f3e340]
+                  - cell "—" [ref=f3e341]
+                  - cell [ref=f3e342]
+                - row [ref=f3e343]:
+                  - cell "17" [ref=f3e344]
+                  - cell "Company-wide" [ref=f3e345]
+                  - cell "26" [ref=f3e346]
+                  - cell "1" [ref=f3e347]
+                  - cell "active" [ref=f3e348]
+                  - cell "9/12/2026" [ref=f3e350]
+                  - cell "—" [ref=f3e351]
+                  - cell [ref=f3e352]:
+                    - button "Revoke" [ref=f3e353] [cursor=pointer]
+    - contentinfo [ref=f3e201]:
+      - generic [ref=f3e202]:
+        - text: Supported by
+        - strong [ref=f3e203]: EcoNetVision Pvt. Ltd.
+      - generic [ref=f3e204]: "|"
+      - generic [ref=f3e205]: +91 9790840313
+      - generic [ref=f3e208]: "|"
+      - generic [ref=f3e209]: © 2026 All rights reserved

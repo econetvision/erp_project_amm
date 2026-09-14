@@ -23,6 +23,14 @@ function fmtDate(v: string | null): string {
   return v ? new Date(v).toLocaleDateString() : "—";
 }
 
+/** A bare "Not Found" from the API means the backend build predates the licensing routes. */
+export function describeError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /^not found$/i.test(msg.trim())
+    ? "API route not found — the backend is running an older build without subscription licensing. Redeploy the backend."
+    : msg;
+}
+
 export default function SubscriptionList() {
   const navigate = useNavigate();
   const [subs, setSubs] = useState<Subscription[]>([]);
@@ -34,15 +42,16 @@ export default function SubscriptionList() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const [s, c] = await Promise.all([getSubscriptions(), getCompanies({ all: true })]);
-      setSubs(s.data);
-      setCompanies(c.data.items);
-    } catch (e: any) {
-      setAlert({ type: "danger", message: e.message });
-    } finally {
-      setLoading(false);
-    }
+    // Load independently so a failing subscriptions call does not also blank the company list.
+    const [s, c] = await Promise.allSettled([getSubscriptions(), getCompanies({ all: true })]);
+    if (s.status === "fulfilled") setSubs(s.value.data);
+    if (c.status === "fulfilled") setCompanies(c.value.data.items);
+    const failures = [
+      s.status === "rejected" ? `Subscriptions: ${describeError(s.reason)}` : "",
+      c.status === "rejected" ? `Companies: ${describeError(c.reason)}` : "",
+    ].filter(Boolean);
+    if (failures.length) setAlert({ type: "danger", message: failures.join(" — ") });
+    setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -87,10 +96,17 @@ export default function SubscriptionList() {
             <form className="row g-3" onSubmit={handleCreate}>
               <div className="col-md-4">
                 <label className="form-label">Company</label>
-                <select className="form-select" value={form.company_id} onChange={e => set("company_id", Number(e.target.value))} required>
-                  <option value={0}>Select…</option>
+                <select className="form-select" value={form.company_id} onChange={e => set("company_id", Number(e.target.value))} required disabled={unlicensed.length === 0}>
+                  <option value={0}>{unlicensed.length === 0 ? "No company available" : "Select…"}</option>
                   {unlicensed.map(c => <option key={c.id} value={c.id}>{c.name} ({c.code})</option>)}
                 </select>
+                {unlicensed.length === 0 && (
+                  <div className="form-text text-warning">
+                    {companies.length === 0
+                      ? "No companies loaded. Create a company first, or check the error above."
+                      : "Every company already has a subscription. Open it from the list below to change plan or licences."}
+                  </div>
+                )}
               </div>
               <div className="col-md-2">
                 <label className="form-label">Plan</label>
@@ -138,7 +154,7 @@ export default function SubscriptionList() {
                 <input className="form-control" value={form.notes || ""} onChange={e => set("notes", e.target.value)} />
               </div>
               <div className="col-12">
-                <button className="btn btn-success" disabled={loading}>Create</button>
+                <button className="btn btn-success" disabled={loading || unlicensed.length === 0}>Create</button>
               </div>
             </form>
           </div>
@@ -173,9 +189,11 @@ export default function SubscriptionList() {
           </table>
         </div>
       </div>
-      {unlicensed.length > 0 && (
+      {unlicensed.length > 0 ? (
         <p className="text-muted small mt-2">{unlicensed.length} compan{unlicensed.length === 1 ? "y has" : "ies have"} no subscription.</p>
-      )}
+      ) : companies.length > 0 ? (
+        <p className="text-muted small mt-2">All {companies.length} compan{companies.length === 1 ? "y has" : "ies have"} a subscription.</p>
+      ) : null}
     </div>
   );
 }

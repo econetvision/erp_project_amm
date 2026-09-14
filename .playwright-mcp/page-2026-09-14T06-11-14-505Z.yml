@@ -1,0 +1,119 @@
+- generic [ref=f3e3]:
+  - complementary [ref=f3e4]:
+    - generic [ref=f3e16] [cursor=pointer]:
+      - generic [ref=f3e17]: ERP System
+      - generic [ref=f3e18]: ECONETVISION
+    - navigation [ref=f3e19]:
+      - generic [ref=f3e20]:
+        - generic [ref=f3e21]: MASTER
+        - link "Overview" [ref=f3e22] [cursor=pointer]:
+          - /url: /master
+        - link "Companies" [ref=f3e26] [cursor=pointer]:
+          - /url: /companies
+        - link "Roles" [ref=f3e30] [cursor=pointer]:
+          - /url: /roles-permissions
+        - link "Audit Logs" [ref=f3e34] [cursor=pointer]:
+          - /url: /audit-logs
+      - generic [ref=f3e38]:
+        - generic [ref=f3e39]: BILLING
+        - link "Subscriptions" [ref=f3e40] [cursor=pointer]:
+          - /url: /master/subscriptions
+        - link "Invoices" [ref=f3e44] [cursor=pointer]:
+          - /url: /master/invoices
+      - generic [ref=f3e48]:
+        - generic [ref=f3e49]: MAIN
+        - link "Dashboard" [ref=f3e50] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Attendance" [ref=f3e54] [cursor=pointer]:
+          - /url: /attendance
+        - link "Reports" [ref=f3e58] [cursor=pointer]:
+          - /url: /attendance/report
+      - generic [ref=f3e62]:
+        - generic [ref=f3e63]: WORKFORCE
+        - link "Employees" [ref=f3e64] [cursor=pointer]:
+          - /url: /employees
+        - link "Work Locations" [ref=f3e68] [cursor=pointer]:
+          - /url: /work-locations
+      - generic [ref=f3e72]:
+        - generic [ref=f3e73]: PAYROLL
+        - link "Payslips" [ref=f3e74] [cursor=pointer]:
+          - /url: /payslips
+        - link "Payroll" [ref=f3e78] [cursor=pointer]:
+          - /url: /payroll/runs
+        - link "Structures" [ref=f3e82] [cursor=pointer]:
+          - /url: /payroll/structures
+        - link "Advances" [ref=f3e86] [cursor=pointer]:
+          - /url: /payroll/advances
+        - link "Templates" [ref=f3e90] [cursor=pointer]:
+          - /url: /payroll/templates
+        - link "Settings" [ref=f3e94] [cursor=pointer]:
+          - /url: /payroll/settings
+      - generic [ref=f3e98]:
+        - generic [ref=f3e99]: INTEGRATIONS
+        - link "Dashboard" [ref=f3e100] [cursor=pointer]:
+          - /url: /integrations
+        - link "Providers" [ref=f3e104] [cursor=pointer]:
+          - /url: /integrations/providers
+        - link "Company" [ref=f3e108] [cursor=pointer]:
+          - /url: /integrations/company
+      - generic [ref=f3e112]:
+        - generic [ref=f3e113]: FLEET
+        - link "Vehicles" [ref=f3e114] [cursor=pointer]:
+          - /url: /vehicles
+        - link "Assign" [ref=f3e118] [cursor=pointer]:
+          - /url: /tracking/assign
+        - link "Live Track" [ref=f3e122] [cursor=pointer]:
+          - /url: /tracking/live
+        - link "Location Alerts" [ref=f3e126] [cursor=pointer]:
+          - /url: /tracking/alerts
+      - generic [ref=f3e130]:
+        - generic [ref=f3e131]: SYSTEM
+        - link "Users" [ref=f3e132] [cursor=pointer]:
+          - /url: /users
+        - link "Jobs" [ref=f3e136] [cursor=pointer]:
+          - /url: /jobs
+        - link "Company" [ref=f3e140] [cursor=pointer]:
+          - /url: /company-settings
+        - link "Roles" [ref=f3e144] [cursor=pointer]:
+          - /url: /roles-permissions
+        - link "Profile & Settings" [ref=f3e148] [cursor=pointer]:
+          - /url: /profile
+    - button "Collapse" [ref=f3e152] [cursor=pointer]
+  - generic [ref=f3e155]:
+    - banner [ref=f3e156]:
+      - generic:
+        - heading [level=1]
+      - generic [ref=f3e157]:
+        - button "All Companies" [ref=f3e159] [cursor=pointer]
+        - button "🔔" [ref=f3e166] [cursor=pointer]
+        - link "Settings" [ref=f3e167] [cursor=pointer]:
+          - /url: /settings
+        - button "Lock Screen" [ref=f3e170] [cursor=pointer]
+        - generic [ref=f3e174]: S
+        - button "Logout" [ref=f3e176] [cursor=pointer]
+    - generic [ref=f3e181]:
+      - generic [ref=f3e182]:
+        - heading "Subscriptions" [level=4] [ref=f3e183]
+        - button "+ New subscription" [ref=f3e184] [cursor=pointer]
+      - table [ref=f3e187]:
+        - rowgroup [ref=f3e188]:
+          - row [ref=f3e189]:
+            - columnheader "Company" [ref=f3e190]
+            - columnheader "Plan" [ref=f3e191]
+            - columnheader "Status" [ref=f3e192]
+            - columnheader "Licences" [ref=f3e193]
+            - columnheader "Seats" [ref=f3e194]
+            - columnheader "Admins" [ref=f3e195]
+            - columnheader "Renews / ends" [ref=f3e196]
+            - columnheader "Validity" [ref=f3e197]
+        - rowgroup [ref=f3e198]:
+          - row [ref=f3e199]:
+            - cell "Loading…" [ref=f3e200]
+    - contentinfo [ref=f3e201]:
+      - generic [ref=f3e202]:
+        - text: Supported by
+        - strong [ref=f3e203]: EcoNetVision Pvt. Ltd.
+      - generic [ref=f3e204]: "|"
+      - generic [ref=f3e205]: +91 9790840313
+      - generic [ref=f3e208]: "|"
+      - generic [ref=f3e209]: © 2026 All rights reserved
