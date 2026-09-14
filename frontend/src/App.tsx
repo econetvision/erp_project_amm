@@ -18,6 +18,7 @@ import VehicleList      from "./pages/vehicles/VehicleList";
 import VehicleForm      from "./pages/vehicles/VehicleForm";
 import AssignVehicle    from "./pages/tracking/AssignVehicle";
 import LiveTracking     from "./pages/tracking/LiveTracking";
+import GeofenceAlerts   from "./pages/tracking/GeofenceAlerts";
 import LandingPage      from "./pages/landing/LandingPage";
 import JobList          from "./pages/jobs/JobList";
 import JobForm          from "./pages/jobs/JobForm";
@@ -30,6 +31,11 @@ import PayslipBuilder   from "./pages/payroll/PayslipBuilder";
 import WorkLocations    from "./pages/locations/WorkLocations";
 import Profile          from "./pages/profile/Profile";
 import MasterDashboard  from "./pages/master/MasterDashboard";
+import SubscriptionList   from "./pages/master/SubscriptionList";
+import SubscriptionDetail from "./pages/master/SubscriptionDetail";
+import InvoiceList        from "./pages/master/InvoiceList";
+import InvoiceView        from "./pages/master/InvoiceView";
+import SubscriptionInfo   from "./pages/settings/SubscriptionInfo";
 import CompanyList      from "./pages/companies/CompanyList";
 import CompanySettings  from "./pages/companies/CompanySettings";
 import RolesPermissions from "./pages/rbac/RolesPermissions";
@@ -77,6 +83,21 @@ function AppRoutes() {
         } />
         <Route path="companies/:id" element={
           <RequireAuth roles={["master"]}><CompanySettings /></RequireAuth>
+        } />
+        <Route path="master/subscriptions" element={
+          <RequireAuth roles={["master"]}><SubscriptionList /></RequireAuth>
+        } />
+        <Route path="master/subscriptions/:id" element={
+          <RequireAuth roles={["master"]}><SubscriptionDetail /></RequireAuth>
+        } />
+        <Route path="master/invoices" element={
+          <RequireAuth roles={["master"]}><InvoiceList /></RequireAuth>
+        } />
+        <Route path="master/invoices/:id" element={
+          <RequireAuth roles={["master","admin"]}><InvoiceView /></RequireAuth>
+        } />
+        <Route path="subscription" element={
+          <RequireAuth roles={["admin"]}><SubscriptionInfo /></RequireAuth>
         } />
         <Route path="audit-logs" element={
           <RequireAuth roles={["master","admin"]}><AuditLogs /></RequireAuth>
@@ -177,6 +198,9 @@ function AppRoutes() {
         } />
         <Route path="tracking/live" element={
           <RequireAuth roles={["master","admin","supervisor"]}><LiveTracking /></RequireAuth>
+        } />
+        <Route path="tracking/alerts" element={
+          <RequireAuth roles={["master","admin","supervisor"]}><GeofenceAlerts /></RequireAuth>
         } />
 
         {/* All roles */}

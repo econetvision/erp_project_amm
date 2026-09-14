@@ -17,7 +17,7 @@ from schemas.employee import (
     EmployeeCreateResponse, WorkLocationUpdateSchema, EmployeeCodeUpdateSchema
 )
 from services.face_service import get_face_encoding
-from services.license_service import enforce_seat_limit, SEAT_LIMIT
+from services.subscription_service import enforce_seat_limit, is_capacity_error
 from services import storage
 from auth.dependencies import (
     require_admin_or_supervisor, require_admin, get_current_user,
@@ -195,7 +195,7 @@ def _persist_employee(db: Session, payload: EmployeeCreate, current_user: User) 
     # Every new employee consumes a license seat — enforce the company's seat
     # limit (no-op when license enforcement is bypassed via settings flags).
     if company_id is not None:
-        enforce_seat_limit(db, company_id)
+        enforce_seat_limit(db, company_id, role)
 
     # Generate employee code following the company's configured pattern
     work_location = data.get("work_location_name")
@@ -450,7 +450,7 @@ async def import_employees(
     # Fail fast when the company's license is missing/suspended/expired or the
     # seat limit is already reached, before parsing the file at all.
     if current_user.company_id is not None:
-        enforce_seat_limit(db, current_user.company_id)
+        enforce_seat_limit(db, current_user.company_id, "worker")
 
     if file.filename and not file.filename.lower().endswith((".xlsx", ".xlsm")):
         raise HTTPException(status_code=400, detail="Please upload an Excel (.xlsx) file — download the sample template first")
@@ -513,8 +513,8 @@ async def import_employees(
             })
         except HTTPException as he:
             db.rollback()
-            if he.detail == SEAT_LIMIT:
-                errors.append({"row": idx, "error": "License seat limit reached — this and all remaining rows were skipped"})
+            if is_capacity_error(he):
+                errors.append({"row": idx, "error": f"{he.detail} — this and all remaining rows were skipped"})
                 break
             errors.append({"row": idx, "error": str(he.detail)})
         except Exception as e:

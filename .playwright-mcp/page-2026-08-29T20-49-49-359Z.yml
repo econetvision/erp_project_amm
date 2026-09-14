@@ -1,0 +1,121 @@
+- generic [ref=f13e3]:
+  - complementary [ref=f13e4]:
+    - generic [ref=f13e16] [cursor=pointer]:
+      - generic [ref=f13e17]: ERP System
+      - generic [ref=f13e18]: ECONETVISION
+    - navigation [ref=f13e19]:
+      - generic [ref=f13e20]:
+        - generic [ref=f13e21]: MAIN
+        - link "Dashboard" [ref=f13e22] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Attendance" [ref=f13e26] [cursor=pointer]:
+          - /url: /attendance
+        - link "Reports" [ref=f13e30] [cursor=pointer]:
+          - /url: /attendance/report
+      - generic [ref=f13e34]:
+        - generic [ref=f13e35]: WORKFORCE
+        - link "Employees" [ref=f13e36] [cursor=pointer]:
+          - /url: /employees
+        - link "Work Locations" [ref=f13e40] [cursor=pointer]:
+          - /url: /work-locations
+      - generic [ref=f13e44]:
+        - generic [ref=f13e45]: PAYROLL
+        - link "Payslips" [ref=f13e46] [cursor=pointer]:
+          - /url: /payslips
+        - link "Payroll" [ref=f13e50] [cursor=pointer]:
+          - /url: /payroll/runs
+        - link "Structures" [ref=f13e54] [cursor=pointer]:
+          - /url: /payroll/structures
+        - link "Advances" [ref=f13e58] [cursor=pointer]:
+          - /url: /payroll/advances
+        - link "Templates" [ref=f13e62] [cursor=pointer]:
+          - /url: /payroll/templates
+        - link "Settings" [ref=f13e66] [cursor=pointer]:
+          - /url: /payroll/settings
+      - generic [ref=f13e70]:
+        - generic [ref=f13e71]: INTEGRATIONS
+        - link "Dashboard" [ref=f13e72] [cursor=pointer]:
+          - /url: /integrations
+        - link "Company" [ref=f13e76] [cursor=pointer]:
+          - /url: /integrations/company
+      - generic [ref=f13e80]:
+        - generic [ref=f13e81]: FLEET
+        - link "Vehicles" [ref=f13e82] [cursor=pointer]:
+          - /url: /vehicles
+        - link "Assign" [ref=f13e86] [cursor=pointer]:
+          - /url: /tracking/assign
+        - link "Live Track" [ref=f13e90] [cursor=pointer]:
+          - /url: /tracking/live
+      - generic [ref=f13e94]:
+        - generic [ref=f13e95]: SYSTEM
+        - link "Users" [ref=f13e96] [cursor=pointer]:
+          - /url: /users
+        - link "Jobs" [ref=f13e100] [cursor=pointer]:
+          - /url: /jobs
+        - link "Company" [ref=f13e104] [cursor=pointer]:
+          - /url: /company-settings
+        - link "Roles" [ref=f13e108] [cursor=pointer]:
+          - /url: /roles-permissions
+        - link "Profile & Settings" [ref=f13e112] [cursor=pointer]:
+          - /url: /profile
+    - button "Collapse" [ref=f13e116] [cursor=pointer]
+  - generic [ref=f13e119]:
+    - banner [ref=f13e120]:
+      - generic:
+        - heading [level=1]
+      - generic [ref=f13e121]:
+        - button "🔔" [ref=f13e123] [cursor=pointer]
+        - link "Settings" [ref=f13e124] [cursor=pointer]:
+          - /url: /settings
+        - button "Lock Screen" [ref=f13e127] [cursor=pointer]
+        - generic [ref=f13e131]: A
+        - button "Logout" [ref=f13e133] [cursor=pointer]
+    - generic [ref=f13e139]:
+      - heading "👤 Profile & Settings" [level=3] [ref=f13e140]
+      - generic [ref=f13e141]:
+        - generic [ref=f13e144]:
+          - generic [ref=f13e145]: A
+          - heading "admin" [level=5] [ref=f13e146]
+          - generic [ref=f13e147]: ADMIN
+          - generic [ref=f13e148]: "@admin"
+          - button "Change Photo" [ref=f13e150] [cursor=pointer]
+          - separator [ref=f13e151]
+          - generic [ref=f13e153]:
+            - generic [ref=f13e154]: Since
+            - generic [ref=f13e155]: 8/28/2026
+          - separator [ref=f13e156]
+          - generic [ref=f13e157]:
+            - button "👤 Account" [ref=f13e158] [cursor=pointer]
+            - button "🔑 Password" [ref=f13e159] [cursor=pointer]
+            - button "🛡️ Security" [ref=f13e160] [cursor=pointer]
+            - button "🔔 Notifications" [ref=f13e161] [cursor=pointer]
+            - button "🎨 Appearance" [ref=f13e162] [cursor=pointer]
+        - generic [ref=f13e164]:
+          - generic [ref=f13e165]: Account Details
+          - generic [ref=f13e167]:
+            - generic [ref=f13e168]:
+              - generic [ref=f13e169]:
+                - generic [ref=f13e170]: Display Name
+                - textbox [ref=f13e171]
+              - generic [ref=f13e172]:
+                - generic [ref=f13e173]: Username
+                - textbox [disabled] [ref=f13e174]: admin
+              - generic [ref=f13e175]:
+                - generic [ref=f13e176]: Email
+                - generic [ref=f13e177]:
+                  - textbox [ref=f13e178]
+                  - button "Verify" [disabled]
+              - generic [ref=f13e179]:
+                - generic [ref=f13e180]: Phone
+                - generic [ref=f13e181]:
+                  - textbox [ref=f13e182]
+                  - button "Verify" [disabled]
+            - button "Save Account" [ref=f13e183] [cursor=pointer]
+    - contentinfo [ref=f13e184]:
+      - generic [ref=f13e185]:
+        - text: Supported by
+        - strong [ref=f13e186]: EcoNetVision Pvt. Ltd.
+      - generic [ref=f13e187]: "|"
+      - generic [ref=f13e188]: +91 9790840313
+      - generic [ref=f13e191]: "|"
+      - generic [ref=f13e192]: © 2026 All rights reserved

@@ -8,7 +8,10 @@ export const getLocationHistory = (vehicleId: number | string, limit: number = 5
 export const pushLocation = (data: { vehicle_id: number; latitude: number; longitude: number; speed?: number }): Promise<AxiosResponse<VehicleLocation>> => api.post("/api/tracking/push", data);
 
 export function openTrackingSocket(vehicleId: number | string, onMessage: (update: VehicleLocation) => void): WebSocket {
-  const base = (process.env.REACT_APP_API_URL || "http://localhost:8088")
+  // An explicitly-empty REACT_APP_API_URL means "same origin" (nginx proxies /api),
+  // so fall back to the page's own origin rather than a hard-coded host.
+  const configured = process.env.REACT_APP_API_URL ?? "http://localhost:8088";
+  const base = (configured || `${window.location.protocol}//${window.location.host}`)
     .replace(/^http/, "ws")
     .replace(/\/$/, "");
   const stored = localStorage.getItem("erp_auth");

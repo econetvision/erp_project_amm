@@ -30,7 +30,7 @@ cd frontend && npm install
 REACT_APP_API_URL=http://localhost:8088 npm start
 ```
 
-**No test framework** is configured (no pytest, no jest/react-testing-library).
+**Backend tests**: `cd backend && python -m pytest tests -q` (pure-function tests for geofence, seat/licence maths, enforcement and invoices; no DB needed). No frontend test framework.
 
 **Default seed**: On first startup, `backend/seed.py` creates admin user `admin` / `admin123`.
 
@@ -75,6 +75,8 @@ REACT_APP_API_URL=http://localhost:8088 npm start
 | `TRACKING_GATEWAY_KEY` | _(empty)_ — shared secret with `gateway/`, only needed if hardware GPS trackers are in use |
 | `LOCATION_RETENTION_DAYS` | `90` — vehicle_locations rows older than this are purged daily |
 | `REACT_APP_API_URL` | `http://localhost:8088` |
+| `LICENSE_KEY` | _(empty)_ — when set, subscription validity checks are bypassed; seat and admin caps are still enforced (D7) |
+| `LICENSE_ENFORCE` | `true` — `false` bypasses validity like `LICENSE_KEY` |
 
 ## Domain Logic
 

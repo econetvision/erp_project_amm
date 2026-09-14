@@ -6,6 +6,16 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// Push notifications need the Firebase project config. Download
+// google-services.json from the Firebase console into app/ (it is gitignored).
+// Without it the app still builds and runs; only push stays off.
+val hasGoogleServices = file("google-services.json").exists()
+if (hasGoogleServices) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.warn("app/google-services.json not found: building without push notifications")
+}
+
 // Read the Google Maps API key from local.properties (never committed to VCS).
 val localProps = Properties().apply {
     val f = rootProject.file("local.properties")
@@ -102,6 +112,12 @@ dependencies {
 
     // Location
     implementation("com.google.android.gms:play-services-location:21.1.0")
+    // Task.await() for the FCM token fetch
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+
+    // Firebase Cloud Messaging (push alerts to supervisors/admins)
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    implementation("com.google.firebase:firebase-messaging")
 
     // Maps
     implementation("com.google.android.gms:play-services-maps:18.2.0")

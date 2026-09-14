@@ -1,0 +1,116 @@
+- generic [ref=f17e3]:
+  - complementary [ref=f17e4]:
+    - generic [ref=f17e16] [cursor=pointer]:
+      - generic [ref=f17e17]: ERP System
+      - generic [ref=f17e18]: ECONETVISION
+    - navigation [ref=f17e19]:
+      - generic [ref=f17e20]:
+        - generic [ref=f17e21]: MASTER
+        - link "Overview" [ref=f17e22] [cursor=pointer]:
+          - /url: /master
+        - link "Companies" [ref=f17e26] [cursor=pointer]:
+          - /url: /companies
+        - link "Roles" [ref=f17e30] [cursor=pointer]:
+          - /url: /roles-permissions
+        - link "Audit Logs" [ref=f17e34] [cursor=pointer]:
+          - /url: /audit-logs
+      - generic [ref=f17e38]:
+        - generic [ref=f17e39]: MAIN
+        - link "Dashboard" [ref=f17e40] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Attendance" [ref=f17e44] [cursor=pointer]:
+          - /url: /attendance
+        - link "Reports" [ref=f17e48] [cursor=pointer]:
+          - /url: /attendance/report
+      - generic [ref=f17e52]:
+        - generic [ref=f17e53]: WORKFORCE
+        - link "Employees" [ref=f17e54] [cursor=pointer]:
+          - /url: /employees
+        - link "Work Locations" [ref=f17e58] [cursor=pointer]:
+          - /url: /work-locations
+      - generic [ref=f17e62]:
+        - generic [ref=f17e63]: PAYROLL
+        - link "Payslips" [ref=f17e64] [cursor=pointer]:
+          - /url: /payslips
+        - link "Payroll" [ref=f17e68] [cursor=pointer]:
+          - /url: /payroll/runs
+        - link "Structures" [ref=f17e72] [cursor=pointer]:
+          - /url: /payroll/structures
+        - link "Advances" [ref=f17e76] [cursor=pointer]:
+          - /url: /payroll/advances
+        - link "Templates" [ref=f17e80] [cursor=pointer]:
+          - /url: /payroll/templates
+        - link "Settings" [ref=f17e84] [cursor=pointer]:
+          - /url: /payroll/settings
+      - generic [ref=f17e88]:
+        - generic [ref=f17e89]: INTEGRATIONS
+        - link "Dashboard" [ref=f17e90] [cursor=pointer]:
+          - /url: /integrations
+        - link "Providers" [ref=f17e94] [cursor=pointer]:
+          - /url: /integrations/providers
+        - link "Company" [ref=f17e98] [cursor=pointer]:
+          - /url: /integrations/company
+      - generic [ref=f17e102]:
+        - generic [ref=f17e103]: FLEET
+        - link "Vehicles" [ref=f17e104] [cursor=pointer]:
+          - /url: /vehicles
+        - link "Assign" [ref=f17e108] [cursor=pointer]:
+          - /url: /tracking/assign
+        - link "Live Track" [ref=f17e112] [cursor=pointer]:
+          - /url: /tracking/live
+      - generic [ref=f17e116]:
+        - generic [ref=f17e117]: SYSTEM
+        - link "Users" [ref=f17e118] [cursor=pointer]:
+          - /url: /users
+        - link "Jobs" [ref=f17e122] [cursor=pointer]:
+          - /url: /jobs
+        - link "Company" [ref=f17e126] [cursor=pointer]:
+          - /url: /company-settings
+        - link "Roles" [ref=f17e130] [cursor=pointer]:
+          - /url: /roles-permissions
+        - link "Profile & Settings" [ref=f17e134] [cursor=pointer]:
+          - /url: /profile
+    - button "Collapse" [ref=f17e138] [cursor=pointer]
+  - generic [ref=f17e141]:
+    - banner [ref=f17e142]:
+      - generic:
+        - heading [level=1]
+      - generic [ref=f17e143]:
+        - button "🔔" [ref=f17e145] [cursor=pointer]
+        - link "Settings" [ref=f17e146] [cursor=pointer]:
+          - /url: /settings
+        - button "Lock Screen" [ref=f17e149] [cursor=pointer]
+        - generic [ref=f17e153]: S
+        - button "Logout" [ref=f17e155] [cursor=pointer]
+    - generic [ref=f17e160]:
+      - heading "Audit Logs" [level=3] [ref=f17e161]
+      - generic [ref=f17e162]:
+        - combobox [ref=f17e164]:
+          - option "All Actions" [selected]
+          - option "Create"
+          - option "Update"
+          - option "Delete"
+          - option "Login"
+          - option "Impersonate"
+        - textbox "Entity type..." [ref=f17e166]
+        - generic [ref=f17e167]: 0 records
+      - table [ref=f17e172]:
+        - rowgroup [ref=f17e173]:
+          - row [ref=f17e174]:
+            - columnheader "Time" [ref=f17e175]
+            - columnheader "Action" [ref=f17e176]
+            - columnheader "Entity" [ref=f17e177]
+            - columnheader "Entity ID" [ref=f17e178]
+            - columnheader "Details" [ref=f17e179]
+            - columnheader "IP" [ref=f17e180]
+        - rowgroup [ref=f17e181]:
+          - row [ref=f17e182]:
+            - cell "No audit logs found." [ref=f17e183]
+    - contentinfo [ref=f17e184]:
+      - generic [ref=f17e185]:
+        - text: Supported by
+        - strong [ref=f17e186]: EcoNetVision Pvt. Ltd.
+      - generic [ref=f17e187]: "|"
+      - generic [ref=f17e188]: +91 9790840313
+      - generic [ref=f17e191]: "|"
+      - generic [ref=f17e192]: © 2026 All rights reserved

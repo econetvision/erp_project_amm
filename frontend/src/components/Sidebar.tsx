@@ -52,6 +52,14 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    title: "BILLING",
+    items: [
+      { to: "/master/subscriptions", label: "Subscriptions", icon: "settings", roles: ["master"] },
+      { to: "/master/invoices",      label: "Invoices",      icon: "reports",  roles: ["master"] },
+      { to: "/subscription",         label: "Subscription",  icon: "settings", roles: ["admin"] },
+    ],
+  },
+  {
     title: "MAIN",
     items: [
       { to: "/dashboard",        label: "Dashboard",   icon: "dashboard",  roles: ["master","admin","supervisor"] },
@@ -91,6 +99,7 @@ const NAV_SECTIONS: NavSection[] = [
       { to: "/vehicles",        label: "Vehicles",   icon: "vehicles", roles: ["master","admin","supervisor"] },
       { to: "/tracking/assign", label: "Assign",     icon: "assign",   roles: ["master","admin","supervisor"] },
       { to: "/tracking/live",   label: "Live Track", icon: "tracking", roles: ["master","admin","supervisor"] },
+      { to: "/tracking/alerts", label: "Location Alerts", icon: "tracking", roles: ["master","admin","supervisor"] },
     ],
   },
   {

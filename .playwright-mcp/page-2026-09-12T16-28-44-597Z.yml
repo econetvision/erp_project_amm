@@ -1,0 +1,13 @@
+- generic [ref=f4e5]:
+  - generic [ref=f4e6]:
+    - heading "Screen Locked" [level=5] [ref=f4e20]
+    - paragraph [ref=f4e21]:
+      - text: Logged in as
+      - strong [ref=f4e22]: System Master
+  - generic [ref=f4e23]:
+    - generic [ref=f4e24]:
+      - generic [ref=f4e25]: Password
+      - textbox "Enter your password" [active] [ref=f4e26]
+    - button "Unlock" [ref=f4e27] [cursor=pointer]
+  - button "Sign out and switch user" [ref=f4e31] [cursor=pointer]
+  - generic [ref=f4e32]: Session locked due to inactivity

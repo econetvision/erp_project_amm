@@ -1,0 +1,5 @@
+[    6743ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/compiled/react-dom/cjs/react-dom.development.js:38559
+[    7198ms] [ERROR] Access to XMLHttpRequest at 'http://localhost:3000/api/cms/settings/branding' from origin 'http://127.0.0.1:3000' has been blocked by CORS policy: The 'Access-Control-Allow-Origin' header has a value 'http://localhost:3000' that is not equal to the supplied origin. @ http://127.0.0.1:3000/login:0
+[    7199ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:3000/api/cms/settings/branding:0
+[    7206ms] [ERROR] Access to XMLHttpRequest at 'http://localhost:3000/api/cms/settings/branding' from origin 'http://127.0.0.1:3000' has been blocked by CORS policy: The 'Access-Control-Allow-Origin' header has a value 'http://localhost:3000' that is not equal to the supplied origin. @ http://127.0.0.1:3000/login:0
+[    7206ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:3000/api/cms/settings/branding:0

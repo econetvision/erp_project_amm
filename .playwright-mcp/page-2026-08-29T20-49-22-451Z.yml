@@ -1,0 +1,103 @@
+- generic [ref=f4e3]:
+  - complementary [ref=f4e4]:
+    - generic [ref=f4e16] [cursor=pointer]:
+      - generic [ref=f4e17]: ERP System
+      - generic [ref=f4e18]: ECONETVISION
+    - navigation [ref=f4e19]:
+      - generic [ref=f4e20]:
+        - generic [ref=f4e21]: MAIN
+        - link "Dashboard" [ref=f4e22] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Attendance" [ref=f4e26] [cursor=pointer]:
+          - /url: /attendance
+        - link "Reports" [ref=f4e30] [cursor=pointer]:
+          - /url: /attendance/report
+      - generic [ref=f4e34]:
+        - generic [ref=f4e35]: WORKFORCE
+        - link "Employees" [ref=f4e36] [cursor=pointer]:
+          - /url: /employees
+        - link "Work Locations" [ref=f4e40] [cursor=pointer]:
+          - /url: /work-locations
+      - generic [ref=f4e44]:
+        - generic [ref=f4e45]: PAYROLL
+        - link "Payslips" [ref=f4e46] [cursor=pointer]:
+          - /url: /payslips
+        - link "Payroll" [ref=f4e50] [cursor=pointer]:
+          - /url: /payroll/runs
+        - link "Structures" [ref=f4e54] [cursor=pointer]:
+          - /url: /payroll/structures
+        - link "Advances" [ref=f4e58] [cursor=pointer]:
+          - /url: /payroll/advances
+        - link "Templates" [ref=f4e62] [cursor=pointer]:
+          - /url: /payroll/templates
+        - link "Settings" [ref=f4e66] [cursor=pointer]:
+          - /url: /payroll/settings
+      - generic [ref=f4e70]:
+        - generic [ref=f4e71]: INTEGRATIONS
+        - link "Dashboard" [ref=f4e72] [cursor=pointer]:
+          - /url: /integrations
+        - link "Company" [ref=f4e76] [cursor=pointer]:
+          - /url: /integrations/company
+      - generic [ref=f4e80]:
+        - generic [ref=f4e81]: FLEET
+        - link "Vehicles" [ref=f4e82] [cursor=pointer]:
+          - /url: /vehicles
+        - link "Assign" [ref=f4e86] [cursor=pointer]:
+          - /url: /tracking/assign
+        - link "Live Track" [ref=f4e90] [cursor=pointer]:
+          - /url: /tracking/live
+      - generic [ref=f4e94]:
+        - generic [ref=f4e95]: SYSTEM
+        - link "Users" [ref=f4e96] [cursor=pointer]:
+          - /url: /users
+        - link "Jobs" [ref=f4e100] [cursor=pointer]:
+          - /url: /jobs
+        - link "Company" [ref=f4e104] [cursor=pointer]:
+          - /url: /company-settings
+        - link "Roles" [ref=f4e108] [cursor=pointer]:
+          - /url: /roles-permissions
+        - link "Profile & Settings" [ref=f4e112] [cursor=pointer]:
+          - /url: /profile
+    - button "Collapse" [ref=f4e116] [cursor=pointer]
+  - generic [ref=f4e119]:
+    - banner [ref=f4e120]:
+      - generic:
+        - heading [level=1]
+      - generic [ref=f4e121]:
+        - button "🔔" [ref=f4e123] [cursor=pointer]
+        - link "Settings" [ref=f4e124] [cursor=pointer]:
+          - /url: /settings
+        - button "Lock Screen" [ref=f4e127] [cursor=pointer]
+        - generic [ref=f4e131]: A
+        - button "Logout" [ref=f4e133] [cursor=pointer]
+    - generic [ref=f4e138]:
+      - heading "Payroll Runs" [level=3] [ref=f4e139]
+      - generic [ref=f4e142]:
+        - generic [ref=f4e143]:
+          - generic [ref=f4e144]: Month
+          - combobox [ref=f4e145]:
+            - option "Jan"
+            - option "Feb"
+            - option "Mar"
+            - option "Apr"
+            - option "May"
+            - option "Jun"
+            - option "Jul"
+            - option "Aug" [selected]
+            - option "Sep"
+            - option "Oct"
+            - option "Nov"
+            - option "Dec"
+        - generic [ref=f4e146]:
+          - generic [ref=f4e147]: Year
+          - spinbutton [ref=f4e148]: "2026"
+        - button "🚀 Create Payroll Run" [ref=f4e150] [cursor=pointer]
+      - generic [ref=f4e151]: No payroll runs yet. Create one above.
+    - contentinfo [ref=f4e152]:
+      - generic [ref=f4e153]:
+        - text: Supported by
+        - strong [ref=f4e154]: EcoNetVision Pvt. Ltd.
+      - generic [ref=f4e155]: "|"
+      - generic [ref=f4e156]: +91 9790840313
+      - generic [ref=f4e159]: "|"
+      - generic [ref=f4e160]: © 2026 All rights reserved

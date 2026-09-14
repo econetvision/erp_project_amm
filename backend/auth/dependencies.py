@@ -142,7 +142,7 @@ def require_valid_license(current_user: User = Depends(get_current_user), db: Se
     if current_user.company_id is None:
         raise HTTPException(status_code=403, detail="User is not assigned to a licensed company")
     # Lazy import to avoid a model/service import cycle (mirrors require_permission below).
-    from services.license_service import validate_company_license
+    from services.subscription_service import validate_company_license
     validate_company_license(db, current_user.company_id)
     return current_user
 

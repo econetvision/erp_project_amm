@@ -6,7 +6,7 @@ from services import storage
 from database import engine, Base
 from routers import employees, attendance, payslips, auth, holidays, vehicles, assignments, tracking, jobs, notifications, payroll, locations
 from routers import companies, rbac, master as master_router, integrations as integrations_router
-from routers import payslip_templates, licenses
+from routers import payslip_templates, licenses, geofence, subscriptions, invoices
 from auth.dependencies import require_valid_license
 from config.settings import settings
 from logging_config import setup_logging, get_logger
@@ -28,7 +28,10 @@ import models.company           # noqa: F401
 import models.rbac              # noqa: F401
 import models.integration       # noqa: F401
 import models.payslip_template  # noqa: F401
-import models.license            # noqa: F401
+import models.subscription       # noqa: F401
+import models.invoice            # noqa: F401
+import models.device_token       # noqa: F401
+import models.geofence           # noqa: F401
 
 # ── Database seed ─────────────────────────────────────────────────────────────
 # NOTE: migrations are NOT run here. The container entrypoint (entrypoint.sh) runs
@@ -97,7 +100,10 @@ app.include_router(rbac.router, prefix="/api/rbac", tags=["RBAC"], dependencies=
 app.include_router(master_router.router, prefix="/api/master", tags=["Master"])
 app.include_router(integrations_router.router, prefix="/api/integrations", tags=["Integrations"], dependencies=_licensed)
 app.include_router(payslip_templates.router, prefix="/api/payslip-templates", tags=["Payslip Templates"], dependencies=_licensed)
+app.include_router(subscriptions.router, prefix="/api/subscriptions", tags=["Subscriptions"])
 app.include_router(licenses.router, prefix="/api/licenses", tags=["Licenses"])
+app.include_router(invoices.router, prefix="/api/invoices", tags=["Invoices"])
+app.include_router(geofence.router, prefix="/api/geofence", tags=["Geofence"], dependencies=_licensed)
 
 
 # ── Scheduled Job Runner ──────────────────────────────────────────────────────
@@ -136,9 +142,11 @@ def run_tracking_retention():
     """Daily purge of old vehicle_locations rows — the table grows unbounded otherwise."""
     from database import SessionLocal
     from services.tracking_retention_service import purge_old_vehicle_locations
+    from services.geofence_service import purge_old_pings
     db = SessionLocal()
     try:
         purge_old_vehicle_locations(db)
+        purge_old_pings(db, settings.location_retention_days)
     except Exception as e:
         logger.error(f"Error in tracking retention job: {str(e)}", exc_info=True)
     finally:

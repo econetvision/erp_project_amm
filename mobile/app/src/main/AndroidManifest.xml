@@ -56,6 +56,26 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
+        <!-- Shares the employee's position while clocked in so the backend can
+             alert their supervisor when they leave the assigned work location. -->
+        <service
+            android:name=".service.WorkLocationTrackingService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
+        <!-- Firebase Cloud Messaging receiver (push alerts). Inert until the app
+             is built with google-services.json. -->
+        <service
+            android:name=".push.ErpFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="alerts" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

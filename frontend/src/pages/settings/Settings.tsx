@@ -96,7 +96,7 @@ export default function Settings() {
     finally { setSaving(false); }
   }
 
-  const apiBase = process.env.REACT_APP_API_URL || "http://localhost:8088";
+  const apiBase = process.env.REACT_APP_API_URL ?? "http://localhost:8088";
   const avatarUrl = user?.photo_path ? `${apiBase}${user.photo_path}` : null;
 
   // ── Verification ───────────────────────────────────────

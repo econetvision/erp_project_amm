@@ -12,6 +12,8 @@ import androidx.navigation.fragment.findNavController
 import com.econetvision.erp.R
 import com.econetvision.erp.data.local.SessionManager
 import com.econetvision.erp.databinding.FragmentSettingsBinding
+import com.econetvision.erp.push.PushTokenManager
+import com.econetvision.erp.service.WorkLocationTrackingService
 import com.econetvision.erp.ui.auth.LoginActivity
 import com.econetvision.erp.util.BiometricCredentialStore
 
@@ -44,6 +46,8 @@ class SettingsFragment : Fragment() {
         }
 
         binding.btnLogout.setOnClickListener {
+            PushTokenManager.unregisterBlocking(requireContext())
+            WorkLocationTrackingService.stop(requireContext())
             session.clear()
             BiometricCredentialStore.clearCredentials(requireContext())
             startActivity(Intent(requireContext(), LoginActivity::class.java))

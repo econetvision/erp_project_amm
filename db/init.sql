@@ -500,3 +500,81 @@ CREATE TABLE IF NOT EXISTS payslip_templates (
     updated_at      TIMESTAMPTZ DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS ix_payslip_templates_company ON payslip_templates(company_id);
+
+
+-- ================================================================
+-- SUBSCRIPTIONS, SITE LICENCES, INVOICES
+-- ================================================================
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id              SERIAL PRIMARY KEY,
+    company_id      INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    plan            VARCHAR(20) NOT NULL DEFAULT 'basic',
+    status          VARCHAR(20) NOT NULL DEFAULT 'active',
+    billing_cycle   VARCHAR(10) NOT NULL DEFAULT 'yearly',
+    starts_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ends_at         TIMESTAMPTZ,
+    unit_price      NUMERIC(12,2) NOT NULL DEFAULT 0,
+    currency        VARCHAR(3) NOT NULL DEFAULT 'INR',
+    tax_rate        NUMERIC(5,2) NOT NULL DEFAULT 18,
+    features        JSONB,
+    notes           TEXT,
+    created_at      TIMESTAMPTZ DEFAULT now(),
+    updated_at      TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_subscriptions_company_id ON subscriptions(company_id);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_subscriptions_one_active_per_company
+    ON subscriptions(company_id) WHERE status <> 'cancelled';
+
+CREATE TABLE IF NOT EXISTS licenses (
+    id              SERIAL PRIMARY KEY,
+    subscription_id INTEGER NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
+    company_id      INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    site_id         INTEGER REFERENCES work_locations(id) ON DELETE SET NULL,
+    license_key     VARCHAR(64) NOT NULL UNIQUE,
+    status          VARCHAR(20) NOT NULL DEFAULT 'active',
+    max_users       INTEGER DEFAULT 26,
+    max_admins      INTEGER NOT NULL DEFAULT 1,
+    granted_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    granted_at      TIMESTAMPTZ DEFAULT now(),
+    revoked_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    revoked_at      TIMESTAMPTZ,
+    revoke_reason   TEXT,
+    created_at      TIMESTAMPTZ DEFAULT now(),
+    updated_at      TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_licenses_company_status ON licenses(company_id, status);
+
+CREATE TABLE IF NOT EXISTS invoices (
+    id               SERIAL PRIMARY KEY,
+    invoice_number   VARCHAR(30) NOT NULL UNIQUE,
+    company_id       INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    subscription_id  INTEGER REFERENCES subscriptions(id) ON DELETE SET NULL,
+    period_start     DATE NOT NULL,
+    period_end       DATE NOT NULL,
+    issue_date       DATE NOT NULL,
+    due_date         DATE NOT NULL,
+    currency         VARCHAR(3) NOT NULL DEFAULT 'INR',
+    subtotal         NUMERIC(12,2) NOT NULL DEFAULT 0,
+    tax_rate         NUMERIC(5,2) NOT NULL DEFAULT 18,
+    tax_amount       NUMERIC(12,2) NOT NULL DEFAULT 0,
+    total            NUMERIC(12,2) NOT NULL DEFAULT 0,
+    status           VARCHAR(20) NOT NULL DEFAULT 'draft',
+    paid_at          TIMESTAMPTZ,
+    payment_ref      VARCHAR(100),
+    billing_snapshot JSONB,
+    created_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at       TIMESTAMPTZ DEFAULT now(),
+    updated_at       TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_invoices_company_id ON invoices(company_id);
+
+CREATE TABLE IF NOT EXISTS invoice_lines (
+    id          SERIAL PRIMARY KEY,
+    invoice_id  INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    license_id  INTEGER REFERENCES licenses(id) ON DELETE SET NULL,
+    description VARCHAR(255) NOT NULL,
+    quantity    NUMERIC(10,2) NOT NULL DEFAULT 1,
+    unit_price  NUMERIC(12,2) NOT NULL DEFAULT 0,
+    amount      NUMERIC(12,2) NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS ix_invoice_lines_invoice_id ON invoice_lines(invoice_id);

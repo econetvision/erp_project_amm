@@ -43,7 +43,7 @@ export default function EmployeeList() {
   // supervisors can only view and add workers.
   const canManage = ["master", "admin"].includes(auth?.role || "");
   // Photos are stored as backend-relative paths (/uploads/...); prefix with the API origin.
-  const apiBase = process.env.REACT_APP_API_URL || "http://localhost:8088";
+  const apiBase = process.env.REACT_APP_API_URL ?? "http://localhost:8088";
 
   const fetchEmployees = useCallback(async () => {
     try {
