@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
+import android.os.Build
 import android.os.Bundle
 import android.util.Base64
 import android.view.View
@@ -154,20 +155,33 @@ class HomeActivity : AppCompatActivity() {
         }
         viewModel.setScanning(true)
         val cts = CancellationTokenSource()
+        // Activity-scoped listeners: they are dropped if the activity is destroyed
+        // before the fix arrives, so no dialog is shown on a dead window.
         fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.token)
-            .addOnSuccessListener { location: Location? ->
+            .addOnSuccessListener(this) { location: Location? ->
                 viewModel.setScanning(false)
-                if (location == null) {
-                    showDialog(getString(R.string.scan_failed_title), getString(R.string.location_unavailable))
-                } else {
-                    viewModel.submitScan(imageBase64, location.latitude, location.longitude)
+                when {
+                    location == null ->
+                        showDialog(getString(R.string.scan_failed_title), getString(R.string.location_unavailable))
+                    isMockLocation(location) ->
+                        showDialog(getString(R.string.scan_failed_title), getString(R.string.location_mock))
+                    else -> viewModel.submitScan(imageBase64, location.latitude, location.longitude)
                 }
             }
-            .addOnFailureListener {
+            .addOnFailureListener(this) {
                 viewModel.setScanning(false)
                 showDialog(getString(R.string.scan_failed_title), getString(R.string.location_unavailable))
             }
     }
+
+    /** Positions from a mock-location app are refused: attendance is location-only. */
+    private fun isMockLocation(location: Location): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            location.isMock
+        } else {
+            @Suppress("DEPRECATION")
+            location.isFromMockProvider
+        }
 
     /** Reads the captured JPEG as base64 and removes it; a worker's photo is not kept on the phone. */
     private fun readAndDelete(path: String): String? {

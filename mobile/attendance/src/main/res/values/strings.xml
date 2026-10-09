@@ -28,6 +28,7 @@
     <string name="permission_needed_title">Permissions needed</string>
     <string name="permission_needed_body">Camera and location access are required. Attendance can be marked only at your site, so the app must check where the phone is.</string>
     <string name="location_unavailable">Could not get your location. Turn on GPS, wait a few seconds and try again.</string>
+    <string name="location_mock">This phone is reporting a mock (fake) location. Turn off mock location apps and try again.</string>
     <string name="capture_failed">The photo could not be read. Please scan again.</string>
     <string name="session_expired">Your session has expired. Please sign in again.</string>
 

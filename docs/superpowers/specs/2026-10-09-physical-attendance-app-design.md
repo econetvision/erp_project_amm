@@ -90,7 +90,7 @@ account. Contact your admin." unless `is_enabled(user)`.
 |---|---|---|---|
 | GET | `/supervisors` | `require_admin` | Company supervisors with their assigned site (id, name) or null |
 | PUT | `/supervisors/{user_id}` | `require_admin` | Body `{location_id: int \| null}`; set, change or clear the site |
-| GET | `/me` | `require_physical_attendance` | Supervisor's site: id, name, latitude, longitude, radius |
+| GET | `/me` | `require_physical_attendance` | Supervisor's site: id and name only (no coordinates; the server alone judges position) |
 | POST | `/scan` | `require_physical_attendance` | Body `{image, latitude, longitude}`; returns worker id, name, action, attendance |
 | GET | `/today` | `require_physical_attendance` | Today's list for the site, plus a present count |
 

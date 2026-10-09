@@ -22,11 +22,10 @@ class SiteAssignRequest(BaseModel):
 
 
 class MySiteResponse(BaseModel):
-    id:               int
-    location_name:    str
-    latitude:         float
-    longitude:        float
-    allowed_radius_m: float
+    # Deliberately no coordinates or radius: the server alone decides whether
+    # the phone is at the site.
+    id:            int
+    location_name: str
 
     model_config = {"from_attributes": True}
 

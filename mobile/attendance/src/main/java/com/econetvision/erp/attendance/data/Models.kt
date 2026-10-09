@@ -20,9 +20,6 @@ data class TokenResponse(
 data class Site(
     val id: Int,
     @SerializedName("location_name") val locationName: String,
-    val latitude: Double,
-    val longitude: Double,
-    @SerializedName("allowed_radius_m") val allowedRadiusM: Double,
 )
 
 data class ScanRequest(

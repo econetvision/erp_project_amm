@@ -175,3 +175,28 @@ def test_clock_out_allowed_from_the_gap_onwards():
     from services.physical_attendance_service import clock_out_too_soon
     assert clock_out_too_soon(time(9, 0), time(9, 5), 5) is False
     assert clock_out_too_soon(time(9, 0), time(17, 0), 5) is False
+
+
+# ── drop_site_if_ineligible ──────────────────────────────────────────────────
+
+def test_site_is_dropped_when_supervisor_is_demoted():
+    from services.physical_attendance_service import drop_site_if_ineligible
+    u = SimpleNamespace(role="worker", company_id=1, physical_attendance_site_id=5)
+    drop_site_if_ineligible(u, previous_company_id=1)
+    assert u.physical_attendance_site_id is None
+
+
+def test_site_is_dropped_when_supervisor_moves_company():
+    # The site belongs to the old company; keeping it would let the supervisor
+    # read and mark attendance at another company's site.
+    from services.physical_attendance_service import drop_site_if_ineligible
+    u = SimpleNamespace(role="supervisor", company_id=2, physical_attendance_site_id=5)
+    drop_site_if_ineligible(u, previous_company_id=1)
+    assert u.physical_attendance_site_id is None
+
+
+def test_site_is_kept_when_role_and_company_are_unchanged():
+    from services.physical_attendance_service import drop_site_if_ineligible
+    u = SimpleNamespace(role="supervisor", company_id=1, physical_attendance_site_id=5)
+    drop_site_if_ineligible(u, previous_company_id=1)
+    assert u.physical_attendance_site_id == 5

@@ -75,3 +75,10 @@ def test_token_and_user_responses_carry_site_id():
     assert "physical_attendance_site_id" in UserResponse.model_fields
     t = TokenResponse(access_token="a", role="supervisor", username="s")
     assert t.physical_attendance_site_id is None
+
+
+def test_my_site_response_does_not_reveal_site_coordinates():
+    # The server decides whether the phone is at the site. Handing the app the
+    # site's coordinates would only help someone forge a position.
+    from schemas.physical_attendance import MySiteResponse
+    assert set(MySiteResponse.model_fields) == {"id", "location_name"}

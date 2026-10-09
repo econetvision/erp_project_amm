@@ -326,9 +326,13 @@ def admin_update_user(
 
     # Allow-list the mutable fields instead of a blind setattr over the payload.
     ALLOWED_FIELDS = {"display_name", "email", "phone", "role", "company_id"}
+    previous_company_id = user.company_id
     for key, value in update_data.items():
         if key in ALLOWED_FIELDS:
             setattr(user, key, value)
+    # A demoted or moved supervisor loses their physical-attendance site.
+    from services.physical_attendance_service import drop_site_if_ineligible
+    drop_site_if_ineligible(user, previous_company_id)
     db.commit()
     db.refresh(user)
     return user

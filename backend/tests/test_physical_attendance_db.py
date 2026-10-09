@@ -275,3 +275,56 @@ def test_accidental_rescan_right_after_clock_in_does_not_clock_out(db, world, ma
     assert e.value.detail.startswith("Ravi K was clocked in at ")
     assert e.value.detail.endswith("Scan again later to clock out.")
     assert db.query(Attendance).one().exit_time is None
+
+
+def test_site_of_another_company_is_never_usable(db, world, match):
+    # Defence in depth: even if a stale assignment survives a company move,
+    # the supervisor must not read or mark attendance at the old company's site.
+    enable(db, world)
+    match.worker = world.ravi
+    service.scan(db, world.sup, "img", SITE_LAT, SITE_LON)
+    world.sup.company_id = 2
+    db.commit()
+
+    for call in (lambda: service.today_list(db, world.sup),
+                 lambda: service.get_site(db, world.sup),
+                 lambda: service.scan(db, world.sup, "img", SITE_LAT, SITE_LON)):
+        with pytest.raises(HTTPException) as e:
+            call()
+        assert e.value.status_code == 409
+
+
+# ── admin user update (existing endpoint) ────────────────────────────────────
+
+@pytest.fixture
+def auth_router(match):
+    # routers.auth imports face_service at module level; `match` has stubbed it.
+    sys.modules.pop("routers.auth", None)
+    import routers.auth as auth
+    yield auth
+    sys.modules.pop("routers.auth", None)
+
+
+def test_demoting_a_supervisor_through_user_update_disables_physical_attendance(db, world, auth_router):
+    from schemas.user import AdminUserUpdate
+    enable(db, world)
+    auth_router.admin_update_user(world.sup.id, AdminUserUpdate(role="worker"), db=db, current=world.admin)
+    assert world.sup.physical_attendance_site_id is None
+
+    # Re-promotion must not silently bring it back.
+    auth_router.admin_update_user(world.sup.id, AdminUserUpdate(role="supervisor"), db=db, current=world.admin)
+    assert world.sup.physical_attendance_site_id is None
+
+
+def test_moving_a_supervisor_to_another_company_disables_physical_attendance(db, world, auth_router):
+    from schemas.user import AdminUserUpdate
+    enable(db, world)
+    auth_router.admin_update_user(world.sup.id, AdminUserUpdate(company_id=2), db=db, current=world.master)
+    assert (world.sup.company_id, world.sup.physical_attendance_site_id) == (2, None)
+
+
+def test_editing_other_fields_keeps_physical_attendance(db, world, auth_router):
+    from schemas.user import AdminUserUpdate
+    enable(db, world)
+    auth_router.admin_update_user(world.sup.id, AdminUserUpdate(display_name="New Name"), db=db, current=world.admin)
+    assert world.sup.physical_attendance_site_id == 10

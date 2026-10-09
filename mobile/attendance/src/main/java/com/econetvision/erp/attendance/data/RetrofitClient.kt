@@ -15,11 +15,13 @@ object RetrofitClient {
     }
 
     val instance: ApiService by lazy {
-        // BODY logging writes the bearer token, passwords and the base64 face
-        // images into logcat. Keep full bodies for debug builds only.
+        // Never log headers or bodies: they carry the bearer token, the
+        // supervisor's password and workers' face images, and the debug build
+        // is the one installed on phones at site. BASIC logs only the request
+        // line and the response status.
         val logging = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) {
-                HttpLoggingInterceptor.Level.BODY
+                HttpLoggingInterceptor.Level.BASIC
             } else {
                 HttpLoggingInterceptor.Level.NONE
             }

@@ -90,6 +90,16 @@ def stamp_site(record, site_id: int, supervisor_id: int) -> None:
         record.marked_by = supervisor_id
 
 
+def drop_site_if_ineligible(user, previous_company_id: int | None) -> None:
+    """Clear the site when a user stops being a supervisor or changes company.
+
+    The site belongs to the old company, and a later re-promotion must not
+    silently bring physical attendance back.
+    """
+    if user.role != "supervisor" or user.company_id != previous_company_id:
+        user.physical_attendance_site_id = None
+
+
 def worker_label(user) -> str:
     return user.name or user.display_name or user.username
 
@@ -154,6 +164,9 @@ def get_site(db: Session, supervisor: User) -> WorkLocation:
         .filter(WorkLocation.id == supervisor.physical_attendance_site_id)
         .first()
     )
+    # A site of another company is never usable, whatever the column says.
+    if site is not None and site.company_id != supervisor.company_id:
+        site = None
     ensure_site_usable(site)
     return site
 
@@ -229,7 +242,11 @@ def today_list(db: Session, supervisor: User) -> dict:
     rows = (
         db.query(Attendance, User)
         .join(User, Attendance.employee_id == User.id)
-        .filter(Attendance.date == today, Attendance.site_location_id == site.id)
+        .filter(
+            Attendance.date == today,
+            Attendance.site_location_id == site.id,
+            User.company_id == supervisor.company_id,
+        )
         .order_by(Attendance.entry_time)
         .all()
     )
