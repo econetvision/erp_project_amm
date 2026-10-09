@@ -40,8 +40,9 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # The Android SDK is preinstalled on ubuntu-latest runners (ANDROID_HOME is
+      # set). android-actions/setup-android@v3 is not used here: its default
+      # install of the retired 'tools' package now fails in sdkmanager.
 
       - name: Configure local.properties
         working-directory: ./mobile
