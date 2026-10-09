@@ -14,3 +14,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "ERPMobile"
 include(":app")
+include(":attendance")
