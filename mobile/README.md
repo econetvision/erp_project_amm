@@ -54,3 +54,21 @@ Four roles, same as the backend: `master`, `admin`, `supervisor`, `worker`. `Ses
 - **admin** / `admin123`
 - **supervisor1** / `test123`
 - **worker1** / `test123`
+
+## ERP Attendance (attendance-only app)
+
+`mobile/attendance` is a second application module (`com.econetvision.erp.attendance`) that installs
+alongside the main app. It is for supervisors an admin has enabled under Workforce → Physical
+Attendance on the web portal, at sites where workers do not carry smartphones.
+
+- **Sign in**: supervisor username and password. A new supervisor must first sign in once on the web
+  portal to set their own password.
+- **Scan worker**: rear camera with a blink liveness check; the backend recognises the face and clocks
+  the worker in (first scan of the day) or out (second scan). Accepted only at the supervisor's site.
+- **On site today**: everyone marked at the site today, with in and out times.
+
+Workers need a face registered on their employee record. The module shares no code with `:app`; the
+camera, session and network classes are copies.
+
+Build: `./gradlew :attendance:assembleDebug` (output in `attendance/build/outputs/apk/debug/`).
+Unit tests: `./gradlew :attendance:testDebugUnitTest`. CI: `.github/workflows/build-attendance-apk.yml`.

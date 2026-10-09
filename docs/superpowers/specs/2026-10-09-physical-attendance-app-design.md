@@ -28,6 +28,10 @@ attendance flows, and the existing `/api/attendance/*` endpoints do not change.
   with no coordinates is rejected. This check replaces the scanned worker's
   own geofence check for these scans: the phone being at the site is the
   proof, and the worker does not need an assignment to that location.
+- **No clock-out within 5 minutes of clock-in.** A second scan of the same
+  worker inside 5 minutes is treated as an accidental re-scan and refused with
+  "{name} was clocked in at HH:MM. Scan again later to clock out." (Added
+  during implementation; `MIN_MINUTES_BEFORE_CLOCK_OUT` in the service.)
 - **Enabled means "has a site".** There is no separate on/off flag. Physical
   attendance is enabled for a supervisor exactly when
   `users.physical_attendance_site_id` is set, so it can never be enabled

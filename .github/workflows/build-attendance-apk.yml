@@ -1,0 +1,90 @@
+name: Build Attendance APK
+
+# ERP Attendance: the attendance-only app for supervisors enabled for physical
+# attendance. Builds a debug-signed, directly-installable APK and uploads it as
+# a run artifact. It is not committed back to the repo.
+
+on:
+  pull_request:
+    paths:
+      - 'mobile/attendance/**'
+      - 'mobile/settings.gradle.kts'
+      - 'mobile/build.gradle.kts'
+      - '.github/workflows/build-attendance-apk.yml'
+  push:
+    branches: [master, develop]
+    paths:
+      - 'mobile/attendance/**'
+      - '.github/workflows/build-attendance-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-attendance-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Configure local.properties
+        working-directory: ./mobile
+        run: |
+          # Gradle uses ANDROID_SDK_ROOT/ANDROID_HOME on the runner. The Maps key
+          # is only read by :app; this build does not need a real one.
+          echo "MAPS_API_KEY=" > local.properties
+
+      - name: Grant execute permission for gradlew
+        working-directory: ./mobile
+        run: chmod +x gradlew
+
+      - name: Unit tests
+        working-directory: ./mobile
+        run: ./gradlew :attendance:testDebugUnitTest --no-daemon
+
+      - name: Build Attendance debug APK
+        working-directory: ./mobile
+        run: ./gradlew :attendance:assembleDebug --no-daemon
+
+      # Adding a module must not break the existing app's build.
+      - name: Build main app (regression check)
+        working-directory: ./mobile
+        run: ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Rename APK
+        working-directory: ./mobile
+        run: |
+          SHORT_SHA=$(echo "${{ github.event.pull_request.head.sha || github.sha }}" | cut -c1-7)
+          mv attendance/build/outputs/apk/debug/attendance-debug.apk \
+             "attendance/build/outputs/apk/debug/erp-attendance-${SHORT_SHA}.apk"
+          ls -la attendance/build/outputs/apk/debug/
+
+      - name: Upload Attendance APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: erp-attendance-apk
+          path: mobile/attendance/build/outputs/apk/debug/erp-attendance-*.apk
+          retention-days: 30
+
+      - name: Build Summary
+        run: |
+          echo "### ERP Attendance APK built" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Type:** debug (installable, debug-signed)" >> $GITHUB_STEP_SUMMARY
+          echo "**Artifact:** \`erp-attendance-apk\` (download from this run's Artifacts section)" >> $GITHUB_STEP_SUMMARY
