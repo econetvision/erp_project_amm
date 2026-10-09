@@ -17,7 +17,11 @@ class Attendance(Base):
     clock_in_longitude  = Column(Float, nullable=True)
     clock_out_latitude  = Column(Float, nullable=True)
     clock_out_longitude = Column(Float, nullable=True)
+    # Set only for records marked through physical attendance (supervisor scan).
+    site_location_id = Column(Integer, ForeignKey("work_locations.id", ondelete="SET NULL"),
+                              nullable=True, index=True)
+    marked_by        = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at   = Column(DateTime(timezone=True), server_default=func.now())
     updated_at   = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    employee = relationship("User", back_populates="attendance")
+    employee = relationship("User", back_populates="attendance", foreign_keys=[employee_id])
