@@ -320,6 +320,17 @@ CREATE TABLE IF NOT EXISTS work_locations (
 CREATE INDEX IF NOT EXISTS idx_wl_city   ON work_locations(city);
 CREATE INDEX IF NOT EXISTS idx_wl_active ON work_locations(is_active);
 
+-- ── Physical Attendance ──────────────────────────────────────────────────────
+-- A supervisor with a site set here may mark workers' attendance by face scan
+-- from the attendance-only app, at that site only. NULL = not enabled.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS physical_attendance_site_id INTEGER
+    CONSTRAINT fk_users_physical_attendance_site REFERENCES work_locations(id) ON DELETE SET NULL;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS site_location_id INTEGER
+    CONSTRAINT fk_attendance_site_location REFERENCES work_locations(id) ON DELETE SET NULL;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS marked_by INTEGER
+    CONSTRAINT fk_attendance_marked_by REFERENCES users(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS ix_attendance_site_location_id ON attendance(site_location_id);
+
 -- ── Employee Location Assignments ────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS employee_location_assignments (
     id            SERIAL PRIMARY KEY,

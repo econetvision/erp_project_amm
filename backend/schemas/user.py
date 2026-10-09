@@ -63,6 +63,7 @@ class UserResponse(BaseModel):
     lock_timeout: Optional[int] = None
     theme_preference: Optional[dict] = None
     is_active:    Optional[bool] = True
+    physical_attendance_site_id: Optional[int] = None
     created_at:   Optional[datetime] = None
     updated_at:   Optional[datetime] = None
 
@@ -95,3 +96,4 @@ class TokenResponse(BaseModel):
     has_pin:      bool = False
     theme_preference: Optional[dict] = None
     must_change_password: bool = False
+    physical_attendance_site_id: Optional[int] = None

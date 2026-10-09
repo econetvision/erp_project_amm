@@ -119,6 +119,15 @@ def require_any(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+def require_physical_attendance(current_user: User = Depends(get_current_user)) -> User:
+    """Supervisors the admin has enabled for physical attendance (a site is assigned)."""
+    # Lazy import to avoid a model/service import cycle (mirrors require_valid_license).
+    from services.physical_attendance_service import NOT_ENABLED_DETAIL, is_enabled
+    if not is_enabled(current_user):
+        raise HTTPException(status_code=403, detail=NOT_ENABLED_DETAIL)
+    return current_user
+
+
 def require_role(*allowed_roles: str):
     """Factory for role-based access control dependency."""
     def _dependency(current_user: User = Depends(get_current_user)) -> User:

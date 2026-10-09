@@ -72,6 +72,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { to: "/employees",      label: "Employees",      icon: "employees", roles: ["master","admin","supervisor"] },
       { to: "/work-locations", label: "Work Locations", icon: "tracking",  roles: ["master","admin","supervisor"] },
+      { to: "/workforce/physical-attendance", label: "Physical Attendance", icon: "attendance", roles: ["master","admin"] },
     ],
   },
   {

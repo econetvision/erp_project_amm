@@ -11,6 +11,7 @@ import EmployeeList     from "./pages/employees/EmployeeList";
 import EmployeeForm     from "./pages/employees/EmployeeForm";
 import AttendanceEntry  from "./pages/attendance/AttendanceEntry";
 import AttendanceReport from "./pages/attendance/AttendanceReport";
+import PhysicalAttendance from "./pages/attendance/PhysicalAttendance";
 import PayslipGenerate  from "./pages/payslips/PayslipGenerate";
 import PayslipView      from "./pages/payslips/PayslipView";
 import Dashboard        from "./pages/dashboard/Dashboard";
@@ -131,6 +132,9 @@ function AppRoutes() {
         } />
         <Route path="work-locations" element={
           <RequireAuth roles={["master","admin","supervisor"]}><WorkLocations /></RequireAuth>
+        } />
+        <Route path="workforce/physical-attendance" element={
+          <RequireAuth roles={["master","admin"]}><PhysicalAttendance /></RequireAuth>
         } />
         <Route path="dashboard" element={
           <RequireAuth roles={["master","admin","supervisor"]}><Dashboard /></RequireAuth>

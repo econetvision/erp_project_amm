@@ -53,12 +53,21 @@ class User(Base):
     # Admin/supervisor accounts created by an admin must set their own password
     # on first browser login before the mobile app will accept them.
     must_change_password = Column(Boolean, nullable=True, default=False)
+    # Physical attendance: the one work location where this supervisor may mark
+    # workers' attendance from the attendance-only app. NULL = not enabled.
+    physical_attendance_site_id = Column(
+        Integer,
+        ForeignKey("work_locations.id", ondelete="SET NULL", use_alter=True,
+                   name="fk_users_physical_attendance_site"),
+        nullable=True,
+    )
 
     created_at    = Column(DateTime(timezone=True), server_default=func.now())
     updated_at    = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # ── Relationships ─────────────────────────────────────────────────────────
-    attendance = relationship("Attendance", back_populates="employee", cascade="all, delete")
+    attendance = relationship("Attendance", back_populates="employee", cascade="all, delete",
+                              foreign_keys="Attendance.employee_id")
     payslips   = relationship("Payslip",    back_populates="employee", cascade="all, delete")
     location_assignments = relationship(
         "EmployeeLocationAssignment",

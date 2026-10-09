@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ERP Attendance</string>
+
+    <string name="login_title">ERP Attendance</string>
+    <string name="login_subtitle">Sign in to mark attendance at your site</string>
+    <string name="login_username">Username</string>
+    <string name="login_password">Password</string>
+    <string name="login_button">Sign in</string>
+    <string name="login_missing_fields">Enter your username and password.</string>
+    <string name="not_enabled">Physical attendance is not enabled for your account. Contact your admin.</string>
+
+    <string name="home_logout">Sign out</string>
+    <string name="home_scan">Scan worker</string>
+    <string name="home_on_site_today">On site today</string>
+    <string name="home_present_count">%1$d present</string>
+    <string name="home_empty">No one has been marked at this site today.</string>
+    <string name="home_in">In %1$s</string>
+    <string name="home_out">Out %1$s</string>
+    <string name="home_out_pending">Not clocked out</string>
+    <string name="home_marking">Marking attendance…</string>
+
+    <string name="scan_clocked_in_title">Clocked in</string>
+    <string name="scan_clocked_out_title">Clocked out</string>
+    <string name="scan_result">%1$s at %2$s</string>
+    <string name="scan_failed_title">Not marked</string>
+    <string name="scan_ok">OK</string>
+    <string name="permission_needed_title">Permissions needed</string>
+    <string name="permission_needed_body">Camera and location access are required. Attendance can be marked only at your site, so the app must check where the phone is.</string>
+    <string name="location_unavailable">Could not get your location. Turn on GPS, wait a few seconds and try again.</string>
+    <string name="location_mock">This phone is reporting a mock (fake) location. Turn off mock location apps and try again.</string>
+    <string name="capture_failed">The photo could not be read. Please scan again.</string>
+    <string name="session_expired">Your session has expired. Please sign in again.</string>
+
+    <string name="face_scan_title">Scan worker</string>
+    <string name="face_scan_position_hint">Position the worker\'s face inside the oval</string>
+    <string name="face_scan_cancel">Cancel</string>
+    <string name="face_scan_switch_camera">Switch camera</string>
+</resources>

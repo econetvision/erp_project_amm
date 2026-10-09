@@ -61,6 +61,7 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
         has_pin=bool(user.pin_hash),
         theme_preference=user.theme_preference,
         must_change_password=bool(user.must_change_password),
+        physical_attendance_site_id=user.physical_attendance_site_id,
     )
 
 
@@ -325,9 +326,13 @@ def admin_update_user(
 
     # Allow-list the mutable fields instead of a blind setattr over the payload.
     ALLOWED_FIELDS = {"display_name", "email", "phone", "role", "company_id"}
+    previous_company_id = user.company_id
     for key, value in update_data.items():
         if key in ALLOWED_FIELDS:
             setattr(user, key, value)
+    # A demoted or moved supervisor loses their physical-attendance site.
+    from services.physical_attendance_service import drop_site_if_ineligible
+    drop_site_if_ineligible(user, previous_company_id)
     db.commit()
     db.refresh(user)
     return user
