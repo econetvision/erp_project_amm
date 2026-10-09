@@ -1,0 +1,7 @@
+ERP Attendance (supervisor app) - latest APK
+--------------------------------------------
+Version:   1.0.0 (debug-signed)
+Commit:    87137fe (master, merge of PR #32)
+Built at:  2026-10-09 UTC
+Run:       https://github.com/econetvision/erp_project_amm/actions/runs/37898275010
+SHA-256:   40cd88971e1c130fc5c8487b13b79d40b157ffbfbfe8eccb435a53e63ac5553d
