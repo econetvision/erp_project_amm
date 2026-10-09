@@ -61,6 +61,7 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
         has_pin=bool(user.pin_hash),
         theme_preference=user.theme_preference,
         must_change_password=bool(user.must_change_password),
+        physical_attendance_site_id=user.physical_attendance_site_id,
     )
 
 

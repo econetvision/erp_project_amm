@@ -161,3 +161,17 @@ def test_worker_label_prefers_name_then_display_name_then_username():
 
 def test_not_enabled_detail_text():
     assert NOT_ENABLED_DETAIL == "Physical attendance is not enabled for your account. Contact your admin."
+
+
+# ── clock_out_too_soon ───────────────────────────────────────────────────────
+
+def test_clock_out_too_soon_inside_the_gap():
+    from services.physical_attendance_service import clock_out_too_soon
+    assert clock_out_too_soon(time(9, 0), time(9, 0), 5) is True
+    assert clock_out_too_soon(time(9, 0), time(9, 4), 5) is True
+
+
+def test_clock_out_allowed_from_the_gap_onwards():
+    from services.physical_attendance_service import clock_out_too_soon
+    assert clock_out_too_soon(time(9, 0), time(9, 5), 5) is False
+    assert clock_out_too_soon(time(9, 0), time(17, 0), 5) is False

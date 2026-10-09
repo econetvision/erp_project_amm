@@ -6,7 +6,7 @@ from services import storage
 from database import engine, Base
 from routers import employees, attendance, payslips, auth, holidays, vehicles, assignments, tracking, jobs, notifications, payroll, locations
 from routers import companies, rbac, master as master_router, integrations as integrations_router
-from routers import payslip_templates, licenses, geofence, subscriptions, invoices
+from routers import payslip_templates, licenses, geofence, subscriptions, invoices, physical_attendance
 from auth.dependencies import require_valid_license
 from config.settings import settings
 from logging_config import setup_logging, get_logger
@@ -104,6 +104,7 @@ app.include_router(subscriptions.router, prefix="/api/subscriptions", tags=["Sub
 app.include_router(licenses.router, prefix="/api/licenses", tags=["Licenses"])
 app.include_router(invoices.router, prefix="/api/invoices", tags=["Invoices"])
 app.include_router(geofence.router, prefix="/api/geofence", tags=["Geofence"], dependencies=_licensed)
+app.include_router(physical_attendance.router, prefix="/api/physical-attendance", tags=["Physical Attendance"], dependencies=_licensed)
 
 
 # ── Scheduled Job Runner ──────────────────────────────────────────────────────
