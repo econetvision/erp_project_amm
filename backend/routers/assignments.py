@@ -8,6 +8,7 @@ from models.vehicle_assignment import VehicleAssignment
 from models.user import User
 from schemas.vehicle_assignment import AssignRequest, AssignmentResponse, MyAssignmentResponse
 from auth.dependencies import require_admin_or_supervisor, get_current_user, assert_tenant, tenant_scope
+from services.site_scope_service import assert_employee_visible, assert_vehicle_visible, scope_by_employee
 
 router = APIRouter()
 
@@ -47,6 +48,7 @@ def _enrich(a: VehicleAssignment) -> AssignmentResponse:
 @router.get("", response_model=list[AssignmentResponse])
 def list_assignments(active_only: bool = True, db: Session = Depends(get_db), current: User = Depends(require_admin_or_supervisor)):
     q = tenant_scope(db.query(VehicleAssignment), VehicleAssignment.company_id, current)
+    q = scope_by_employee(q, VehicleAssignment.employee_id, db, current)
     if active_only:
         q = q.filter(VehicleAssignment.released_at == None)  # noqa: E711
     assignments = q.order_by(VehicleAssignment.assigned_at.desc()).all()
@@ -59,6 +61,7 @@ def assign_vehicle(payload: AssignRequest, db: Session = Depends(get_db), curren
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     assert_tenant(current, vehicle.company_id)
+    assert_vehicle_visible(db, current, vehicle.id)
     if vehicle.status == "assigned":
         raise HTTPException(status_code=400, detail="Vehicle is already assigned")
     if vehicle.status == "maintenance":
@@ -68,6 +71,7 @@ def assign_vehicle(payload: AssignRequest, db: Session = Depends(get_db), curren
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current, employee.company_id)
+    assert_employee_visible(db, current, employee.id)
 
     # Check employee doesn't already have an active vehicle
     active = (
@@ -97,6 +101,7 @@ def release_vehicle(assignment_id: int, db: Session = Depends(get_db), current: 
     if not a:
         raise HTTPException(status_code=404, detail="Assignment not found")
     assert_tenant(current, a.company_id)
+    assert_employee_visible(db, current, a.employee_id)
     if a.released_at is not None:
         raise HTTPException(status_code=400, detail="Assignment already released")
     a.released_at = datetime.now(timezone.utc)

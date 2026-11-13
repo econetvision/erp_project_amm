@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from database import get_db
 from models.user import User
+from models.work_location import WorkLocation, EmployeeLocationAssignment
 from schemas.employee import (
     EmployeeCreate, EmployeeUpdate, EmployeeResponse,
     EmployeeCreateResponse, WorkLocationUpdateSchema, EmployeeCodeUpdateSchema
@@ -23,6 +24,7 @@ from auth.dependencies import (
     require_admin_or_supervisor, require_admin, get_current_user,
     hash_password, assert_tenant, tenant_scope,
 )
+from services.site_scope_service import assert_employee_visible, default_site_for, scope_by_employee
 from config.settings import settings
 
 router = APIRouter()
@@ -132,6 +134,8 @@ def list_employees(
         q = db.query(User).filter(User.role.in_(["worker", "supervisor"]))
     # Tenant isolation: non-master callers only see their own company's employees.
     q = tenant_scope(q, User.company_id, current_user)
+    # Site isolation: supervisors only see employees at their own site(s).
+    q = scope_by_employee(q, User.id, db, current_user)
     if search:
         q = q.filter(
             or_(
@@ -192,6 +196,18 @@ def _persist_employee(db: Session, payload: EmployeeCreate, current_user: User) 
     if current_user.role == "supervisor" and role != "worker":
         raise HTTPException(status_code=403, detail="Supervisors can only create workers")
 
+    # A supervisor's new worker joins the supervisor's own site, otherwise it
+    # would be invisible to the very supervisor who created it.
+    supervisor_site = None
+    if current_user.role == "supervisor":
+        supervisor_site_id = default_site_for(db, current_user)
+        if supervisor_site_id is None:
+            raise HTTPException(
+                status_code=409,
+                detail="You are not assigned to any site. Ask your admin to assign you a work location.",
+            )
+        supervisor_site = db.query(WorkLocation).filter(WorkLocation.id == supervisor_site_id).first()
+
     # Every new employee consumes a license seat — enforce the company's seat
     # limit (no-op when license enforcement is bypassed via settings flags).
     if company_id is not None:
@@ -211,6 +227,17 @@ def _persist_employee(db: Session, payload: EmployeeCreate, current_user: User) 
         **data,
     )
     db.add(emp)
+    if supervisor_site is not None:
+        db.flush()
+        db.add(EmployeeLocationAssignment(
+            employee_id=emp.id, location_id=supervisor_site.id,
+            is_primary=True, assigned_by=current_user.id,
+        ))
+        # Mirror the primary site onto the legacy geofence fields, as /locations/assign does.
+        emp.work_location_name = supervisor_site.location_name
+        emp.work_latitude = supervisor_site.latitude
+        emp.work_longitude = supervisor_site.longitude
+        emp.attendance_radius_m = supervisor_site.allowed_radius_m
     db.commit()
     db.refresh(emp)
     return emp
@@ -536,6 +563,7 @@ def get_employee(employee_id: int, db: Session = Depends(get_db), current_user: 
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current_user, emp.company_id)
+    assert_employee_visible(db, current_user, emp.id)
 
     # Supervisors can only view workers (not other supervisors)
     if current_user.role == "supervisor" and emp.role != "worker":
@@ -555,6 +583,7 @@ def update_employee(employee_id: int, payload: EmployeeUpdate, db: Session = Dep
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current_user, emp.company_id)
+    assert_employee_visible(db, current_user, emp.id)
 
     # Update only provided, allow-listed fields (never role/company/credentials).
     for key, value in payload.model_dump(exclude_none=True).items():
@@ -575,6 +604,7 @@ def partial_update_employee(employee_id: int, payload: EmployeeUpdate, db: Sessi
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current_user, emp.company_id)
+    assert_employee_visible(db, current_user, emp.id)
 
     # Update only provided, allow-listed fields (never role/company/credentials).
     for key, value in payload.model_dump(exclude_none=True).items():
@@ -600,6 +630,7 @@ def update_employee_work_location(
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current_user, emp.company_id)
+    assert_employee_visible(db, current_user, emp.id)
 
     # Supervisors can only edit workers
     if current_user.role == "supervisor" and emp.role != "worker":
@@ -627,6 +658,7 @@ def update_employee_code(
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current_user, emp.company_id)
+    assert_employee_visible(db, current_user, emp.id)
 
     # Check if the new code is already in use
     existing = db.query(User).filter(
@@ -649,6 +681,7 @@ def delete_employee(employee_id: int, db: Session = Depends(get_db), current_use
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current_user, emp.company_id)
+    assert_employee_visible(db, current_user, emp.id)
     if emp.id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
     db.delete(emp)
@@ -666,6 +699,7 @@ def register_face(employee_id: int, payload: FaceRegisterRequest, db: Session = 
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current_user, emp.company_id)
+    assert_employee_visible(db, current_user, emp.id)
 
     # Supervisors can only register faces for workers
     if current_user.role == "supervisor" and emp.role != "worker":
@@ -700,6 +734,7 @@ async def ifsc_lookup(employee_id: int, ifsc: str, db: Session = Depends(get_db)
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current_user, emp.company_id)
+    assert_employee_visible(db, current_user, emp.id)
     return await lookup_ifsc(ifsc, db)
 
 
@@ -715,6 +750,7 @@ async def verify_bank_account_endpoint(
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current_user, emp.company_id)
+    assert_employee_visible(db, current_user, emp.id)
     if not emp.ifsc_code:
         raise HTTPException(status_code=400, detail="IFSC code is required for bank verification")
     
@@ -747,6 +783,7 @@ def send_phone_verification(employee_id: int, db: Session = Depends(get_db), cur
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current_user, emp.company_id)
+    assert_employee_visible(db, current_user, emp.id)
     if not emp.phone:
         raise HTTPException(status_code=400, detail="Employee phone number is not set")
     result = send_phone_otp(emp.phone, db=db, company_id=emp.company_id)
@@ -763,6 +800,7 @@ def verify_phone(employee_id: int, payload: OTPRequest, db: Session = Depends(ge
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current_user, emp.company_id)
+    assert_employee_visible(db, current_user, emp.id)
     if not emp.phone:
         raise HTTPException(status_code=400, detail="Employee phone number is not set")
     result = verify_phone_otp(emp.phone, payload.code, db=db, company_id=emp.company_id)
@@ -782,6 +820,7 @@ def send_email_verification(employee_id: int, db: Session = Depends(get_db), cur
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current_user, emp.company_id)
+    assert_employee_visible(db, current_user, emp.id)
     if not emp.email:
         raise HTTPException(status_code=400, detail="Employee email is not set")
     result = send_email_otp(emp.email, db=db, company_id=emp.company_id)
@@ -798,6 +837,7 @@ def verify_email(employee_id: int, payload: OTPRequest, db: Session = Depends(ge
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current_user, emp.company_id)
+    assert_employee_visible(db, current_user, emp.id)
     if not emp.email:
         raise HTTPException(status_code=400, detail="Employee email is not set")
     result = verify_email_otp(emp.email, payload.code, db=db, company_id=emp.company_id)
@@ -825,6 +865,7 @@ def assign_work_location(employee_id: int, payload: WorkLocationAssignment, db: 
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current_user, emp.company_id)
+    assert_employee_visible(db, current_user, emp.id)
     emp.work_location_name = payload.work_location_name
     emp.work_latitude = payload.work_latitude
     emp.work_longitude = payload.work_longitude

@@ -12,6 +12,7 @@ from models.geofence import GeofenceExitEvent
 from models.user import User
 from schemas.geofence import GeofencePingRequest, GeofencePingResponse, GeofenceExitEventResponse
 from services.geofence_service import record_ping
+from services.site_scope_service import assert_employee_visible, scope_by_employee
 
 router = APIRouter()
 
@@ -33,6 +34,7 @@ def ping(payload: GeofencePingRequest, db: Session = Depends(get_db), current: U
         if not emp:
             raise HTTPException(status_code=404, detail="Employee not found")
         assert_tenant(current, emp.company_id)
+        assert_employee_visible(db, current, emp.id)
 
     result = record_ping(db, emp, payload.latitude, payload.longitude, payload.accuracy_m)
     return GeofencePingResponse(**result.__dict__)
@@ -54,6 +56,8 @@ def list_events(
         .join(User, User.id == GeofenceExitEvent.employee_id)
     )
     q = tenant_scope(q, User.company_id, current)
+    # Site isolation: supervisors only see alerts for their own site's employees.
+    q = scope_by_employee(q, GeofenceExitEvent.employee_id, db, current)
     if open_only:
         q = q.filter(GeofenceExitEvent.returned_at.is_(None))
     if employee_id is not None:

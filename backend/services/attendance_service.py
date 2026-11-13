@@ -94,7 +94,8 @@ def calc_overtime(hours_worked, shift: str) -> Decimal:
 
 
 def get_dashboard_overview(db: Session, month: int, year: int, holiday_dates: set,
-                           company_id: int | None = None) -> list:
+                           company_id: int | None = None,
+                           employee_ids: set[int] | None = None) -> list:
     from models.user import User
 
     # Tenant isolation: restrict to the given company's employees when provided
@@ -102,6 +103,9 @@ def get_dashboard_overview(db: Session, month: int, year: int, holiday_dates: se
     emp_q = db.query(User.id).filter(User.role.in_(["worker", "supervisor"]))
     if company_id is not None:
         emp_q = emp_q.filter(User.company_id == company_id)
+    # Site isolation: a supervisor's dashboard covers only their own site(s).
+    if employee_ids is not None:
+        emp_q = emp_q.filter(User.id.in_(employee_ids))
     emp_ids = [uid for (uid,) in emp_q.all()]
 
     rec_q = (
@@ -112,7 +116,7 @@ def get_dashboard_overview(db: Session, month: int, year: int, holiday_dates: se
             extract("year",  Attendance.date) == year,
         )
     )
-    if company_id is not None:
+    if company_id is not None or employee_ids is not None:
         rec_q = rec_q.filter(Attendance.employee_id.in_(emp_ids))
     records = rec_q.all()
 
@@ -143,13 +147,16 @@ def get_dashboard_overview(db: Session, month: int, year: int, holiday_dates: se
 
 
 def get_employee_stats(db: Session, month: int, year: int, holiday_dates: set,
-                       company_id: int | None = None) -> list:
+                       company_id: int | None = None,
+                       employee_ids: set[int] | None = None) -> list:
     from models.user import User
 
     # Tenant isolation: only this company's employees (None = master global view).
     emp_q = db.query(User).filter(User.role.in_(["worker", "supervisor"]))
     if company_id is not None:
         emp_q = emp_q.filter(User.company_id == company_id)
+    if employee_ids is not None:
+        emp_q = emp_q.filter(User.id.in_(employee_ids))
     employees = emp_q.order_by(User.id).all()
 
     rec_q = (
@@ -159,7 +166,7 @@ def get_employee_stats(db: Session, month: int, year: int, holiday_dates: set,
             extract("year",  Attendance.date) == year,
         )
     )
-    if company_id is not None:
+    if company_id is not None or employee_ids is not None:
         rec_q = rec_q.filter(Attendance.employee_id.in_([e.id for e in employees]))
     records = rec_q.all()
 
@@ -217,7 +224,8 @@ def get_working_days_in_range(start: date, end: date, holiday_dates: set) -> lis
 
 
 def get_missed_attendance(db: Session, start: date, end: date, holiday_dates: set,
-                          company_id: int | None = None, today: date | None = None) -> dict:
+                          company_id: int | None = None, today: date | None = None,
+                          employee_ids: set[int] | None = None) -> dict:
     """Employees who missed attendance on any working day in [start, end].
 
     A working day counts as missed when the employee has no record (absent), has
@@ -233,6 +241,8 @@ def get_missed_attendance(db: Session, start: date, end: date, holiday_dates: se
     emp_q = db.query(User).filter(User.role.in_(["worker", "supervisor"]))
     if company_id is not None:
         emp_q = emp_q.filter(User.company_id == company_id)
+    if employee_ids is not None:
+        emp_q = emp_q.filter(User.id.in_(employee_ids))
     employees = emp_q.order_by(User.id).all()
 
     working_days = get_working_days_in_range(start, effective_end, holiday_dates)

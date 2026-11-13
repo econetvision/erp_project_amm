@@ -23,6 +23,7 @@ from services.attendance_service import (
 )
 from services.face_service import identify_employee, verify_employee_face
 from auth.dependencies import require_any, require_admin_or_supervisor, assert_tenant, tenant_scope
+from services.site_scope_service import assert_employee_visible, scope_by_employee, visible_employee_ids
 from config.settings import settings
 from decimal import Decimal
 import math
@@ -161,9 +162,11 @@ def dashboard_overview(
     holiday_dates    = {h.date for h in holiday_rows}
     emp_q            = db.query(User).filter(User.role.in_(["worker", "supervisor"]))
     emp_q            = tenant_scope(emp_q, User.company_id, current)
+    emp_q            = scope_by_employee(emp_q, User.id, db, current)
     total_employees  = emp_q.count()
     working_day_list = get_working_days_in_month(year, month, holiday_dates)
-    daily_entries    = get_dashboard_overview(db, month, year, holiday_dates, company_id=current.company_id)
+    daily_entries    = get_dashboard_overview(db, month, year, holiday_dates, company_id=current.company_id,
+                                              employee_ids=visible_employee_ids(db, current))
 
     return DashboardOverviewResponse(
         month=month,
@@ -193,7 +196,8 @@ def dashboard_employee_stats(
     holiday_rows = holiday_q.all()
     holiday_dates = {h.date for h in holiday_rows}
     # Tenant isolation is enforced in the service via company_id (None for master).
-    return get_employee_stats(db, month, year, holiday_dates, company_id=current.company_id)
+    return get_employee_stats(db, month, year, holiday_dates, company_id=current.company_id,
+                              employee_ids=visible_employee_ids(db, current))
 
 
 @router.get("/daily-summary", response_model=list[DailyEmployeeStatus])
@@ -205,6 +209,7 @@ def daily_summary(
     holiday = db.query(PublicHoliday).filter(PublicHoliday.date == date_param).first()
     emp_q = db.query(User).filter(User.role.in_(["worker", "supervisor"]))
     emp_q = tenant_scope(emp_q, User.company_id, current)
+    emp_q = scope_by_employee(emp_q, User.id, db, current)
     employees = emp_q.order_by(User.id).all()
     rec_q = (
         db.query(Attendance)
@@ -212,6 +217,7 @@ def daily_summary(
         .filter(Attendance.date == date_param)
     )
     rec_q = tenant_scope(rec_q, User.company_id, current)
+    rec_q = scope_by_employee(rec_q, Attendance.employee_id, db, current)
     records   = rec_q.all()
     rec_map   = {r.employee_id: r for r in records}
 
@@ -287,6 +293,7 @@ def dashboard_missed_attendance(
     result = get_missed_attendance(
         db, start, end, holiday_dates,
         company_id=None if current.role == "master" else current.company_id,
+        employee_ids=visible_employee_ids(db, current),
     )
     return MissedAttendanceResponse(period=period, **result)
 
@@ -301,6 +308,7 @@ def clock_in(payload: AttendanceClockIn, db: Session = Depends(get_db), current:
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current, emp.company_id)
+    assert_employee_visible(db, current, emp.id)
 
     validate_geofence(emp, payload.latitude, payload.longitude, db)
     verify_employee_face(payload.image, emp)
@@ -335,6 +343,7 @@ def clock_in_manual(payload: AttendanceManualClockIn, db: Session = Depends(get_
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current, emp.company_id)
+    assert_employee_visible(db, current, emp.id)
 
     validate_geofence(emp, payload.latitude, payload.longitude, db)
 
@@ -370,6 +379,7 @@ def clock_out_manual(attendance_id: int, payload: AttendanceManualClockOut, db: 
 
     emp = db.query(User).filter(User.id == record.employee_id).first()
     assert_tenant(current, emp.company_id if emp else None)
+    assert_employee_visible(db, current, record.employee_id)
     validate_geofence(emp, payload.latitude, payload.longitude, db)
 
     record.exit_time    = payload.exit_time
@@ -395,6 +405,7 @@ def clock_out(attendance_id: int, payload: AttendanceClockOut, db: Session = Dep
 
     emp = db.query(User).filter(User.id == record.employee_id).first()
     assert_tenant(current, emp.company_id if emp else None)
+    assert_employee_visible(db, current, record.employee_id)
     validate_geofence(emp, payload.latitude, payload.longitude, db)
     verify_employee_face(payload.image, emp)
 
@@ -419,6 +430,7 @@ def get_monthly_report(
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     assert_tenant(current, emp.company_id)
+    assert_employee_visible(db, current, emp.id)
     records = (
         db.query(Attendance)
         .filter(
@@ -456,6 +468,7 @@ def get_today_status(employee_id: int, db: Session = Depends(get_db), current: U
         if not emp:
             raise HTTPException(status_code=404, detail="Employee not found")
         assert_tenant(current, emp.company_id)
+        assert_employee_visible(db, current, emp.id)
     today = date.today()
     return db.query(Attendance).filter(
         Attendance.employee_id == employee_id,
@@ -471,6 +484,7 @@ def get_by_date(record_date: date, db: Session = Depends(get_db), current: User 
         .filter(Attendance.date == record_date)
     )
     q = tenant_scope(q, User.company_id, current)
+    q = scope_by_employee(q, Attendance.employee_id, db, current)
     return q.all()
 
 
@@ -481,6 +495,7 @@ def update_attendance(attendance_id: int, payload: AttendanceUpdate, db: Session
         raise HTTPException(status_code=404, detail="Attendance record not found")
     emp = db.query(User).get(record.employee_id)
     assert_tenant(current, emp.company_id if emp else None)
+    assert_employee_visible(db, current, record.employee_id)
     # Allow-listed fields only — never re-point the record to another employee/id.
     for key, value in payload.model_dump(exclude_none=True).items():
         if key in ATTENDANCE_EDITABLE_FIELDS:
@@ -499,6 +514,7 @@ def delete_attendance(attendance_id: int, db: Session = Depends(get_db), current
         raise HTTPException(status_code=404, detail="Attendance record not found")
     emp = db.query(User).get(record.employee_id)
     assert_tenant(current, emp.company_id if emp else None)
+    assert_employee_visible(db, current, record.employee_id)
     db.delete(record)
     db.commit()
 
@@ -509,6 +525,9 @@ def face_scan_clock(payload: FaceScanRequest, db: Session = Depends(get_db), cur
     # Only match faces within the caller's own company (master matches globally).
     face_q = db.query(User).filter(User.face_encoding.isnot(None))
     face_q = tenant_scope(face_q, User.company_id, current)
+    # Site isolation: a worker's scan can only ever match themselves, and a
+    # supervisor's only the employees at their own site(s).
+    face_q = scope_by_employee(face_q, User.id, db, current)
     employees = face_q.all()
     emp = identify_employee(payload.image, employees)
     if not emp:

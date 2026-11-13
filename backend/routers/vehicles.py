@@ -5,6 +5,7 @@ from models.vehicle import Vehicle
 from models.user import User
 from schemas.vehicle import VehicleCreate, VehicleUpdate, VehicleResponse
 from auth.dependencies import require_admin_or_supervisor, require_admin, get_current_user_or_service, ServiceIdentity, assert_tenant, tenant_scope
+from services.site_scope_service import assert_vehicle_visible, vehicle_visibility
 
 router = APIRouter()
 
@@ -12,7 +13,9 @@ router = APIRouter()
 @router.get("", response_model=list[VehicleResponse])
 def list_vehicles(db: Session = Depends(get_db), current: User = Depends(require_admin_or_supervisor)):
     q = tenant_scope(db.query(Vehicle), Vehicle.company_id, current)
-    return q.order_by(Vehicle.id).all()
+    # Site isolation: a supervisor sees pool vehicles and those driven by their own site's staff.
+    visible = vehicle_visibility(db, current)
+    return [v for v in q.order_by(Vehicle.id).all() if visible(v.id)]
 
 
 @router.get("/imei-map")
@@ -47,6 +50,7 @@ def get_vehicle(vehicle_id: int, db: Session = Depends(get_db), current: User = 
     if not v:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     assert_tenant(current, v.company_id)
+    assert_vehicle_visible(db, current, v.id)
     return v
 
 
