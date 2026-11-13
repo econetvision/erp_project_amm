@@ -7,6 +7,7 @@ import {
 } from "../../api/locationApi";
 import { getAllEmployees } from "../../api/employeeApi";
 import AlertMessage from "../../components/AlertMessage";
+import { useAuth } from "../../context/AuthContext";
 import ConfirmModal from "../../components/ConfirmModal";
 import type { Employee } from "../../types/employee";
 
@@ -26,6 +27,12 @@ const EMPTY_FORM: WorkLocationCreate = {
 };
 
 export default function WorkLocations() {
+  const { auth } = useAuth();
+  // Only master/admin manage sites; supervisors see just the site(s) they run.
+  const canManage = auth?.role === "admin" || auth?.role === "master";
+  const emptyText = canManage
+    ? 'No locations found. Click "+ Add Location" to create one.'
+    : "You are not assigned to any site yet. Ask your admin to assign you a work location.";
   const { isLoaded } = useJsApiLoader({ googleMapsApiKey: GOOGLE_MAPS_API_KEY, libraries: LIBRARIES });
 
   const [locations, setLocations] = useState<WorkLocation[]>([]);
@@ -241,7 +248,7 @@ export default function WorkLocations() {
       <div>
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h4 className="mb-0">📍 Work Locations Management</h4>
-          <button className="btn btn-primary" onClick={openCreate}>+ Add Location</button>
+          {canManage && <button className="btn btn-primary" onClick={openCreate}>+ Add Location</button>}
         </div>
 
         <AlertMessage {...alert} onClose={() => setAlert({ type: "", message: "" })} />
@@ -387,7 +394,7 @@ export default function WorkLocations() {
               </thead>
               <tbody>
                 {locations.length === 0 && (
-                  <tr><td colSpan={8} className="text-center text-muted py-4">No locations found. Click "+ Add Location" to create one.</td></tr>
+                  <tr><td colSpan={8} className="text-center text-muted py-4">{emptyText}</td></tr>
                 )}
                 {locations.map(loc => (
                   <tr key={loc.id} className={!loc.is_active ? "table-secondary" : ""}>
@@ -421,7 +428,7 @@ export default function WorkLocations() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="mb-0">📍 Work Locations Management</h4>
-        <button className="btn btn-primary" onClick={openCreate}>+ Add Location</button>
+        {canManage && <button className="btn btn-primary" onClick={openCreate}>+ Add Location</button>}
       </div>
 
       <AlertMessage {...alert} onClose={() => setAlert({ type: "", message: "" })} />
@@ -679,7 +686,7 @@ export default function WorkLocations() {
                   </div>
                 ))}
                 {locations.length === 0 && (
-                  <div className="list-group-item text-center text-muted py-4">No locations found. Click "+ Add Location" to create one.</div>
+                  <div className="list-group-item text-center text-muted py-4">{emptyText}</div>
                 )}
               </div>
             </div>

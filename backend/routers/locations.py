@@ -11,6 +11,9 @@ from schemas.work_location import (
     BulkAssignRequest, MyWorkLocationResponse,
 )
 from auth.dependencies import require_admin_or_supervisor, require_admin, get_current_user, assert_tenant, tenant_scope
+from services.site_scope_service import (
+    assert_employee_assignable, assert_location_visible, scope_by_location,
+)
 
 router = APIRouter()
 
@@ -53,11 +56,13 @@ def location_stats(db: Session = Depends(get_db), current_user: User = Depends(r
     q = db.query(WorkLocation)
     if current_user.role != "master":
         q = q.filter(WorkLocation.company_id == current_user.company_id)
+    q = scope_by_location(q, WorkLocation.id, db, current_user)
     total = q.count()
     active = q.filter(WorkLocation.is_active == True).count()
     aq = db.query(EmployeeLocationAssignment)
     if current_user.role != "master":
         aq = aq.join(WorkLocation).filter(WorkLocation.company_id == current_user.company_id)
+    aq = scope_by_location(aq, EmployeeLocationAssignment.location_id, db, current_user)
     total_assigned = aq.count()
     city_rows = (
         q.filter(WorkLocation.city.isnot(None), WorkLocation.city != "")
@@ -88,6 +93,8 @@ def list_locations(
     # Company-scope: admin/supervisor see only their company's locations
     if current_user.role != "master":
         q = q.filter(WorkLocation.company_id == current_user.company_id)
+    # Site isolation: supervisors/workers only see their own site(s).
+    q = scope_by_location(q, WorkLocation.id, db, current_user)
     if active_only:
         q = q.filter(WorkLocation.is_active == True)
     if search:
@@ -141,6 +148,7 @@ def get_location(location_id: int, db: Session = Depends(get_db), current: User 
     if not loc:
         raise HTTPException(status_code=404, detail="Work location not found")
     assert_tenant(current, loc.company_id)
+    assert_location_visible(db, current, loc.id)
     count = db.query(EmployeeLocationAssignment).filter(EmployeeLocationAssignment.location_id == location_id).count()
     resp = WorkLocationResponse.model_validate(loc)
     resp.employee_count = count
@@ -189,6 +197,7 @@ def list_location_employees(location_id: int, db: Session = Depends(get_db), cur
     if not loc:
         raise HTTPException(status_code=404, detail="Work location not found")
     assert_tenant(current, loc.company_id)
+    assert_location_visible(db, current, loc.id)
     assignments = (
         db.query(EmployeeLocationAssignment)
         .filter(EmployeeLocationAssignment.location_id == location_id)
@@ -226,6 +235,9 @@ def assign_employee(
     # Both the employee and the location must live in the caller's tenant.
     assert_tenant(current, emp.company_id)
     assert_tenant(current, loc.company_id)
+    # Site isolation: supervisors may only staff their own site(s).
+    assert_location_visible(db, current, loc.id)
+    assert_employee_assignable(db, current, emp.id)
     # Check for duplicate
     existing = db.query(EmployeeLocationAssignment).filter(
         EmployeeLocationAssignment.employee_id == payload.employee_id,
@@ -281,6 +293,7 @@ def assign_bulk(
         raise HTTPException(status_code=404, detail="Work location not found")
     # The target location must belong to the caller's tenant.
     assert_tenant(current, loc.company_id)
+    assert_location_visible(db, current, loc.id)
 
     assigned = 0
     for emp_id in payload.employee_ids:
@@ -289,6 +302,7 @@ def assign_bulk(
             continue
         # Only assign employees that live in the caller's tenant.
         assert_tenant(current, emp.company_id)
+        assert_employee_assignable(db, current, emp.id)
         existing = db.query(EmployeeLocationAssignment).filter(
             EmployeeLocationAssignment.employee_id == emp_id,
             EmployeeLocationAssignment.location_id == payload.location_id,
@@ -326,5 +340,6 @@ def unassign_employee(assignment_id: int, db: Session = Depends(get_db), current
     loc = db.query(WorkLocation).filter(WorkLocation.id == assignment.location_id).first()
     if loc:
         assert_tenant(current, loc.company_id)
+    assert_location_visible(db, current, assignment.location_id)
     db.delete(assignment)
     db.commit()

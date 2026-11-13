@@ -14,6 +14,7 @@ from auth.dependencies import (
     require_admin_or_supervisor, get_current_user, get_current_user_or_service,
     decode_ws_token, ServiceIdentity, assert_tenant, tenant_scope,
 )
+from services.site_scope_service import assert_vehicle_visible, can_see_vehicle, vehicle_visibility
 
 router = APIRouter()
 
@@ -110,8 +111,12 @@ def get_latest_locations(db: Session = Depends(get_db), current: User = Depends(
     assign_map = {a.vehicle_id: a for a in active_assignments}
 
     vehicles = tenant_scope(db.query(Vehicle), Vehicle.company_id, current).all()
+    # Site isolation: supervisors only track their own site's vehicles (plus the pool).
+    visible = vehicle_visibility(db, current)
     result = []
     for v in vehicles:
+        if not visible(v.id):
+            continue
         active = assign_map.get(v.id)
         last = loc_map.get(v.id)
         result.append(LatestLocationResponse(
@@ -141,6 +146,7 @@ def location_history(
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     assert_tenant(current, vehicle.company_id)
+    assert_vehicle_visible(db, current, vehicle.id)
     return (
         db.query(VehicleLocation)
         .filter(VehicleLocation.vehicle_id == vehicle_id)
@@ -170,6 +176,10 @@ async def vehicle_ws(vehicle_id: int, websocket: WebSocket):
         # for a WS), so we check explicitly and close with a policy-violation code.
         vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
         if vehicle is None or (user.role != "master" and vehicle.company_id != user.company_id):
+            await websocket.close(code=1008)
+            return
+        # Site isolation: a supervisor may only watch their own site's vehicles.
+        if user.role == "supervisor" and not can_see_vehicle(db, user, vehicle_id):
             await websocket.close(code=1008)
             return
 
